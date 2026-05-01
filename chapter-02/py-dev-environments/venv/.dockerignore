@@ -1,0 +1,12 @@
+# Build artefacts and local environments — never copy these into the image.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.git/
+.gitignore
+.dockerignore
+README.md

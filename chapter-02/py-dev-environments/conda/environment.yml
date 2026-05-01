@@ -1,0 +1,12 @@
+# Conda environment definition.
+#
+# All packages come from conda-forge -- no `pip` step is required.
+name: my-package
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14
+  - click=8.3.3
+  - numpy=2.4.4
+  - py=1.11.0
+  - pytest=9.0.3

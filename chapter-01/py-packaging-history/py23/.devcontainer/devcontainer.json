@@ -1,0 +1,5 @@
+{
+    "name": "setuptools_2004",
+    "image": "python:2.7",
+    "postCreateCommand": "pip install -e ."
+}

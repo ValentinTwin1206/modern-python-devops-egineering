@@ -1,0 +1,11 @@
+[project]
+name = "my-package"
+version = "1.0.0"
+description = "Example project for virtualenv"
+requires-python = ">=3.14"
+dependencies = [
+    "click==8.3.3",
+    "numpy==2.4.4",
+    "py==1.11.0",
+    "pytest==9.0.3",
+]

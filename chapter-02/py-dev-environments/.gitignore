@@ -1,0 +1,17 @@
+# Virtual environments created by any of the per-folder examples.
+.venv/
+venv/.venv/
+virtualenv/.venv/
+pipenv/.venv/
+
+# Python build/cache artefacts.
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Editor / OS noise.
+.vscode/
+.idea/
+.DS_Store

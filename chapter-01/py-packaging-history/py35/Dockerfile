@@ -1,0 +1,15 @@
+# =============================================================================
+# Python 3.5 base image (2016 era).
+# -----------------------------------------------------------------------------
+# Uses the official `python:3.5` image from Docker Hub. Project sources
+# are copied in but no dependencies are installed -- the README walks
+# through `pip install -r requirements.txt`.
+# =============================================================================
+FROM python:3.5
+
+WORKDIR /opt/my_package
+COPY setup.py setup.cfg requirements.txt requirements-dev.txt ./
+COPY my_package ./my_package
+COPY tests ./tests
+
+CMD ["python", "-V"]

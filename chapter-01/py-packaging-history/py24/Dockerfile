@@ -1,0 +1,65 @@
+# =============================================================================
+# Python 2.4 (Nov 2004) base image with setuptools
+# -----------------------------------------------------------------------------
+# Builds Python 2.4 from source and installs setuptools 0.6c11, the first
+# tool to support `install_requires=` in setup.py. Numeric and the sample
+# package are NOT installed here -- the README walks through those steps.
+# =============================================================================
+FROM debian:jessie
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. Jessie is EOL -- repos live on archive.debian.org and signatures expired.
+RUN set -eux; \
+    echo "deb http://archive.debian.org/debian jessie main"           >  /etc/apt/sources.list; \
+    echo "deb http://archive.debian.org/debian-security jessie/updates main" >> /etc/apt/sources.list; \
+    echo 'Acquire::Check-Valid-Until "false";' >  /etc/apt/apt.conf.d/99-archive; \
+    echo 'Acquire::AllowInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99-archive; \
+    apt-get -o Acquire::AllowInsecureRepositories=true update; \
+    apt-get install -y --force-yes --no-install-recommends \
+        ca-certificates \
+        wget \
+        build-essential \
+        libreadline-dev \
+        zlib1g-dev; \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. Fetch Python 2.4 source.
+WORKDIR /usr/src
+RUN wget --no-check-certificate https://www.python.org/ftp/python/2.4/Python-2.4.tgz \
+ && tar -xzf Python-2.4.tgz \
+ && rm Python-2.4.tgz
+
+WORKDIR /usr/src/Python-2.4
+
+# 3. Patch around glibc-2.x changes that didn't exist in 2004:
+#    `getline` is now a libc function, so Python's same-named static collides.
+RUN sed -i 's/\bgetline\b/py_getline/g' Objects/fileobject.c
+
+# 3b. Force-enable the zlib extension; Python 2.4's setup.py doesn't know
+#     about Debian's multiarch lib path.
+RUN echo 'zlib zlibmodule.c -lz' > Modules/Setup.local
+
+# 4. Build & install. -fcommon restores pre-GCC10 tentative-definition
+#    behaviour required by several Python 2.x modules.
+RUN set -eux; \
+    CFLAGS="-w -fcommon" ./configure --prefix=/usr/local; \
+    make; \
+    make install
+
+# 5. Install setuptools 0.6c11 -- the last release that supported Python 2.3.
+WORKDIR /usr/src
+RUN set -eux; \
+    wget --no-check-certificate \
+        https://files.pythonhosted.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz; \
+    tar -xzf setuptools-0.6c11.tar.gz; \
+    cd setuptools-0.6c11; \
+    python setup.py install; \
+    cd ..; \
+    rm -rf setuptools-0.6c11 setuptools-0.6c11.tar.gz
+
+WORKDIR /opt/my_package
+COPY setup.py ./
+COPY my_package ./my_package
+
+CMD ["python", "-V"]

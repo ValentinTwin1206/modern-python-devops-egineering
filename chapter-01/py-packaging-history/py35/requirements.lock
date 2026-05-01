@@ -1,0 +1,7 @@
+# Resolved dependency snapshot for the 2016-era environment.
+# Generated from a Python 3.5 install of requirements.txt and
+# requirements-dev.txt.
+click==6.6
+numpy==1.11.3
+py==1.11.0
+pytest==3.0.7

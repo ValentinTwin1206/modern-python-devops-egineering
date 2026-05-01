@@ -1,0 +1,35 @@
+# Fully declarative project metadata via PEP 621 (`[project]`) on top of
+# the setuptools build backend (PEP 517).
+#
+# setuptools 61.0 (March 2022) was the first release to implement PEP 621
+# natively, which is what finally allows `setup.py` and `setup.cfg` to be
+# removed entirely from a setuptools-based project.
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "historic-calculator"
+version = "6.0.0"
+description = "A tiny vector calculator using NumPy and Click."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy==1.24.0",
+    "click==8.1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.2.0",
+]
+
+[project.scripts]
+historic-calculator = "my_package.main:cli"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
