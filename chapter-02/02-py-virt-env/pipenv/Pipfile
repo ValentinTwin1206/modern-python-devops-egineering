@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+bottle = "==0.13.4"
+
+[dev-packages]
+karva = ">=0.0.1a5"
+ruff = ">=0.15.12"
+
+[requires]
+python_version = "3.14"

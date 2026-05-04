@@ -1,0 +1,16 @@
+# =============================================================================
+# Python 2.7 base image
+# -----------------------------------------------------------------------------
+# Uses the official `python:2.7` image from Docker Hub. Python 2.7.9 (Dec 2014)
+# was the first 2.x release to ship pip via PEP 477's `ensurepip`, making the
+# pip + setuptools + requirements.txt workflow a first-class citizen.
+# NumPy and the sample package are NOT installed here -- the README walks
+# through using `pip install -r requirements.txt`.
+# =============================================================================
+FROM python:2.7
+
+WORKDIR /opt/historic_calculator
+COPY setup.py requirements.txt ./
+COPY historic_calculator ./historic_calculator
+
+CMD ["python", "-V"]

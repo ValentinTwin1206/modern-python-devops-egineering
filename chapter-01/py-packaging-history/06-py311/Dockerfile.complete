@@ -1,0 +1,17 @@
+# =============================================================================
+# Python 3.11 complete runtime image. Builds the project from a fully
+# declarative pyproject.toml (PEP 621) -- no setup.py, no setup.cfg,
+# no requirements*.txt.
+# =============================================================================
+FROM python:3.11
+
+WORKDIR /opt/historic_calculator
+
+# 1. Install the sample package together with its optional dev dependencies.
+COPY pyproject.toml ./
+COPY historic_calculator ./historic_calculator
+COPY tests ./tests
+RUN pip install --no-cache-dir ".[dev]"
+
+ENTRYPOINT ["historic_calculator"]
+CMD ["max", "1,-2,4"]

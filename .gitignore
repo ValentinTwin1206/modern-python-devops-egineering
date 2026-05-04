@@ -28,6 +28,7 @@ pip-wheel-metadata/
 .coverage.*
 htmlcov/
 .pytest_cache/
+.karva_cache/
 
 # Type checker and linter caches
 .mypy_cache/
