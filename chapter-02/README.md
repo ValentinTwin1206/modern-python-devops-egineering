@@ -13,9 +13,9 @@ the environment layout remains the main subject.
 
 | Folder | Topic | Focus | Details |
 | ------ | ----- | ----- | ------- |
-| [`01-py-sys-env/`](./01-py-sys-env/) | Python system environment | APT-managed Linux Python, system package installs, `PATH`, `sys.path`, `site-packages`, and `dist-packages` | [README](./01-py-sys-env/README.md) |
-| [`02-py-virt-env/`](./02-py-virt-env/) | Python virtual environments | `venv`, `virtualenv`, `conda`, and `pipenv` isolation patterns | [README](./02-py-virt-env/README.md) |
-| [`03-py-dev-containers/`](./03-py-dev-containers/) | Python dev containers | containerized development environments | README |
+| [`section-01/`](./section-01/) | Python system environment | APT-managed Linux Python, system package installs, `PATH`, `sys.path`, `site-packages`, and `dist-packages` | [README](./section-01/README.md) |
+| [`section-02/`](./section-02/) | Python virtual environments | `venv`, `conda`, and `pipenv` isolation patterns | [README](./section-02/README.md) |
+| [`section-03/`](./section-03/) | Python dev containers | Ubuntu-based Dev Container with CPython, PyPy, VS Code tooling, lifecycle hooks, and port forwarding | [README](./section-03/README.md) |
 
 ## Tiny Webserver
 
@@ -40,7 +40,7 @@ tooling.
 Boot the canonical system-environment project:
 
 ```sh
-cd chapter-02/01-py-sys-env
+cd chapter-02/section-01
 uv sync
 uv run tiny-webserver
 ```
@@ -67,4 +67,21 @@ uv run tiny-webserver
 uv run karva test tests/
 uv run ruff check .
 uv build --wheel
+```
+
+
+## Project Layout
+
+```text
+section-01/
+├── Dockerfile
+├── README.md
+├── pyproject.toml
+├── uv.lock
+├── src/
+│   └── tiny_webserver/
+│       ├── __init__.py
+│       └── app.py
+└── tests/
+    └── test_app.py
 ```

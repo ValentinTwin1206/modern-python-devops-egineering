@@ -10,4 +10,4 @@ setup.
 
 | Folder | Topic | Focus | Details |
 | ------ | ----- | ----- | ------- |
-| [`py-packaging-history/`](./py-packaging-history/) | Python packaging evolution | six historical packaging snapshots | [README](./py-packaging-history/README.md) |
+| [`section-01/`](./section-01/) | Python packaging evolution | six historical packaging snapshots | [README](./section-01/README.md) |
