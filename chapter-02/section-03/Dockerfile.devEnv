@@ -1,14 +1,15 @@
 # =============================================================================
-# Python 1.6 (Sep 2000) complete runtime image
+# Python 2.4 (Nov 2004) base image with setuptools
 # -----------------------------------------------------------------------------
-# Builds Python 1.6 from source, installs Numerical 15.3, and installs the
-# sample calculator package so the CLI is ready to use immediately.
+# Builds Python 2.4 from source and installs setuptools 0.6c11, the first
+# tool to support `install_requires=` in setup.py. Numeric and the sample
+# package are NOT installed here -- the README walks through those steps.
 # =============================================================================
 FROM debian:jessie
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Jessie is EOL — repos live on archive.debian.org and signatures expired.
+# 1. Jessie is EOL -- repos live on archive.debian.org and signatures expired.
 RUN set -eux; \
     echo "deb http://archive.debian.org/debian jessie main"           >  /etc/apt/sources.list; \
     echo "deb http://archive.debian.org/debian-security jessie/updates main" >> /etc/apt/sources.list; \
@@ -23,43 +24,42 @@ RUN set -eux; \
         zlib1g-dev; \
     rm -rf /var/lib/apt/lists/*
 
-# 2. Fetch Python 1.6 source from python.org's FTP archive.
+# 2. Fetch Python 2.4 source.
 WORKDIR /usr/src
-RUN wget --no-check-certificate https://www.python.org/ftp/python/src/python-1.6.tar.gz \
- && tar -xzf python-1.6.tar.gz \
- && rm python-1.6.tar.gz
+RUN wget --no-check-certificate https://www.python.org/ftp/python/2.4/Python-2.4.tgz \
+ && tar -xzf Python-2.4.tgz \
+ && rm Python-2.4.tgz
 
-WORKDIR /usr/src/Python-1.6
+WORKDIR /usr/src/Python-2.4
 
-# 3. Patch around glibc-2.x changes that didn't exist in 2000:
+# 3. Patch around glibc-2.x changes that didn't exist in 2004:
 #    `getline` is now a libc function, so Python's same-named static collides.
 RUN sed -i 's/\bgetline\b/py_getline/g' Objects/fileobject.c
 
-# 4. Build & install.
-#    -w silences a wall of warnings; -fcommon restores pre-GCC10 tentative-
-#    definition behaviour that several Python 1.6 modules rely on.
+# 3b. Force-enable the zlib extension; Python 2.4's setup.py doesn't know
+#     about Debian's multiarch lib path.
+RUN echo 'zlib zlibmodule.c -lz' > Modules/Setup.local
+
+# 4. Build & install. -fcommon restores pre-GCC10 tentative-definition
+#    behaviour required by several Python 2.x modules.
 RUN set -eux; \
     CFLAGS="-w -fcommon" ./configure --prefix=/usr/local; \
     make; \
     make install
 
-# 5. Install Numerical 15.3.
+# 5. Install setuptools 0.6c11 -- the last release that supported Python 2.3.
 WORKDIR /usr/src
 RUN set -eux; \
     wget --no-check-certificate \
-        -O Numerical-15.3.tgz \
-        "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"; \
-    tar -xzf Numerical-15.3.tgz; \
-    cd Numerical-15.3; \
-    CFLAGS="-w -fcommon" python setup.py install; \
+        https://files.pythonhosted.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz; \
+    tar -xzf setuptools-0.6c11.tar.gz; \
+    cd setuptools-0.6c11; \
+    python setup.py install; \
     cd ..; \
-    rm -rf Numerical-15.3 Numerical-15.3.tgz
+    rm -rf setuptools-0.6c11 setuptools-0.6c11.tar.gz
 
-# 6. Install the sample package.
 WORKDIR /opt/historic_calculator
 COPY setup.py ./
-COPY bin/hist_calc ./bin/hist_calc
 COPY src/historic_calculator ./src/historic_calculator
-RUN python setup.py install
 
-ENTRYPOINT ["/bin/bash"]
+CMD ["python", "-V"]

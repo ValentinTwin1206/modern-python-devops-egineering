@@ -1,225 +1,341 @@
-# Python Dev Containers
+# Historic Calculator (Python 2.4)
 
-This section explains how a Dev Container turns a Python project
-environment into a complete editor-backed development environment. It
-uses the shared tiny `bottle` web server, `karva` test runner, and
-`ruff` linting setup from the rest of Chapter 2.
+A small example application demonstrating Python 2.4 (released
+**November 30, 2004**) together with the **setuptools** packaging library
+(released the same year) — the first tool to support real,
+enforceable runtime dependency declarations through the
+`install_requires=` keyword.
 
-The `.devcontainer` setup is the important demonstration. It builds a
-VS Code development container from a standard Ubuntu Dev Containers base
-image:
+  * **Python version:** 2.4
+  * **Release date:** November 30, 2004
+  * **setuptools:** 0.6c11 (last release supporting Python 2.4)
+  * **Numeric:** 24.0b2
+  * **Associated PEP:** [PEP 314 — Metadata for Python Software
+    Packages v1.1](https://peps.python.org/pep-0314/) (PEP 345 with
+    `Requires-Dist` arrived later, in 2005; setuptools' `install_requires`
+    was the de-facto standard well before then)
 
-- It starts from `mcr.microsoft.com/devcontainers/base:ubuntu-24.04`.
-- It installs CPython, `pip`, `venv`, and PyPy with APT.
-- It installs `uv` for the project workflow.
-- It configures VS Code Python tooling and forwards port `8080`.
-- It runs `uv sync --group dev` after the workspace is mounted.
-- It keeps the source tree bind-mounted so editor changes and container
-  commands operate on the same files.
-
-Open this folder in a Dev Container from VS Code:
-
-```sh
-code chapter-02/section-03
-```
-
-Then run **Dev Containers: Reopen in Container** from the Command
-Palette.
-
-## Dev Container Footprint
+## System Requirements
 
 ### Overview
 
-A Python virtual environment isolates Python packages. A Dev Container
-does much more: it defines the operating system image, system packages,
-language runtimes, editor extensions, forwarded ports, lifecycle hooks,
-workspace mount, user account, shell environment, and project setup
-commands.
+  * A Linux system with glibc 2.2 or 2.3.
+  * The GNU C compiler (`gcc`) 2.95 or later, and `make`.
+  * Development headers for the C library, `readline`, and `zlib`:
+      - on Debian: `libc6-dev`, `libreadline-dev`, `zlib1g-dev`
+      - on Red Hat: `glibc-devel`, `readline-devel`, `zlib-devel`
+  * Root privileges (or write access to a custom `--prefix`) to
+    install into `/usr/local`.
+  * [Python 2.4](#install-python) installed on the system.
+  * [setuptools 0.6c11](#install-setuptools) installed on the system.
+  * [Numeric 24.0b2](#install-numeric) installed on the system.
 
-That makes Dev Containers a higher-level development boundary. The
-environment is not only "which `site-packages` directory does this
-project use?" but also "which Linux distribution, system packages,
-interpreter implementations, editor tools, and startup commands does the
-whole workspace use?"
+### Install Python
 
-### Container Layout
-
-The project keeps its container contract under `.devcontainer/`:
-
-| Path | Purpose |
-| ---- | ------- |
-| [`.devcontainer/devcontainer.json`](./.devcontainer/devcontainer.json) | VS Code Dev Containers configuration, extensions, lifecycle commands, and forwarded ports |
-| [`.devcontainer/Dockerfile`](./.devcontainer/Dockerfile) | Ubuntu-based development image with CPython, PyPy, and `uv` |
-| [`pyproject.toml`](./pyproject.toml) | Local project metadata, Bottle runtime dependency, Karva/Ruff dev dependencies, and `uv_build` backend |
-| [`src/tiny_webserver/app.py`](./src/tiny_webserver/app.py) | Minimal Bottle application with one JSON endpoint |
-| [`tests/test_app.py`](./tests/test_app.py) | Karva-compatible test for the Bottle endpoint |
-
-### Dev Container Vs Virtual Environment
-
-| Aspect | Python virtual environment | Dev Container |
-| ------ | -------------------------- | ------------- |
-| Boundary | Python interpreter and packages | full development container plus editor integration |
-| System packages | inherited from host | declared in image or features |
-| Python implementations | usually one active interpreter | can include CPython, PyPy, and other runtimes side by side |
-| Editor setup | configured separately on each host | declared in `devcontainer.json` |
-| Ports and services | manual host setup | forwarded and named by the container config |
-| Lifecycle commands | manual shell commands | `postCreateCommand`, `postStartCommand`, and related hooks |
-| Reproducibility scope | Python dependencies | OS, tools, interpreters, editor extensions, and project setup |
-
-Virtual environments are still useful inside Dev Containers. The point
-is that the Dev Container owns the larger development machine, while the
-virtual environment remains one Python-specific layer inside it.
-
-## Runtime Installation
-
-### CPython
-
-The Dockerfile installs Ubuntu's CPython packages:
-
-```dockerfile
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        python3-venv
-```
-
-This gives the container the standard `/usr/bin/python3` interpreter,
-`pip3`, and the standard-library `venv` module.
-
-### PyPy
-
-The same image also installs PyPy:
-
-```dockerfile
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        pypy3 \
-        pypy3-venv
-```
-
-PyPy is a separate Python implementation with a JIT compiler. Installing
-it next to CPython makes the container useful for comparing interpreter
-behavior without changing the host machine.
-
-### Project Environment
-
-The Dev Container uses `uv` to create and sync the project environment
-after VS Code mounts the workspace:
-
-```json
-"postCreateCommand": "uv sync --group dev"
-```
-
-This timing matters. During image build, the source tree is not copied
-into the image. During Dev Container startup, VS Code mounts the working
-copy into `/workspaces/section-03`, then runs the lifecycle command
-against the real project files.
-
-## Common Workflow
-
-Run the tiny web server inside the Dev Container:
+Download and unpack the Python 2.4 source archive:
 
 ```sh
-uv run tiny-webserver
+cd /usr/src
+wget https://www.python.org/ftp/python/2.4/Python-2.4.tgz
+tar -xzf Python-2.4.tgz
 ```
 
-Run tests and linting:
+Configure, build, and install the interpreter:
 
 ```sh
-uv run karva test tests/
-uv run ruff check .
+cd Python-2.4
+./configure --prefix=/usr/local
+make
+make install
 ```
 
-Build the project wheel:
+Verify that Python was installed correctly:
 
 ```sh
-uv build --wheel
+/usr/local/bin/python -V
 ```
 
-Run a quick PyPy check:
+> You should see `Python 2.4`.
+
+### Install setuptools
+
+Download and unpack setuptools 0.6c11 — the last release that
+supports Python 2.4:
 
 ```sh
-pypy3 --version
-pypy3 -c "import sys; print(sys.implementation.name); print(sys.executable)"
+cd /usr/src
+wget https://files.pythonhosted.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz
+tar -xzf setuptools-0.6c11.tar.gz
 ```
 
-## Useful Inspection Commands
-
-Use these command patterns inside the Dev Container to inspect the full
-development environment.
-
-### Workspace Location
-
-Show where VS Code mounted the project.
+Install it with the just-built Python:
 
 ```sh
-pwd
-ls -la
+cd setuptools-0.6c11
+python setup.py install
 ```
 
-Expected path shape:
+Verify that setuptools is available:
+
+```sh
+python -c "import setuptools; print setuptools.__version__"
+```
+
+### Install Numeric
+
+Download and unpack the Numeric 24.0b2 source archive:
+
+```sh
+cd /usr/src
+wget -O Numeric-24.0b2.tar.gz \
+  "https://sourceforge.net/projects/numpy/files/OldFiles/Numeric-24.0b2.tar.gz/download"
+tar -xzf Numeric-24.0b2.tar.gz
+```
+
+Patch Numeric's `setup.py` so it uses *setuptools* instead of plain
+distutils. This is what registers Numeric as a setuptools distribution
+in `pkg_resources` — without it, our project's `install_requires=
+["Numeric"]` declaration would try to fetch `Numeric` from PyPI:
+
+```sh
+cd Numeric-24.0b2
+sed -i 's/from distutils.core import setup/from setuptools import setup/' setup.py
+```
+
+Build and install the patched Numeric:
+
+```sh
+python setup.py install
+```
+
+Verify that Numeric was installed correctly:
+
+```sh
+python -c "import Numeric; print Numeric.__version__"
+```
+
+## Dependency Management
+
+### Matrix
+
+| Dependency  | 1.0.0                 | 2.0.0                      | 3.0.0                           | 4.0.0                            | 5.0.0                                             | 6.0.0                                       |
+| ----------- | --------------------- | -------------------------- | ------------------------------- | -------------------------------- | ------------------------------------------------- | ------------------------------------------- |
+| Python      | 1.6                   | 2.3                        | 2.4                             | 2.7                              | 3.5                                               | 3.11                                        |
+| Numeric     | 15.3 (manual install) | 24.0b2 (declared, manual)  | 24.0b2 (resolved at install)    | —                                | —                                                 | —                                           |
+| NumPy       | —                     | —                          | —                               | 1.9.2 (pinned, pip-installed)    | 1.11.3 (pinned, pip-installed)                    | 1.24.0 (pinned, pip-installed)              |
+| Click       | —                     | —                          | —                               | —                                | 6.6 (pinned, pip-installed)                       | 8.1.3 (pinned, pip-installed)               |
+| setuptools  | —                     | —                          | 0.6c11 (bootstrap dependency)   | bundled                          | bundled                                           | build backend (>=61.0, declared)            |
+| pip         | —                     | —                          | —                               | bundled (PEP 477)                | bundled                                           | bundled, PEP 517/518 frontend               |
+| pytest      | —                     | —                          | —                               | —                                | 3.0.7 (dev, requirements-dev.txt)                 | 7.2.0 (dev extra in `pyproject.toml`)       |
+| Layout      | `setup.py` only       | `setup.py` (distutils)     | `setup.py` (setuptools)         | `setup.py` + `requirements.txt`  | `setup.py` + `setup.cfg` + 2× `requirements*.txt` | `pyproject.toml` only                        |
+
+### Background
+
+With `setuptools`, `install_requires=` becomes active rather than merely
+descriptive. During `python setup.py install`, setuptools checks whether
+the current Python 2.4 environment already contains a registered
+`Numeric` distribution. That is the key shift in this chapter: a missing
+dependency becomes an *install-time* failure instead of a later
+`ImportError`. The cost is a bootstrap dependency of its own, because
+setuptools still has to be installed separately in this era.
+
+What `pkg_resources` looks for is not just an importable `Numeric.py`
+somewhere on disk, but an installed distribution recorded in
+`site-packages`. In practice the Python 2.4 environment needs to look
+roughly like this:
 
 ```text
-/workspaces/section-03
+/usr/local/lib/python2.4/site-packages/
+|-- Numeric/
+|-- Numeric-24.0b2-py2.4.egg-info/
+`-- setuptools.pth
 ```
 
-### CPython Interpreter
+That is why the README patches Numeric's own `setup.py` to use
+`setuptools`: the install has to register Numeric as a distribution so
+`pkg_resources` can see it.
 
-Show the default CPython executable.
+In case that Numeric is missing, following command failed:
 
 ```sh
-which python3
-python3 --version
+python setup.py install
 ```
-
-Expected output starts with:
 
 ```text
-/usr/bin/python3
-Python 3.12
+Processing dependencies for historic_calculator==3.0.0
+Searching for Numeric
+Reading http://pypi.python.org/simple/Numeric/
+No local packages or download links found for Numeric
 ```
 
-### PyPy Interpreter
+## Build
 
-Show the PyPy executable installed by APT.
+Setuptools 0.6c11 supports a **source distribution** (sdist) and a
+legacy `bdist_egg`, but **not** wheels -- PEP 427 only arrived in
+2012. The era-faithful artifact is therefore an sdist:
 
 ```sh
-which pypy3
-pypy3 --version
+python setup.py sdist
 ```
 
-Expected output includes:
+> The resulting tarball appears in `dist/historic_calculator-3.0.0.tar.gz`.
 
-```text
-/usr/bin/pypy3
-PyPy
-```
+## Installation
 
-### uv Project Environment
-
-Show which Python `uv` selected for the project environment.
+From the directory containing this `README.md`:
 
 ```sh
-uv run python -c "import sys; print(sys.executable); print(sys.version)"
+python setup.py install
 ```
 
-### Forwarded Web Port
+> This installs the package and registers the `hist_calc` console
+> script on `PATH` via setuptools' `console_scripts` entry point.
 
-Run the server:
+## Usage
+
+The package exposes a single command-line entry point that
+applies a reduction to a comma-separated vector of numbers.
+
+The general form is:
 
 ```sh
-uv run tiny-webserver
+hist_calc COMMAND VECTOR
 ```
 
-VS Code forwards port `8080`, so the endpoint is available from the host:
+  * `COMMAND` is one of `max`, `min`, `mean`, or `sum`.
+  * `VECTOR` is a comma-separated list of numbers, for example
+    `1,-2,4`. Negative numbers and decimals are supported; spaces
+    around the commas are allowed.
+
+### Calculating the Vector Maximum
+
+Use `max` to return the largest value in the vector.
 
 ```sh
-curl http://localhost:8080/
+hist_calc max 1,-2,4
 ```
 
-Expected response:
+This prints:
 
-```json
-{"message": "Hello from tiny webserver"}
+```sh
+max(1,-2,4) = 4.0
+```
+
+### Calculating the Vector Minimum
+
+Use `min` to return the smallest value in the vector.
+
+```sh
+hist_calc min 1,-2,4
+```
+
+This prints:
+
+```sh
+min(1,-2,4) = -2.0
+```
+
+### Calculating the Vector Mean
+
+Use `mean` to return the arithmetic average of the vector.
+
+```sh
+hist_calc mean 1.5,2.5,3.5
+```
+
+This prints:
+
+```sh
+mean(1.5,2.5,3.5) = 2.5
+```
+
+### Calculating the Vector Sum
+
+Use `sum` to return the total of all values in the vector.
+
+```sh
+hist_calc sum 10,20,30,40
+```
+
+This prints:
+
+```sh
+sum(10,20,30,40) = 100.0
+```
+
+### Handling Invalid Input
+
+Calling the script with the wrong number of arguments, an unknown
+command, or a malformed vector prints a short usage banner on
+standard error and exits with a non-zero status.
+
+You can also use the package from your own scripts:
+
+```python
+from historic_calculator.main import run_calculator, make_vector
+
+print run_calculator("max", "1,-2,4")
+
+v = make_vector([1, 2, 3, 4])
+print v * 2
+```
+
+## If Numeric Is Missing
+
+Because setuptools 0.6c11 checks `install_requires=` at install time,
+the usual failure mode is that `python setup.py install` aborts before
+the package is fully usable. But if you are writing your own scripts
+for this era, it is still helpful to guard imports explicitly and print
+an actionable error.
+
+The simplest pattern is a plain `ImportError` check:
+
+```python
+import sys
+
+try:
+  import Numeric
+except ImportError:
+  print >> sys.stderr, "Numeric 24.0b2 is required. Install it before running historic_calculator."
+  raise SystemExit(1)
+```
+
+If you want to mirror setuptools' view of the world more closely, check
+whether `pkg_resources` can see a registered `Numeric` distribution
+before importing it:
+
+```python
+import sys
+
+import pkg_resources
+
+try:
+  pkg_resources.require("Numeric")
+  import Numeric
+except pkg_resources.DistributionNotFound:
+  print >> sys.stderr, "Numeric is not registered in pkg_resources. Reinstall Numeric with the setuptools patch."
+  raise SystemExit(1)
+except ImportError:
+  print >> sys.stderr, "Numeric is registered but cannot be imported. Check the Numeric install itself."
+  raise SystemExit(1)
+```
+
+And if you want the CLI entry point to fail with a short message rather
+than a traceback, wrap the import in a helper function:
+
+```python
+import sys
+
+
+def require_numeric():
+  try:
+    import Numeric
+  except ImportError:
+    print >> sys.stderr, "Missing dependency: Numeric 24.0b2"
+    print >> sys.stderr, "Install Numeric first, then rerun the command."
+    raise SystemExit(1)
+  return Numeric
+
+
+Numeric = require_numeric()
 ```

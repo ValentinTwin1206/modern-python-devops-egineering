@@ -1,0 +1,24 @@
+# =============================================================================
+# Python 3.5 complete runtime image with pip-installed dependencies and
+# the historic_calculator console-script entry point on PATH.
+# =============================================================================
+FROM python:3.5
+
+WORKDIR /opt/historic_calculator
+
+# 1. Install pinned runtime dependencies.
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+# 2. Install the sample package itself (registers the console script).
+COPY setup.py setup.cfg ./
+COPY src/historic_calculator ./src/historic_calculator
+RUN pip install .
+
+# 3. Optional: dev dependencies + tests for `docker run ... pytest`.
+COPY requirements-dev.txt ./
+COPY tests ./tests
+RUN pip install -r requirements-dev.txt
+
+ENTRYPOINT ["/bin/bash"]
+

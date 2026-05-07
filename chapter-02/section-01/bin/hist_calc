@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+# Console launcher for historic_calculator.
+#
+# distutils 1.6 has no concept of "console_scripts" entry points
+# (those arrived with setuptools in 2004), so we ship a real script
+# file and register it via `scripts=` in setup.py. `python setup.py
+# install` copies this file into the install prefix's `bin/` directory
+# and rewrites the shebang to point at the building interpreter.
+import sys
+
+from historic_calculator.main import main
+
+sys.exit(main(sys.argv))

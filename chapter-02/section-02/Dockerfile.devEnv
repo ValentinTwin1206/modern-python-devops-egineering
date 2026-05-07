@@ -1,0 +1,45 @@
+# Python 2.3 build environment.
+# Builds the historical interpreter and copies the example project without
+# installing Numeric or the package, matching the manual workflow in the README.
+# # # # # # # # # # #
+FROM debian:jessie
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Configure archived Jessie repositories and install build dependencies.
+RUN set -eux; \
+    echo "deb http://archive.debian.org/debian jessie main" > /etc/apt/sources.list; \
+    echo "deb http://archive.debian.org/debian-security jessie/updates main" >> /etc/apt/sources.list; \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99-archive; \
+    echo 'Acquire::AllowInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99-archive; \
+    apt-get -o Acquire::AllowInsecureRepositories=true update; \
+    apt-get install -y --force-yes --no-install-recommends \
+        ca-certificates \
+        wget \
+        build-essential \
+        libreadline-dev \
+        zlib1g-dev; \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src
+
+# Build Python 2.3 from the historical source archive.
+RUN wget --no-check-certificate https://www.python.org/ftp/python/2.3/Python-2.3.tgz \
+    && tar -xzf Python-2.3.tgz \
+    && rm Python-2.3.tgz
+
+WORKDIR /usr/src/Python-2.3
+
+# Patch a modern libc name collision, then build and install Python.
+RUN sed -i 's/\bgetline\b/py_getline/g' Objects/fileobject.c \
+    && CFLAGS="-w -fcommon" ./configure --prefix=/usr/local \
+    && make \
+    && make install
+
+WORKDIR /opt/historic_calculator
+
+# Copy the example project for manual install steps.
+COPY setup.py ./
+COPY src/historic_calculator ./src/historic_calculator
+
+CMD ["python", "-V"]

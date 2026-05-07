@@ -1,79 +1,102 @@
-# Historic Calculator (Python 1.6)
+# Historic Calculator (Python 2.7)
 
-A small example application demonstrating Python 1.6 (released
-**September 5, 2000**) together with the Numerical extension — an
-early ancestor of today's NumPy, by way of Numeric.
+A small example application demonstrating Python 2.7 (released
+**July 3, 2010**, with `pip` first bundled in **2.7.9** on **December 10,
+2014** via PEP 477's `ensurepip`) together with **NumPy** and the now
+standard **pip + setuptools + `requirements.txt`** workflow.
 
-  * **Python version:** 1.6
-  * **Release date:** September 5, 2000
-  * **Associated PEP:** none — `distutils` graduated from a separately
-    installable package into the stdlib in this release
+  * **Python version:** 2.7
+  * **Release date:** July 3, 2010 (with bundled `pip` from 2.7.9, December 10, 2014)
+  * **NumPy:** 1.9.2 (pinned in `requirements.txt`)
+  * **Associated PEP:** [PEP 477 — Backport `ensurepip` (`pip` bootstrap)
+    to Python 2.7](https://peps.python.org/pep-0477/)
 
 ## System Requirements
 
 ### Overview
 
-  * A Linux system with glibc 2.1 or 2.2.
-  * The GNU C compiler (`gcc`) 2.95 or later, and `make`.
-  * Development headers for the C library, `readline`, and `zlib`:
-      - on Debian: `libc6-dev`, `libreadline-dev`, `zlib1g-dev`
-      - on Red Hat: `glibc-devel`, `readline-devel`, `zlib-devel`
-  * Root privileges (or write access to a custom `--prefix`) to
-    install into `/usr/local`.
-  * [Python 1.6](#install-python) installed on the system
-  * [Numeric 15.3](#install-numeric) installed on the system
+  * [Docker](https://docs.docker.com/get-docker/) installed locally, or
+    a Linux system with [Python 2.7](#install-python) available.
+  * The pinned runtime dependencies listed in
+    [`requirements.txt`](requirements.txt), installed via pip.
 
 ### Install Python
 
-Download and unpack the Python 1.6 source archive:
+#### On The Host
+
+If you want a native host install, check whether `python -V` already
+resolves to a valid Python 2.7 interpreter first:
 
 ```sh
-cd /usr/src
-wget https://www.python.org/ftp/python/src/python-1.6.tar.gz
-tar -xzf python-1.6.tar.gz
+python -V
 ```
 
-Configure, build, and install the interpreter:
+If it does not, build Python 2.7.9 from source:
+
+* Download the source tarball.
+
+  ```sh
+  curl -O https://www.python.org/ftp/python/2.7.9/Python-2.7.9.tgz
+  ```
+
+* Extract the archive.
+
+  ```sh
+  tar -xzf Python-2.7.9.tgz
+  cd Python-2.7.9
+  ```
+
+* Configure the build.
+
+  ```sh
+  ./configure --prefix=/usr/local
+  ```
+
+* Compile Python.
+
+  ```sh
+  make
+  ```
+
+* Install it on the host.
+
+  ```sh
+  sudo make install
+  ```
+
+* Verify that the interpreter resolves correctly.
+
+  ```sh
+  python -V
+  ```
+
+#### With Docker
+
+Docker first appeared during the Python 2.7 era, so the official image
+is a practical way to recreate a period-appropriate environment today:
 
 ```sh
-cd Python-1.6
-./configure --prefix=/usr/local
-make
-make install
+docker pull python:2.7
+docker run --rm -it python:2.7 python -V
 ```
 
-Verify that Python was installed correctly:
+> You should see `Python 2.7.x`.
+
+### Install dependencies
+
+With Python 2.7 available, install the pinned runtime dependencies:
 
 ```sh
-/usr/local/bin/python -V
+pip install -r requirements.txt
 ```
 
-> You should see `Python 1.6`.
-
-### Install Numeric
-
-Download and unpack the Numerical 15.3 source archive:
+Verify that NumPy was installed correctly:
 
 ```sh
-cd /usr/src
-wget -O Numerical-15.3.tgz \
-  "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"
-tar -xzf Numerical-15.3.tgz
+python -c "import numpy; print numpy.__version__"
 ```
 
-Build and install the Numerical extension:
-
-```sh
-cd Numerical-15.3
-python setup.py build
-python setup.py install
-```
-
-Verify that Numerical was installed correctly:
-
-```sh
-python -c "import Numeric; print Numeric.__version__"
-```
+> You should see `1.9.2`.
 
 ## Dependency Management
 
@@ -92,42 +115,43 @@ python -c "import Numeric; print Numeric.__version__"
 
 ### Background
 
-In 2000 there is no such thing as a declarative dependency. The freshly
-stdlib-ified `distutils` only describes what *your* package ships —
-through `name`, `version`, and `packages` in `setup.py` — and has no
-vocabulary for talking about what your package needs in order to run.
-Consumers learn about Numerical from this README, fetch its tarball by
-hand, and run `python setup.py install` themselves before installing
-`historic_calculator`. There is no index, no resolver, and no enforcement:
-if Numerical is missing, the failure surfaces only at `import` time.
+Python 2.7.9 (Dec 2014) was the first 2.x release to ship `pip` itself
+via PEP 477's `ensurepip` module, completing the transition started by
+setuptools a decade earlier: dependency installation is now a bundled,
+first-class part of the language. The idiomatic project layout pairs a
+`setup.py` (with `install_requires=` describing *abstract* runtime
+dependencies) and a `requirements.txt` (pinning *concrete* versions for
+reproducible deployments). `pip install -r requirements.txt` resolves
+and installs from PyPI, and a single shared lockfile-style listing is
+enough to reproduce the dependency set across machines.
+
+What is still missing compared to today is environment isolation by
+default (virtualenv exists since 2007 but is opt-in), proper
+transitive-resolver semantics (pip's resolver was rewritten only in
+2020), and lockfiles that capture the *full* resolved tree (Pipfile.lock
+in 2017, then `pyproject.toml`/Poetry/uv after that).
 
 ## Build
 
-Distutils 1.6 predates PEP 427 by more than a decade, so the only
-distribution format available in this era is a **source distribution**
-(sdist). Build it from the directory containing this `README.md`:
+The 2010-era Python 2.7 layout predates PEP 427 (wheels, 2012), so the
+canonical distribution format here is a **source distribution** (sdist):
 
 ```sh
 python setup.py sdist
 ```
 
-> The resulting tarball appears in `dist/historic_calculator-1.0.0.tar.gz`.
-> A consumer reproduces the install with `tar -xzf` followed by
-> `python setup.py install` inside the unpacked tree.
+> The resulting tarball appears in `dist/historic_calculator-4.0.0.tar.gz`.
 
 ## Installation
 
-From the directory containing this `README.md`:
+Install the package itself by running:
 
 ```sh
 python setup.py install
 ```
 
-> This places the `historic_calculator` module on Python's search path
-> system-wide and installs a `hist_calc` launcher script into the
-> install prefix's `bin/` directory (registered through distutils'
-> `scripts=` parameter, since `console_scripts` entry points only
-> arrived with setuptools in 2004).
+> This registers the `hist_calc` console script on `PATH` via setuptools'
+> `console_scripts` entry point.
 
 ## Usage
 

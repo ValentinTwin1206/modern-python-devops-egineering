@@ -4,37 +4,50 @@ This repository collects small, self-contained examples for teaching how
 modern Python projects are packaged and how their development environments
 are managed.
 
-## Chapters
+## System Requirements
 
-### Chapter 1: Packaging History
+- Linux-based operating system. Use a Linux host or Linux VM.
+- Docker Desktop or Podman Desktop. Docker installer: https://docs.docker.com/desktop/setup/install/linux/ Podman installer: https://podman-desktop.io/downloads
+- Dev Containers CLI. Install guide: https://containers.dev/supporting#devcontainer-cli
 
-- [Chapter 1 index](./chapter-01/README.md)
-- [Python Packaging History](./chapter-01/section-01/README.md)
+### Dev Containers CLI
 
-This chapter walks through the same small package across multiple packaging
-eras, from early `distutils` through a `pyproject.toml`-based workflow.
+Install on Linux (Debian based):
 
-### Chapter 2: Development Environments
+```bash
+sudo apt-get update && sudo apt-get install -y nodejs npm
+npm install -g @devcontainers/cli
+```
 
-- [Chapter 2 index](./chapter-02/README.md)
-- [Python System Environment](./chapter-02/section-01/README.md)
-- [Python Virtual Environments](./chapter-02/section-02/README.md)
-- [Python Dev Containers](./chapter-02/section-03/README.md)
+Run it without a global install:
+
+```bash
+npx @devcontainers/cli up --workspace-folder chapter-01/section-05
+```
+
+## Chapter 1: Development Environments
 
 This chapter compares common environment-management approaches, including
 system-level Python, `venv`, `conda`, `pipenv`, and Dev Containers.
 
-## Using uv At The Repository Root
+| Section | Topic | Focus | Details |
+| ------- | ----- | ----- | ------- |
+| [section-01](./chapter-01/section-01/README.md) | Python system environment | APT-managed Linux Python, `PATH`, `sys.path`, and system vs user installs | [README](./chapter-01/section-01/README.md) |
+| [section-02](./chapter-01/section-02/README.md) | Python `venv` environments | standard-library virtual environments | [README](./chapter-01/section-02/README.md) |
+| [section-03](./chapter-01/section-03/README.md) | Python `conda` environments | interpreter and non-Python dependency management | [README](./chapter-01/section-03/README.md) |
+| [section-04](./chapter-01/section-04/README.md) | Python `pipenv` environments | lockfile-based application environments | [README](./chapter-01/section-04/README.md) |
+| [section-05](./chapter-01/section-05/README.md) | Python dev containers | VS Code Dev Containers, multiple runtimes, and a Nuitka binary container | [README](./chapter-01/section-05/README.md) |
 
-If you want a modern local workflow, `uv` is a good default choice for
-creating an isolated environment and running tools from the repository root:
+## Chapter 2: Packaging History
 
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -r chapter-01/section-01/05-py35/requirements-dev.txt
-```
+This chapter walks through the same small package across multiple packaging
+eras, from early `distutils` through a `pyproject.toml`-based workflow.
 
-The chapter directories remain intentionally independent so each example can
-demonstrate its own packaging or environment style without relying on a shared
-root project configuration.
+| Section | Year | Era | Packaging shape | Details |
+| ------- | ---- | --- | --------------- | ------- |
+| [section-01](./chapter-02/section-01/README.md) | 2000 | Python 1.6 | `setup.py` with stdlib `distutils` | [README](./chapter-02/section-01/README.md) |
+| [section-02](./chapter-02/section-02/README.md) | 2003 | Python 2.3 | `setup.py` with metadata-only dependency hints | [README](./chapter-02/section-02/README.md) |
+| [section-03](./chapter-02/section-03/README.md) | 2004 | Python 2.4 | `setup.py` with early `setuptools` | [README](./chapter-02/section-03/README.md) |
+| [section-04](./chapter-02/section-04/README.md) | 2010 | Python 2.7 | `setup.py` plus pinned `requirements.txt` | [README](./chapter-02/section-04/README.md) |
+| [section-05](./chapter-02/section-05/README.md) | 2016 | Python 3.5 / 2016 workflow | `setup.py` + `setup.cfg` + `requirements*.txt` | [README](./chapter-02/section-05/README.md) |
+| [section-06](./chapter-02/section-06/README.md) | 2022 | Python 3.11 / 2022 workflow | `pyproject.toml` only | [README](./chapter-02/section-06/README.md) |

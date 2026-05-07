@@ -1,8 +1,11 @@
 # =============================================================================
-# Python 1.6 (Sep 2000) complete runtime image
+# Python 1.6 (Sep 2000) build environment
 # -----------------------------------------------------------------------------
-# Builds Python 1.6 from source, installs Numerical 15.3, and installs the
-# sample calculator package so the CLI is ready to use immediately.
+# Inspired by https://www.bitecode.dev/p/lets-compile-python-10
+#
+# Note: Python 1.6 was the first release to bundle `distutils` in the stdlib
+# (it had previously been a separately installable package), so no extra
+# distutils install step is needed.
 # =============================================================================
 FROM debian:jessie
 
@@ -43,23 +46,18 @@ RUN set -eux; \
     make; \
     make install
 
-# 5. Install Numerical 15.3.
-WORKDIR /usr/src
-RUN set -eux; \
-    wget --no-check-certificate \
-        -O Numerical-15.3.tgz \
-        "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"; \
-    tar -xzf Numerical-15.3.tgz; \
-    cd Numerical-15.3; \
-    CFLAGS="-w -fcommon" python setup.py install; \
-    cd ..; \
-    rm -rf Numerical-15.3 Numerical-15.3.tgz
-
-# 6. Install the sample package.
+# 5. Copy the example project into the image.
+#
+#    Note: this image deliberately does NOT install Numerical, nor does
+#    it run `python setup.py install` for the example package. The
+#    README documents both as separate manual steps, mirroring how a
+#    user in 2000 would have done it.
+#
+#    jessie's glibc is too old to be supported by the devcontainers CLI's
+#    Node.js runtime, so postCreateCommand.sh cannot execute reliably
+#    in this image.
 WORKDIR /opt/historic_calculator
 COPY setup.py ./
-COPY bin/hist_calc ./bin/hist_calc
 COPY src/historic_calculator ./src/historic_calculator
-RUN python setup.py install
 
-ENTRYPOINT ["/bin/bash"]
+CMD ["python", "-V"]

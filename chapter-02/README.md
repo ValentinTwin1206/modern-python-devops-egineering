@@ -1,87 +1,55 @@
-# Chapter 2: Python Development Environments
+# Chapter 2: Python Packaging History
 
-This chapter collects teaching examples about Python runtime and project
-environments. The examples focus on where Python is installed, where
-packages are written, how command lookup and import lookup differ, and
-how environment tools isolate dependencies from the operating system.
+This chapter collects small teaching examples about how Python projects
+are configured. The examples in this chapter follow one small package
+across six packaging eras, focusing on the files and layouts that
+define a project: packaging metadata, dependency declarations, build
+configuration, and modern tool-specific project setup.
 
-The runnable example across this chapter is `tiny_webserver`: a minimal
-Bottle application with one JSON endpoint. It is intentionally small so
-the environment layout remains the main subject.
+## Project: Historic Calculator
 
-## Folder Index
+Historic Calculator is a deliberately small command-line package used to
+show how Python project structure changed over time. The application
+logic stays simple so each section can focus on packaging choices rather
+than feature work.
 
-| Folder | Topic | Focus | Details |
-| ------ | ----- | ----- | ------- |
-| [`section-01/`](./section-01/) | Python system environment | APT-managed Linux Python, system package installs, `PATH`, `sys.path`, `site-packages`, and `dist-packages` | [README](./section-01/README.md) |
-| [`section-02/`](./section-02/) | Python virtual environments | `venv`, `conda`, and `pipenv` isolation patterns | [README](./section-02/README.md) |
-| [`section-03/`](./section-03/) | Python dev containers | Ubuntu-based Dev Container with CPython, PyPy, VS Code tooling, lifecycle hooks, and port forwarding | [README](./section-03/README.md) |
+### Development
 
-## Tiny Webserver
+#### Dockerfiles
 
-`tiny_webserver` is the shared project used by every Chapter 2 example.
-It is a dependency-light Bottle application with one route, `/`, that
-returns a JSON message. There is no database, template layer, background
-worker, or application framework beyond Bottle; that keeps the project
-small enough for the surrounding Python environment to remain visible.
+Each section uses two container images. What changes across the chapter
+is the packaging workflow, dependency model, and project metadata used
+inside the image.
 
-The development stack is intentionally consistent across the chapter:
+| File | Purpose | Typical contents |
+| ---- | ------- | ---------------- |
+| `Dockerfile.devEnv` | Development image | An interactive environment that contains the period-appropriate Python interpreter and a copy of the example project. It is meant for trying the packaging steps manually inside the container, following the workflow described in the section README. |
+| `Dockerfile` | Deployment image | A packaging-focused image that builds or installs the project according to the era covered in that section and then runs the final command directly. |
 
-- `uv` provides the build backend through `uv_build` and manages the
-  locked development workflow in the system-environment example.
-- `ruff` is the linting tool.
-- `karva` is the test runner.
+#### Build an Image
 
-The virtual-environment examples still use their own environment tools
-to teach isolation mechanics, but their `pyproject.toml` files share the
-same `uv_build` backend and declare the same Karva/Ruff development
-tooling.
+Use the chapter-local helper to build either image directly from its
+Dockerfile path.
 
-Boot the canonical system-environment project:
+Build only:
 
-```sh
-cd chapter-02/section-01
-uv sync
-uv run tiny-webserver
+```bash
+./build.sh build --path section-02/Dockerfile --build-only
 ```
 
-Run tests and linting:
+Build and run:
 
-```sh
-uv run karva test tests/
-uv run ruff check .
+```bash
+./build.sh build --path section-02/Dockerfile.devEnv
 ```
 
-Build a wheel with the `uv_build` backend:
+## Sections
 
-```sh
-uv build --wheel
-```
-
-For a virtual-environment subproject, use the same project metadata and
-development group directly:
-
-```sh
-uv sync --group dev
-uv run tiny-webserver
-uv run karva test tests/
-uv run ruff check .
-uv build --wheel
-```
-
-
-## Project Layout
-
-```text
-section-01/
-├── Dockerfile
-├── README.md
-├── pyproject.toml
-├── uv.lock
-├── src/
-│   └── tiny_webserver/
-│       ├── __init__.py
-│       └── app.py
-└── tests/
-    └── test_app.py
-```
+| Folder | Year | Era | Packaging shape | Details |
+| ------ | ---- | --- | --------------- | ------- |
+| [`section-01/`](./section-01/) | 2000 | Python 1.6 | `setup.py` with stdlib `distutils` | [README](./section-01/README.md) |
+| [`section-02/`](./section-02/) | 2003 | Python 2.3 | `setup.py` with metadata-only dependency hints | [README](./section-02/README.md) |
+| [`section-03/`](./section-03/) | 2004 | Python 2.4 | `setup.py` with early `setuptools` | [README](./section-03/README.md) |
+| [`section-04/`](./section-04/) | 2010 | Python 2.7 | `setup.py` plus pinned `requirements.txt` | [README](./section-04/README.md) |
+| [`section-05/`](./section-05/) | 2016 | Python 3.5 / 2016 workflow | `setup.py` + `setup.cfg` + `requirements*.txt` | [README](./section-05/README.md) |
+| [`section-06/`](./section-06/) | 2022 | Python 3.11 / 2022 workflow | `pyproject.toml` only | [README](./section-06/README.md) |
