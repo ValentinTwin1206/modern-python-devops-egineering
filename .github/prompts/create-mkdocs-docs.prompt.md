@@ -17,9 +17,10 @@ ${input:constraints:No additional constraints.}
 
 1. Create a MkDocs documentation site under `docs/`.
 2. Add a root-level `mkdocs.yml` configuration.
-3. Use information from the existing README files as the source of truth.
-4. Keep the documentation clear, direct, concise, and understandable for junior developers.
-5. Slim down the section README files only. Do not replace chapter README files with tiny stubs unless required for link correctness.
+3. Use the root `pyproject.toml` docs dependency group for MkDocs and documentation plugins.
+4. Use information from the existing README files as the source of truth.
+5. Keep the documentation clear, direct, concise, and understandable for junior developers.
+6. Slim down the section README files only. Do not replace chapter README files with tiny stubs unless required for link correctness.
 
 ## Required Navigation
 
@@ -84,12 +85,17 @@ For each generated page:
 - Prefer short sections and code blocks over long prose.
 - Preserve technically important details from the original README files.
 - Remove duplicated content when a concept is already explained clearly elsewhere.
+- Do not duplicate text across pages when a clear cross-reference is enough.
+- Prefer short cross-references to repeated explanations.
+- Follow the principle `Slim is King`. Keep pages lean, focused, and free of repeated paragraphs.
 - Use relative links that work in MkDocs.
 - Avoid marketing language, filler, and vague claims.
 - Write for junior developers who know basic Python and the shell but may not know packaging history, Docker, Conda, Pipenv, Dev Containers, or Nuitka yet.
 - Add background information when it improves understanding of a tool, workflow, or historical choice.
 - Prefer tables when comparing technologies, file roles, command choices, or packaging eras.
 - Prefer tabs when showing equivalent workflows, such as Docker versus host usage, only if the chosen MkDocs setup supports tabbed content.
+- When a page discusses Dev Containers, containerized development environments, or multiple image variants, include a table that gives a clear overview of the relevant images, their purpose, and when to use each one.
+- When a page discusses Dev Containers, editor-backed environments, or container-based workflows, explain the IDE integration that matters in practice, such as VS Code Dev Containers behavior, mounted workspaces, extensions, lifecycle commands, forwarded ports, and remote user setup.
 - Avoid punctuation-heavy prose. Do not overuse colons or dashes in explanatory text.
 - Follow The Chicago Manual of Style for prose, headings, capitalization, punctuation, and sentence structure.
 - Use sentence-style capitalization for headings unless an existing project title, tool name, or proper noun requires otherwise.
@@ -254,7 +260,23 @@ Apply these rules to Chapter 02 section READMEs:
 
 ## MkDocs Configuration
 
-Use a simple, maintainable MkDocs setup. Prefer this baseline unless the repository already has a different convention:
+Use a simple, maintainable MkDocs setup. Install the documentation tools with `uv` from the root `pyproject.toml` docs dependency group.
+
+Install MkDocs and the documentation plugins:
+
+```bash
+uv sync --group docs
+```
+
+Run the MkDocs build through the synchronized environment:
+
+```bash
+uv run mkdocs build --strict
+```
+
+Prefer MkDocs 2.x only if it is published and stable. If MkDocs 2.x is not available, use the latest stable MkDocs 1.x release. Keep the dependency in the root `pyproject.toml` constrained to the stable major version.
+
+Prefer this baseline unless the repository already has a different convention:
 
 ```yaml
 site_name: Modern Python Engineering
@@ -265,10 +287,12 @@ nav:
   - Chapter 02:
       - Section 01: chapter-02/section-01.md
 theme:
-  name: mkdocs
+  name: material
 markdown_extensions:
   - admonition
   - tables
+  - pymdownx.tabbed:
+      alternate_style: true
   - toc:
       permalink: true
 ```
@@ -280,22 +304,25 @@ Expand the `nav` list to include all actual sections. Keep the top-level navigat
 1. Inspect the repository structure and all README files under root, `chapter-01/`, and `chapter-02/`.
 2. Inspect each section's build/config files so command examples are accurate.
 3. For Chapter 02 section READMEs, identify the represented year and write commands from that era's maintainer perspective.
-4. Create `mkdocs.yml` and the `docs/` page tree.
-5. Move the detailed educational explanation from section READMEs into the matching MkDocs pages.
-6. Rewrite section READMEs into concise Usage Guide and Development Guide files.
-7. Keep existing root and chapter README links working where reasonable.
-8. Validate Markdown links and MkDocs navigation paths.
-9. Run a lightweight validation command if available, such as:
+4. Confirm the root `pyproject.toml` contains a docs dependency group with MkDocs and the required documentation plugins.
+5. Install documentation dependencies with `uv sync --group docs`.
+6. Create `mkdocs.yml` and the `docs/` page tree.
+7. Move the detailed educational explanation from section READMEs into the matching MkDocs pages.
+8. Rewrite section READMEs into concise Usage Guide and Development Guide files.
+9. Keep existing root and chapter README links working where reasonable.
+10. Validate Markdown links and MkDocs navigation paths.
+11. Run a lightweight validation command if available, such as:
 
 ```bash
-mkdocs build --strict
+uv run mkdocs build --strict
 ```
 
-If MkDocs is not installed, do not install packages unless explicitly asked. Instead, report the exact command that could not be run and why.
+If `uv sync --group docs` fails, do not switch package managers unless explicitly asked. Report the exact command that failed and why.
 
 ## Acceptance Criteria
 
 - `mkdocs.yml` exists at the repository root.
+- The root `pyproject.toml` contains a docs dependency group for MkDocs and documentation plugins.
 - All documentation pages live under `docs/`.
 - MkDocs top-level navigation contains only `Chapter 01` and `Chapter 02`.
 - Each chapter's left navigation contains one entry per section named `Section 01`, `Section 02`, etc.

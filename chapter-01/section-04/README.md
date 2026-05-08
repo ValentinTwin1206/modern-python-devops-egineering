@@ -1,155 +1,110 @@
 # Tiny Webserver `pipenv` Environment
 
-This project shows how `pipenv` creates and manages an application
-environment for the shared tiny `bottle` web server. It includes the
-same `karva` and `ruff` development tooling as the other Chapter 1
-examples.
+This section shows how Pipenv combines installation, virtual-environment management, and a real lockfile into a single workflow. It runs the tiny Bottle web server through that environment.
 
-The `Dockerfile.devEnv` is the important demonstration. It builds a container
-where `pipenv` owns the dependency workflow:
+For background on `Pipfile` and `Pipfile.lock`, see the [MkDocs page](../../docs/chapter-01/section-04.md).
 
-- It starts from `ubuntu:24.04` and uses Ubuntu's standard Python 3.12.
-- It installs Bash and a minimal build toolchain with APT.
-- It installs `pipenv` into the system Python.
-- It copies `Pipfile` and `Pipfile.lock` first.
-- It creates a project-local `.venv` from `Pipfile.lock` with
-  `pipenv install --ignore-pipfile`.
-- It puts `/app/.venv/bin` first on `PATH`.
-- It activates the environment automatically for interactive shells.
+## Required Developer Tools
 
-The companion `Dockerfile` is the deployment image. It builds a wheel,
-creates the pipenv-managed `.venv`, installs the wheel into that
-environment, and starts the `tiny-webserver` entry point.
+- Docker or Podman.
+- Python 3.12 (for the on-host path).
+- `pipenv`.
+- `uv` for the project development workflow.
 
-## Pipenv Environment Footprint
+### With Docker
 
-### Overview
+Build the development image through the chapter helper:
 
-`pipenv` combines package installation, environment creation, and a
-lockfile workflow. Direct dependencies live in [`Pipfile`](Pipfile),
-while [`Pipfile.lock`](Pipfile.lock) records the resolved dependency
-tree with hashes.
-
-`Dockerfile.devEnv` sets `PIPENV_VENV_IN_PROJECT=1`, so the managed
-environment is created at `/app/.venv` instead of under the user's home
-directory. That makes the environment location obvious for inspection.
-
-### Dependency Files
-
-`Pipfile` is the human-edited dependency declaration:
-
-```toml
-[packages]
-bottle = "==0.13.4"
-
-[dev-packages]
-karva = ">=0.0.1a5"
-ruff = ">=0.15.12"
+```bash
+../build.sh build --path section-04/Dockerfile.devEnv --build-only
 ```
 
-`Pipfile.lock` is the generated resolved dependency graph. It is the
-file used by deterministic installs in the Docker build.
+Open an interactive shell in the development image:
 
-## Dependency Workflow
+```bash
+../build.sh build --path section-04/Dockerfile.devEnv
+```
 
-### Create The Environment
+Build and run the deployment image:
 
-Install `pipenv` and create the environment from this folder:
+```bash
+../build.sh build --path section-04/Dockerfile
+```
 
-```sh
+### On Host
+
+Install Python on Ubuntu:
+
+```bash
+sudo apt-get update && sudo apt-get install -y python3 python3-pip
+```
+
+Install Pipenv:
+
+```bash
 pip install pipenv
+```
+
+Keep the managed environment next to the project:
+
+```bash
+export PIPENV_VENV_IN_PROJECT=1
+```
+
+Create the environment from the lockfile:
+
+```bash
 pipenv install
 ```
 
-Open a shell inside the environment:
+Install development dependencies as well:
 
-```sh
+```bash
+pipenv install --dev
+```
+
+## Usage Guide
+
+Run the Bottle application through Pipenv:
+
+```bash
+pipenv run python -m tiny_webserver.app
+```
+
+Open an interactive shell in the environment:
+
+```bash
 pipenv shell
-```
-
-### Manage Packages
-
-Add a runtime dependency:
-
-```sh
-pipenv install <package>
-```
-
-Add a development-only dependency:
-
-```sh
-pipenv install --dev <package>
 ```
 
 Reinstall exactly what is recorded in the lockfile:
 
-```sh
+```bash
 pipenv sync
 ```
 
-### Run The Project
+## Development Guide
 
-Run the tiny Bottle application without entering a shell:
+Sync the project environment with `uv`:
 
-```sh
-pipenv run python -m tiny_webserver.app
+```bash
+uv sync
 ```
 
-Run tests and linting:
+Run the tests through Pipenv:
 
-```sh
+```bash
 pipenv run karva test tests/
+```
+
+Run the linter through Pipenv:
+
+```bash
 pipenv run ruff check .
 ```
 
-### Leave The Environment
+Build a wheel:
 
-Leave an interactive `pipenv shell`:
-
-```sh
-exit
-```
-
-## Tradeoffs
-
-### Pros
-
-- `pipenv` gives applications a real lockfile
-- It separates runtime and development dependencies
-- It offers one workflow for creating and using the environment.
-
-### Cons
-
-- `pipenv` adds another tool on top of Python and `pip`
-- It can resolve more slowly than plain `pip`
-- It is less common in newer Python projects than `uv`, Poetry, or PDM.
-
-## Useful Inspection Commands
-
-Use these command patterns inside the container to inspect the active
-environment.
-
-### Python Prefixes
-
-```sh
-python -c "import sys; print('prefix =', sys.prefix); print('base_prefix =', sys.base_prefix)"
-```
-
-Expected output includes:
-
-```text
-prefix = /app/.venv
-```
-
-### Package Locations
-
-```sh
-python -c "import bottle, tiny_webserver; print('bottle =', bottle.__file__); print('tiny_webserver =', tiny_webserver.__file__)"
-```
-
-Expected output includes paths under:
-
-```text
-/app/.venv/lib/python3.12/site-packages/
-/app/src/tiny_webserver/
+```bash
+uv build --wheel
 ```

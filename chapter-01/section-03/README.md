@@ -1,149 +1,103 @@
 # Tiny Webserver `conda` Environment
 
-This project shows how `conda` creates an isolated environment for the
-shared tiny `bottle` web server. It includes the same `karva` and `ruff`
-development tooling as the other Chapter 1 examples.
+This section shows how Conda manages both the Python interpreter and the package set. It runs the tiny Bottle web server inside an environment defined by `environment.yml`.
 
-The `Dockerfile.devEnv` is the important demonstration. It builds a container
-where `conda` manages the Python interpreter and packages:
+For background on Conda channels, the YAML schema, and the tradeoffs against `venv`, see the [MkDocs page](../../docs/chapter-01/section-03.md).
 
-- It starts from `ubuntu:24.04`.
-- It installs Bash, curl, certificates, and Miniconda with APT plus the
-  official Miniconda installer.
-- It creates an environment named `tiny-webserver` from
-  `environment.yml`.
-- It puts `/opt/conda/envs/tiny-webserver/bin` first on `PATH`.
-- It exposes the source tree through `PYTHONPATH` instead of installing
-  the project with `pip`.
-- It activates the conda environment automatically for interactive
-  shells.
+## Required Developer Tools
 
-The companion `Dockerfile` is the deployment image. It builds a wheel,
-creates a dedicated conda environment, installs the wheel into that
-environment with `pip`, and starts the `tiny-webserver` entry point.
+- Docker or Podman.
+- Miniconda or Anaconda (for the on-host path).
+- `uv` for the project development workflow.
 
-## Conda Environment Footprint
+### With Docker
 
-### Overview
+Build the development image through the chapter helper:
 
-`conda` is both a package manager and an environment manager. Unlike
-`venv`, it can manage the Python interpreter version itself and install
-non-Python dependencies from conda channels.
-
-This makes it useful for scientific and data-heavy projects where Python
-packages depend on native libraries such as BLAS, CUDA, GDAL, or system
-tools that are awkward to assemble with `pip` alone.
-
-### Environment Definition
-
-The environment is described in [`environment.yml`](environment.yml):
-
-```yaml
-name: tiny-webserver
-channels:
-  - conda-forge
-dependencies:
-  - python=3.12
-  - bottle=0.13.4
-  - ruff=0.15.12
-  - pip
-  - pip:
-      - karva>=0.0.1a5
+```bash
+../build.sh build --path section-03/Dockerfile.devEnv --build-only
 ```
 
-Most packages come from `conda-forge`. `karva` is installed through
-`pip` because it is distributed through PyPI.
+Open an interactive shell in the development image:
 
-## Dependency Workflow
+```bash
+../build.sh build --path section-03/Dockerfile.devEnv
+```
 
-### Create The Environment
+Build and run the deployment image:
 
-Create the environment from this folder:
+```bash
+../build.sh build --path section-03/Dockerfile
+```
 
-```sh
+### On Host
+
+Install Miniconda using the official installer:
+
+```bash
+curl -fsSL -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+```
+
+Run the installer:
+
+```bash
+bash miniconda.sh -b -p "$HOME/miniconda"
+```
+
+Accept the Anaconda channel terms of service:
+
+```bash
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+```
+
+Create the environment:
+
+```bash
 conda env create -f environment.yml
+```
+
+Activate it:
+
+```bash
 conda activate tiny-webserver
 ```
 
-### Manage Packages
+## Usage Guide
 
-Add a conda package from `conda-forge`:
+Run the Bottle application with the source on `PYTHONPATH`:
 
-```sh
-conda install -c conda-forge <package>
-```
-
-Snapshot the direct environment requirements back to the YAML file:
-
-```sh
-conda env export --from-history > environment.yml
-```
-
-### Run The Project
-
-This example keeps the project source on `PYTHONPATH` instead of
-installing the project into the environment:
-
-```sh
+```bash
 PYTHONPATH=src python -m tiny_webserver.app
 ```
 
-Run tests and linting:
+Snapshot the environment back to YAML:
 
-```sh
-PYTHONPATH=src karva test tests/
-ruff check .
+```bash
+conda env export --from-history > environment.yml
 ```
 
-### Leave The Environment
+## Development Guide
 
-Return the shell to its previous environment:
+Sync the development environment with `uv`:
 
-```sh
-conda deactivate
+```bash
+uv sync
 ```
 
-## Tradeoffs
+Run the tests:
 
-### Pros
-
-- `conda` manages Python versions
-- It can install non-Python packages from conda channels
-- It is useful for projects with compiled scientific dependencies.
-
-### Cons
-
-- `conda` is heavier than `venv`
-- It has its own package ecosystem alongside PyPI
-- It can be slower to solve than simpler PyPI-only workflows.
-
-## Useful Inspection Commands
-
-Use these command patterns inside the container to inspect the active
-environment.
-
-### Active Environment
-
-```sh
-echo $CONDA_DEFAULT_ENV
-conda env list
+```bash
+PYTHONPATH=src uv run karva test tests/
 ```
 
-Expected output includes:
+Run the linter:
 
-```text
-tiny-webserver
+```bash
+uv run ruff check .
 ```
 
-### Package Locations
+Build a wheel:
 
-```sh
-python -c "import bottle, tiny_webserver; print('bottle =', bottle.__file__); print('tiny_webserver =', tiny_webserver.__file__)"
-```
-
-Expected output includes paths under:
-
-```text
-/opt/conda/envs/tiny-webserver/
-/app/src/tiny_webserver/
+```bash
+uv build --wheel
 ```

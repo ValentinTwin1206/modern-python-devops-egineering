@@ -1,219 +1,104 @@
-# Historic Calculator (Python 1.6)
+# historic_calculator (Python 1.6)
 
-A small example application demonstrating Python 1.6 (released
-**September 5, 2000**) together with the Numerical extension — an
-early ancestor of today's NumPy, by way of Numeric.
+A small command-line utility that reduces a comma-separated vector to its `max`, `min`, `mean`, or `sum`. This release runs on Python 1.6 and uses the freshly stdlib-ified `distutils` for packaging.
 
-  * **Python version:** 1.6
-  * **Release date:** September 5, 2000
-  * **Associated PEP:** none — `distutils` graduated from a separately
-    installable package into the stdlib in this release
+## Required Developer Tools
 
-## System Requirements
+- A Linux host with `gcc`, `make`, and the development headers for `glibc`, `readline`, and `zlib`.
+- Python 1.6 built from source.
+- The Numerical 15.3 extension.
+- Docker (for the chapter helper path).
 
-### Overview
+### With Docker
 
-  * A Linux system with glibc 2.1 or 2.2.
-  * The GNU C compiler (`gcc`) 2.95 or later, and `make`.
-  * Development headers for the C library, `readline`, and `zlib`:
-      - on Debian: `libc6-dev`, `libreadline-dev`, `zlib1g-dev`
-      - on Red Hat: `glibc-devel`, `readline-devel`, `zlib-devel`
-  * Root privileges (or write access to a custom `--prefix`) to
-    install into `/usr/local`.
-  * [Python 1.6](#install-python) installed on the system
-  * [Numeric 15.3](#install-numeric) installed on the system
+Build the development image through the chapter helper:
 
-### Install Python
+```bash
+../build.sh build --path section-01/Dockerfile.devEnv --build-only
+```
 
-Download and unpack the Python 1.6 source archive:
+Open an interactive shell in the development image:
+
+```bash
+../build.sh build --path section-01/Dockerfile.devEnv
+```
+
+Build and run the deployment image:
+
+```bash
+../build.sh build --path section-01/Dockerfile
+```
+
+### On Host
+
+Fetch the Python source archive:
 
 ```sh
-cd /usr/src
 wget https://www.python.org/ftp/python/src/python-1.6.tar.gz
+```
+
+Unpack and enter the source tree:
+
+```sh
 tar -xzf python-1.6.tar.gz
 ```
 
-Configure, build, and install the interpreter:
+Configure the build:
 
 ```sh
-cd Python-1.6
 ./configure --prefix=/usr/local
+```
+
+Compile and install Python:
+
+```sh
 make
 make install
 ```
 
-Verify that Python was installed correctly:
+Fetch and unpack Numerical 15.3:
 
 ```sh
-/usr/local/bin/python -V
-```
-
-> You should see `Python 1.6`.
-
-### Install Numeric
-
-Download and unpack the Numerical 15.3 source archive:
-
-```sh
-cd /usr/src
-wget -O Numerical-15.3.tgz \
-  "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"
+wget -O Numerical-15.3.tgz "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"
 tar -xzf Numerical-15.3.tgz
 ```
 
-Build and install the Numerical extension:
+Build and install Numerical:
 
 ```sh
-cd Numerical-15.3
-python setup.py build
 python setup.py install
 ```
 
-Verify that Numerical was installed correctly:
+## Usage Guide
 
-```sh
-python -c "import Numeric; print Numeric.__version__"
-```
-
-## Dependency Management
-
-### Matrix
-
-| Dependency  | 1.0.0                 | 2.0.0                      | 3.0.0                           | 4.0.0                            | 5.0.0                                             | 6.0.0                                       |
-| ----------- | --------------------- | -------------------------- | ------------------------------- | -------------------------------- | ------------------------------------------------- | ------------------------------------------- |
-| Python      | 1.6                   | 2.3                        | 2.4                             | 2.7                              | 3.5                                               | 3.11                                        |
-| Numeric     | 15.3 (manual install) | 24.0b2 (declared, manual)  | 24.0b2 (resolved at install)    | —                                | —                                                 | —                                           |
-| NumPy       | —                     | —                          | —                               | 1.9.2 (pinned, pip-installed)    | 1.11.3 (pinned, pip-installed)                    | 1.24.0 (pinned, pip-installed)              |
-| Click       | —                     | —                          | —                               | —                                | 6.6 (pinned, pip-installed)                       | 8.1.3 (pinned, pip-installed)               |
-| setuptools  | —                     | —                          | 0.6c11 (bootstrap dependency)   | bundled                          | bundled                                           | build backend (>=61.0, declared)            |
-| pip         | —                     | —                          | —                               | bundled (PEP 477)                | bundled                                           | bundled, PEP 517/518 frontend               |
-| pytest      | —                     | —                          | —                               | —                                | 3.0.7 (dev, requirements-dev.txt)                 | 7.2.0 (dev extra in `pyproject.toml`)       |
-| Layout      | `setup.py` only       | `setup.py` (distutils)     | `setup.py` (setuptools)         | `setup.py` + `requirements.txt`  | `setup.py` + `setup.cfg` + 2× `requirements*.txt` | `pyproject.toml` only                        |
-
-### Background
-
-In 2000 there is no such thing as a declarative dependency. The freshly
-stdlib-ified `distutils` only describes what *your* package ships —
-through `name`, `version`, and `packages` in `setup.py` — and has no
-vocabulary for talking about what your package needs in order to run.
-Consumers learn about Numerical from this README, fetch its tarball by
-hand, and run `python setup.py install` themselves before installing
-`historic_calculator`. There is no index, no resolver, and no enforcement:
-if Numerical is missing, the failure surfaces only at `import` time.
-
-## Build
-
-Distutils 1.6 predates PEP 427 by more than a decade, so the only
-distribution format available in this era is a **source distribution**
-(sdist). Build it from the directory containing this `README.md`:
+Build the source distribution from this directory:
 
 ```sh
 python setup.py sdist
 ```
 
-> The resulting tarball appears in `dist/historic_calculator-1.0.0.tar.gz`.
-> A consumer reproduces the install with `tar -xzf` followed by
-> `python setup.py install` inside the unpacked tree.
-
-## Installation
-
-From the directory containing this `README.md`:
+Install the package and the `hist_calc` launcher:
 
 ```sh
 python setup.py install
 ```
 
-> This places the `historic_calculator` module on Python's search path
-> system-wide and installs a `hist_calc` launcher script into the
-> install prefix's `bin/` directory (registered through distutils'
-> `scripts=` parameter, since `console_scripts` entry points only
-> arrived with setuptools in 2004).
-
-## Usage
-
-The package exposes a single command-line entry point that
-applies a reduction to a comma-separated vector of numbers.
-
-The general form is:
-
-```sh
-hist_calc COMMAND VECTOR
-```
-
-  * `COMMAND` is one of `max`, `min`, `mean`, or `sum`.
-  * `VECTOR` is a comma-separated list of numbers, for example
-    `1,-2,4`. Negative numbers and decimals are supported; spaces
-    around the commas are allowed.
-
-### Calculating the Vector Maximum
-
-Use `max` to return the largest value in the vector.
+Run a calculation:
 
 ```sh
 hist_calc max 1,-2,4
 ```
 
-This prints:
+## Development Guide
+
+Run the package directly from the source tree without installing:
 
 ```sh
-max(1,-2,4) = 4.0
+PYTHONPATH=. python -c "from historic_calculator.main import run_calculator; print run_calculator('max', '1,-2,4')"
 ```
 
-### Calculating the Vector Minimum
-
-Use `min` to return the smallest value in the vector.
+Rebuild the source distribution after edits:
 
 ```sh
-hist_calc min 1,-2,4
-```
-
-This prints:
-
-```sh
-min(1,-2,4) = -2.0
-```
-
-### Calculating the Vector Mean
-
-Use `mean` to return the arithmetic average of the vector.
-
-```sh
-hist_calc mean 1.5,2.5,3.5
-```
-
-This prints:
-
-```sh
-mean(1.5,2.5,3.5) = 2.5
-```
-
-### Calculating the Vector Sum
-
-Use `sum` to return the total of all values in the vector.
-
-```sh
-hist_calc sum 10,20,30,40
-```
-
-This prints:
-
-```sh
-sum(10,20,30,40) = 100.0
-```
-
-### Handling Invalid Input
-
-Calling the script with the wrong number of arguments, an unknown
-command, or a malformed vector prints a short usage banner on
-standard error and exits with a non-zero status.
-
-You can also use the package from your own scripts:
-
-```python
-from historic_calculator.main import run_calculator, make_vector
-
-print run_calculator("max", "1,-2,4")
-
-v = make_vector([1, 2, 3, 4])
-print v * 2
+python setup.py sdist
 ```

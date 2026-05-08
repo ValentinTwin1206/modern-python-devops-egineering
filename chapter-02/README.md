@@ -1,4 +1,4 @@
-# Chapter 2: Python Packaging History
+# Chapter 2: Python Project Configuration
 
 This chapter collects small teaching examples about how Python projects
 are configured. The examples in this chapter follow one small package

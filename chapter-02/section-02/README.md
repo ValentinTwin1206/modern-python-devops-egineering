@@ -1,88 +1,87 @@
-# Historic Calculator (Python 2.3)
+# historic_calculator (Python 2.3)
 
-A small example application demonstrating Python 2.3 together with the
-Numeric extension, the direct ancestor of today's NumPy. This section
-shows a `distutils` project after PEP 314 added metadata fields such as
-`requires=`, while dependency installation was still a manual step.
+A small command-line utility that reduces a comma-separated vector to its `max`, `min`, `mean`, or `sum`. This release runs on Python 2.3. The `setup.py` declares its dependency on Numeric through PEP 314 metadata, but `distutils` does not install it for you.
 
-- **Python version:** 2.3
-- **Release date:** July 29, 2003
-- **Associated PEP:** [PEP 314 - Metadata for Python Software Packages v1.1](https://peps.python.org/pep-0314/)
+## Required Developer Tools
 
-## System Requirements
+- A Linux host with a working C toolchain.
+- Python 2.3.
+- Numeric 24.0b2 installed before this package.
+- Docker (for the chapter helper path).
 
-- A Linux system with glibc 2.2 or 2.3.
-- A C compiler, `make`, and development headers for the C library,
-  `readline`, and `zlib`.
-- Python 2.3 installed on the system.
-- Numeric 24.0b2 installed on the system.
+### With Docker
 
-## Docker Images
-
-The development image builds Python 2.3 and copies the project into the
-image without installing Numeric or the package:
+Build the development image through the chapter helper:
 
 ```sh
-docker build -f Dockerfile.devEnv -t historic-calculator-py23-dev .
+../build.sh build --path section-02/Dockerfile.devEnv --build-only
 ```
 
-The runtime image builds Python 2.3, installs Numeric 24.0b2, installs
-the package, and opens an interactive shell:
+Open an interactive shell in the development image:
 
 ```sh
-docker build -t historic-calculator-py23 .
-docker run --rm -it historic-calculator-py23
+../build.sh build --path section-02/Dockerfile.devEnv
 ```
 
-## Dependency Management
+Build and run the deployment image:
 
-PEP 314 lets `setup.py` record informational dependency metadata through
-`requires=["Numeric==24.2"]`. `distutils` does not resolve or install
-that dependency. Users still install Numeric themselves before installing
-`historic_calculator`.
+```sh
+../build.sh build --path section-02/Dockerfile
+```
 
-## Build
+### On Host
 
-Python 2.3 predates wheels, so the era-appropriate distribution format
-is a source distribution:
+Fetch and build Python 2.3 from source:
+
+```sh
+wget https://www.python.org/ftp/python/2.3/Python-2.3.tgz
+tar -xzf Python-2.3.tgz
+```
+
+Install Python:
+
+```sh
+./configure --prefix=/usr/local && make && make install
+```
+
+Fetch, unpack, and install Numeric 24.0b2:
+
+```sh
+wget -O Numeric-24.0b2.tar.gz "https://sourceforge.net/projects/numpy/files/OldFiles/Numeric-24.0b2.tar.gz/download"
+tar -xzf Numeric-24.0b2.tar.gz
+python setup.py install
+```
+
+## Usage Guide
+
+Build the source distribution:
 
 ```sh
 python setup.py sdist
 ```
 
-The resulting tarball appears under `dist/` and is installed by unpacking
-it and running `python setup.py install`.
-
-## Installation
-
-Install the package from this directory:
+Install the package and the `hist_calc` launcher:
 
 ```sh
 python setup.py install
 ```
 
-This places `historic_calculator` on Python's import path and installs a
-`hist_calc` launcher through the `scripts=` argument in `setup.py`.
-
-## Usage
-
-Run the command-line calculator with an operation and a comma-separated
-vector:
+Run a calculation:
 
 ```sh
 hist_calc max 1,-2,4
-hist_calc min 1,-2,4
-hist_calc mean 1.5,2.5,3.5
-hist_calc sum 10,20,30,40
 ```
 
-You can also import the package from Python code:
+## Development Guide
 
-```python
-from historic_calculator.main import run_calculator, make_vector
+Rebuild the source distribution after edits:
 
-print run_calculator("max", "1,-2,4")
+```sh
+python setup.py sdist
+```
 
-v = make_vector([1, 2, 3, 4])
-print v * 2
+Reinstall locally:
+
+```sh
+python setup.py install
 ```

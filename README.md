@@ -38,7 +38,7 @@ system-level Python, `venv`, `conda`, `pipenv`, and Dev Containers.
 | [section-04](./chapter-01/section-04/README.md) | Python `pipenv` environments | lockfile-based application environments | [README](./chapter-01/section-04/README.md) |
 | [section-05](./chapter-01/section-05/README.md) | Python dev containers | VS Code Dev Containers, multiple runtimes, and a Nuitka binary container | [README](./chapter-01/section-05/README.md) |
 
-## Chapter 2: Packaging History
+## Chapter 2: Python Project Configuration
 
 This chapter walks through the same small package across multiple packaging
 eras, from early `distutils` through a `pyproject.toml`-based workflow.

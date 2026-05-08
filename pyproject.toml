@@ -1,0 +1,11 @@
+[project]
+name = "modern-python-engineering"
+version = "0.1.0"
+description = "Technical course examples for Python packaging and development environments."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mkdocs>=1.6.1,<2.0",
+    "mkdocs-material>=9.6,<10.0",
+    "pymdown-extensions>=10.14,<11.0",
+]
