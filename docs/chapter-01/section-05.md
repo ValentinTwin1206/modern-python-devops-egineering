@@ -1,18 +1,52 @@
-# Python Dev Containers
+# Python `Dev Containers`
 
-This page explains how a Dev Container turns a Python project environment into a complete editor-backed development environment. The example uses the tiny Bottle web server together with the Karva test runner and the Ruff linter from the rest of Chapter 1. Step-by-step development workflow instructions live in the section README at [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/README.md).
+This page explains how a Dev Container turns a Python project environment into a complete editor-backed development environment.
 
-| Component            | Description                                      | Role in this section                                  |
-| -------------------- | ------------------------------------------------ | ----------------------------------------------------- |
-| [Bottle](https://bottlepy.org/docs/dev/) | Lightweight Python web framework.              | Example application dependency and web server         |
-| [Karva](https://matthewmckee4.github.io/karva/) | Python test runner written in Rust.            | Test runner used for the section test workflow        |
-| [Ruff](https://docs.astral.sh/ruff/) | Fast Python linter and formatter.              | Linter used for the section code-quality checks       |
-| [Dev Containers](https://containers.dev/) | Containerized development environment standard. | Editor-backed development boundary for this section   |
+## Tiny Webserver Project
 
-!!! info "`.devcontainer/` and `Dockerfile`"
-	The `.devcontainer/` folder declares a Ubuntu base image with CPython, PyPy, `uv`, Nuitka, the build toolchain, the `vscode` user, forwarded ports, and a `postCreateCommand` that runs `uv sync --group dev`. The companion top-level `Dockerfile` is a Nuitka-based deployment image that ships a single self-contained executable.
+The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section README at [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/README.md).
 
-## Dev Container boundary
+### Used DevTools
+
+These tools cover the example application's runtime package, development utilities, and the Dev Container tooling used in this section.
+
+| Component            | Description |
+| -------------------- | ----------- |
+| [Bottle](https://bottlepy.org/docs/dev/) | Bottle is the example application dependency used inside the containerized development setup. It provides a simple web service that makes the Dev Container workflow easy to inspect. |
+| [Karva](https://matthewmckee4.github.io/karva/) | Karva is the test runner used in the project workflow. It demonstrates how development tools can be provisioned automatically inside the Dev Container. |
+| [Ruff](https://docs.astral.sh/ruff/) | Ruff is the linter and formatter used for code-quality checks. It is part of the development toolchain that the container prepares for the editor-backed environment. |
+| [Dev Containers](https://containers.dev/) | Dev Containers are the main topic of this section. They expand the isolation boundary from Python packages to an entire editor-integrated development machine. |
+
+### Project Files
+
+These project files show how the editor-integrated container is configured and how it differs from the separate deployment image.
+
+| Component            | Description |
+| -------------------- | ----------- |
+| [`.devcontainer/devcontainer.json`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/devcontainer.json) | This file is the entry point for the Dev Container setup. It defines workspace behavior, lifecycle hooks, extensions, forwarded ports, and the remote user. |
+| [`.devcontainer/Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/Dockerfile) | This development image builds the environment that VS Code opens. It installs runtimes, system packages, and tools such as `uv` and Nuitka before the editor attaches. |
+| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/Dockerfile) | This separate deployment image builds and runs the Nuitka-based executable. It helps distinguish the interactive development container from the production-oriented runtime image. |
+| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/pyproject.toml) | This file defines the project metadata and dependencies that `uv sync --group dev` installs inside the container. It ties the editor setup back to the Python packaging configuration of the project. |
+
+## Install `Dev Container`
+
+Dev Containers are not bundled with Python. They require container tooling and either VS Code's Dev Containers extension or the Dev Containers CLI.
+
+=== "VS Code"
+
+	Install the Dev Containers extension in VS Code.
+
+	After that, open the section folder and reopen it in the container from the editor.
+
+=== "Dev Containers CLI"
+
+	Install the Dev Containers CLI with npm:
+
+	```bash
+	npm install -g @devcontainers/cli
+	```
+
+## `Dev Container` environment model
 
 A virtual environment isolates Python packages. A Dev Container declares the operating system image, system packages, language runtimes, editor extensions, forwarded ports, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one `site-packages` directory to the entire development machine.
 
@@ -28,7 +62,7 @@ A virtual environment isolates Python packages. A Dev Container declares the ope
 | Lifecycle commands      | Manual shell commands              | `postCreateCommand` and related hooks                 |
 | Reproducibility scope   | Python dependencies                | OS, tools, runtimes, editor extensions, and project   |
 
-## Image overview
+### Image overview
 
 The section ships two images. Each one has a different purpose.
 
@@ -37,7 +71,7 @@ The section ships two images. Each one has a different purpose.
 | `.devcontainer/Dockerfile`    | Development image   | Editor-backed development through VS Code Dev Containers or the Dev Containers CLI.          |
 | `Dockerfile`                  | Deployment image    | Build a Nuitka-compiled standalone binary and run it in a slim runtime container.            |
 
-## Container entrypoints
+### Container entrypoints
 
 The `.devcontainer/devcontainer.json` file is the contract between VS Code and the container. It declares the base image, the workspace mount, the remote user, the lifecycle commands, the extensions to install, and the ports to forward. Opening the section folder and running `Dev Containers: Reopen in Container` launches the container, mounts the workspace under `/workspaces/`, runs `postCreateCommand`, and attaches VS Code to the container.
 
@@ -65,7 +99,7 @@ Install the Dev Containers CLI globally instead:
 npm install -g @devcontainers/cli
 ```
 
-## Runtimes and tooling
+### Runtimes and tooling
 
 The Dev Container installs both CPython and PyPy from APT. PyPy is a separate Python implementation with a JIT compiler. Installing it next to CPython makes interpreter comparisons easy without changing the host machine.
 
@@ -175,9 +209,3 @@ Expected response:
 - ⚠️ Heavier than plain `venv`, Conda, or Pipenv workflows because the boundary is an entire containerized machine.
 - ⚠️ Depends on container tooling and editor integration, which adds setup overhead.
 - ⚠️ Build, startup, and image maintenance costs are higher than interpreter-only workflows.
-
-## See also
-
-- Virtual environment basics in [Section 02](section-02.md).
-- Conda environments and non-Python dependencies in [Section 03](section-03.md).
-- Pipenv lockfile workflow in [Section 04](section-04.md).

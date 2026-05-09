@@ -2,6 +2,16 @@
 
 This page covers the third packaging snapshot in the Historic Calculator series. The example targets Python 2.4, released on November 30, 2004, with setuptools 0.6c11. This is the first section where dependency declarations are actively enforced at install time.
 
+## Used Project
+
+| Component            | Description |
+| -------------------- | ----------- |
+| Historic Calculator  | Historic Calculator is the example package used to show the first real dependency-aware install workflow in the chapter. This snapshot demonstrates what changed when setuptools began enforcing requirements. |
+| `setup.py`           | This `setup.py` file is driven by early setuptools rather than plain `distutils`. It introduces `install_requires` and entry-point declarations that make installation behavior more active. |
+| Numeric              | Numeric is the runtime dependency used by the project in this era. Setuptools checks for it during installation, which is a meaningful step beyond metadata-only declarations. |
+| `pkg_resources`      | `pkg_resources` is the setuptools runtime API for working with installed distributions. It matters here because it supports the requirement checks and installed-package metadata that setuptools relies on. |
+| `console_scripts`    | `console_scripts` is the entry-point mechanism introduced by setuptools. It registers `hist_calc` on `PATH` without shipping a manually maintained script file. |
+
 ## Background
 
 Setuptools introduces `install_requires=`. During `python setup.py install`, setuptools checks whether the current Python environment already contains a registered distribution that satisfies the declared requirement. A missing dependency now fails at install time instead of surfacing later as an `ImportError`.

@@ -2,7 +2,16 @@
 
 This page covers the earliest packaging shape in the Historic Calculator series. The example targets Python 1.6, released on September 5, 2000. It uses the standard-library `distutils` module and the Numerical extension that later evolved into NumPy.
 
+## Used Project
+
 The version 1.0.0 layout is the simplest one in the chapter. There is one `setup.py` file that calls `distutils.core.setup` with `name`, `version`, and `packages`. There is no dependency declaration vocabulary, no resolver, and no package index.
+
+| Component            | Description |
+| -------------------- | ----------- |
+| Historic Calculator  | Historic Calculator is the running example used across Chapter 02. Each section changes its packaging shape so you can see what Python packaging looked like in a specific period. |
+| `setup.py`           | This `setup.py` file uses the early `distutils` workflow. It defines the package name, version, and shipped modules, but it does not manage dependencies for you. |
+| Numerical            | Numerical is the pre-NumPy numeric array dependency used by this snapshot. It must be installed separately, which shows the limits of early packaging workflows. |
+| `bin/hist_calc`      | This script is installed through the legacy `scripts=` mechanism. It provides the calculator command-line entry point without the later `console_scripts` abstraction. |
 
 ## Background
 

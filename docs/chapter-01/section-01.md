@@ -1,17 +1,32 @@
 # Python system environment
 
-This page explains how Python is installed on a typical Linux host and where packages land. The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
+This page explains how Python is installed on a typical Linux host and where packages land.
 
-| Component            | Description                                      | Role in this section                                  |
-| -------------------- | ------------------------------------------------ | ----------------------------------------------------- |
-| [Bottle](https://bottlepy.org/docs/dev/) | Lightweight Python web framework.              | Example application dependency and web server         |
-| [Karva](https://matthewmckee4.github.io/karva/) | Python test runner written in Rust.            | Referenced as the testing tool used elsewhere in Chapter 1 |
-| [Ruff](https://docs.astral.sh/ruff/) | Fast Python linter and formatter.              | Referenced as the linting tool used elsewhere in Chapter 1 |
+## Tiny Webserver Project
 
-!!! info "`Dockerfile.devEnv`"
-	This section provides a `Dockerfile.devEnv` that fully configures the package installation levels described below, so you can inspect system, local administrator, and user installs in a controlled environment. Using this development container avoids polluting the host system and keeps the setup reproducible.
+The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
 
-## Python footprint on Linux
+### Used DevTools
+
+These tools define the example application's runtime dependency and the development utilities referenced throughout the chapter.
+
+| Component            | Description |
+| -------------------- | ----------- |
+| [Bottle](https://bottlepy.org/docs/dev/) | Bottle is the lightweight web framework used by the example application. It gives the section a concrete Python package to track across system, administrator, and user installation targets. |
+| [Karva](https://matthewmckee4.github.io/karva/) | Karva is the Rust-based test runner used elsewhere in Chapter 01. It appears here as an example of a user-installed development tool rather than an operating-system package. |
+| [Ruff](https://docs.astral.sh/ruff/) | Ruff is the linter and formatter used throughout the chapter. It helps show how Python tooling can live outside APT while still being available on the command line. |
+
+### Project Files
+
+These project files show how the example is packaged and how the section reproduces the Python installation layout being discussed.
+
+| Component            | Description |
+| -------------------- | ----------- |
+| [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine. |
+| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile) | This deployment image shows the same system-level installation model in a runtime container. It complements the discussion by demonstrating how a single system interpreter can be sufficient in container-focused workflows. |
+| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/pyproject.toml) | This file holds the Python project metadata for the tiny web server example. It defines the package and dependencies that later installation commands place into different Python package targets. |
+
+## Install Python
 
 ### Debian-based baseline
 
@@ -59,7 +74,7 @@ Create environments with the explicit interpreter you installed:
 python3.13 -m venv .venv
 ```
 
-### Filesystem layout
+### Python Footprint on Linux
 
 A Python installation includes the CPython interpreter, standard library modules, package directories, native extension headers, build configuration, and shell integration through `PATH`.
 

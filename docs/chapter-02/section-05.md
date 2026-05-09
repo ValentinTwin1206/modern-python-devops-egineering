@@ -2,6 +2,18 @@
 
 This page covers the fifth packaging snapshot in the Historic Calculator series. The example targets Python 3.5, released on September 13, 2015. It uses the four-file project layout that dominated 2016: `setup.py`, `setup.cfg`, `requirements.txt`, and `requirements-dev.txt`. The CLI is built with Click, and pytest replaces ad hoc test runners.
 
+## Used Project
+
+| Component            | Description |
+| -------------------- | ----------- |
+| Historic Calculator  | Historic Calculator is the example package used to show the 2016-style project layout. This snapshot combines declarative metadata, split requirements files, and modern testing and CLI tools. |
+| `setup.cfg`          | This file holds most of the package metadata and configuration in declarative form. It shows how projects started moving logic out of `setup.py` and into static configuration. |
+| `setup.py`           | This `setup.py` file is reduced to a thin compatibility shim. It remains in the project so legacy build commands and tools can still invoke setuptools. |
+| `requirements.txt`   | This file pins the runtime dependencies needed by the application itself. It installs the versions of NumPy and Click that match the packaging snapshot being demonstrated. |
+| `requirements-dev.txt` | This file extends the runtime requirements with development-only tools. It is important here because it reflects the common split between application and test dependencies in that period. |
+| Click                | Click is the CLI library used to implement the `hist_calc` command. It marks a shift away from hand-written scripts toward more structured command-line application design. |
+| pytest               | pytest is the test runner used in this section instead of earlier ad hoc approaches. It represents the more mature testing workflow that had become normal by the Python 3.5 era. |
+
 ## Background
 
 Setuptools 30.3.0 in December 2016 added `[metadata]` and `[options]` sections in `setup.cfg`. From that moment, almost everything previously written imperatively in `setup.py` could be expressed declaratively in `setup.cfg`, and `setup.py` collapsed into a one-line `setup()` shim that legacy tools can still invoke.
