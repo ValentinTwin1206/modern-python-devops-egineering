@@ -6,25 +6,19 @@ This page explains how Python is installed on a typical Linux host and where pac
 
 The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
 
-### Used DevTools
+### Project Setup
 
-These tools define the example application's runtime dependency and the development utilities referenced throughout the chapter.
-
-| Component            | Description |
-| -------------------- | ----------- |
-| [Bottle](https://bottlepy.org/docs/dev/) | Bottle is the lightweight web framework used by the example application. It gives the section a concrete Python package to track across system, administrator, and user installation targets. |
-| [Karva](https://matthewmckee4.github.io/karva/) | Karva is the Rust-based test runner used elsewhere in Chapter 01. It appears here as an example of a user-installed development tool rather than an operating-system package. |
-| [Ruff](https://docs.astral.sh/ruff/) | Ruff is the linter and formatter used throughout the chapter. It helps show how Python tooling can live outside APT while still being available on the command line. |
-
-### Project Files
-
-These project files show how the example is packaged and how the section reproduces the Python installation layout being discussed.
+This example uses [Bottle](https://bottlepy.org/docs/dev/) as the application dependency, with [Karva](https://matthewmckee4.github.io/karva/) and [Ruff](https://docs.astral.sh/ruff/) as user-facing development tools. The project files below show how that setup maps onto the system, administrator, and user installation targets discussed in this section.
 
 | Component            | Description |
 | -------------------- | ----------- |
 | [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine. |
 | [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile) | This deployment image shows the same system-level installation model in a runtime container. It complements the discussion by demonstrating how a single system interpreter can be sufficient in container-focused workflows. |
 | [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/pyproject.toml) | This file holds the Python project metadata for the tiny web server example. It defines the package and dependencies that later installation commands place into different Python package targets. |
+
+### Run the project
+
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
 
 ## Install Python
 
@@ -108,15 +102,32 @@ A Python installation includes the CPython interpreter, standard library modules
 
 Python packages can land in three different places. The target decides who can import them and which projects are affected by future upgrades.
 
-| Target              | Typical path                                    | When to use                                |
-| ------------------- | ----------------------------------------------- | ------------------------------------------ |
-| System              | `/usr/lib/python3/dist-packages/`               | Single-purpose containers and base images. |
-| Local administrator | `/usr/local/lib/python3.x/dist-packages/`       | `uv` or `pip` installs outside APT.        |
-| User                | `~/.local/lib/python3.x/site-packages/`         | One user, no admin rights.                 |
+### When to use the system environment?
+
+Use the system environment when Python is part of the operating system or container base image rather than a per-project development setup. Common examples include distribution-managed tools, single-purpose runtime containers, and administrator-provided utilities that should follow the host's package lifecycle.
+
+System installs can also be reasonable in very small images where the container contains exactly one application and one interpreter. In that case, the container image itself is the isolation boundary, so a separate virtual environment may not add much value.
+
+Avoid the system environment for normal project development on a shared machine. Installing project packages into system, local administrator, or user-level targets can make unrelated projects affect each other and can make upgrades harder to reason about.
+
+### Tradeoffs
+
+#### Pros
+
+- ✅ System installs work well in containers because there is exactly one interpreter to manage.
+- ✅ APT-managed packages integrate cleanly with the base operating system and follow the image lifecycle.
+- ✅ User-level installs avoid administrator permissions when you only need tools for one account.
+
+#### Cons
+
+- ⚠️ System installs are risky on developer machines because one upgrade can affect operating system tooling.
+- ⚠️ Administrator-managed installs outside APT add another package layer that must be tracked separately from the distribution.
+- ⚠️ User installs still share one package directory across every project for that user, so they do not provide project isolation.
+- ⚠️ The remaining sections show why virtual environments, Conda environments, Pipenv environments, and Dev Containers are usually better choices for per-project development workflows.
 
 ### System target
 
-The system target is owned by the operating system package manager. Use it for distribution-managed Python packages that should track the base image or host lifecycle.
+The system target is owned by the operating system package manager. Packages typically land under `/usr/lib/python3/dist-packages/`. Use it for distribution-managed Python packages that should track the base image or host lifecycle.
 
 Install a distribution-managed Python package with APT:
 
@@ -126,7 +137,7 @@ sudo apt install python3-systemd
 
 ### Local administrator target
 
-The local administrator target installs packages outside APT while still making them available to the system interpreter. On modern Debian and Ubuntu, the interpreter is marked as externally managed under PEP 668, so `pip` and `uv` require an explicit override.
+The local administrator target installs packages outside APT while still making them available to the system interpreter. Those installs usually land under `/usr/local/lib/python3.x/dist-packages/`. On modern Debian and Ubuntu, the interpreter is marked as externally managed under PEP 668, so `pip` and `uv` require an explicit override.
 
 === "uv"
 
@@ -146,7 +157,7 @@ The local administrator target installs packages outside APT while still making 
 
 ### User target
 
-The user target keeps packages inside the current user's home directory. It avoids administrator permissions, but every project for that user still shares the same package directory.
+The user target keeps packages inside the current user's home directory, usually under `~/.local/lib/python3.x/site-packages/`. It avoids administrator permissions, but every project for that user still shares the same package directory.
 
 === "uv"
 
@@ -164,7 +175,9 @@ The user target keeps packages inside the current user's home directory. It avoi
     pip3 install --user karva ruff
     ```
 
-## PATH and import path
+## Inspection
+
+### PATH and import path
 
 The shell searches `PATH` from left to right. Python's import resolver searches `sys.path`, which is independent from `PATH`.
 
@@ -186,7 +199,7 @@ Show the full site configuration:
 python3 -m site
 ```
 
-## Inspecting installed packages
+### Inspecting installed packages
 
 Show where a `uv`-installed system package lives:
 
@@ -205,19 +218,3 @@ Show the files owned by an APT-managed Python package:
 ```bash
 dpkg -L python3-pip | grep -E '/usr/bin/pip3$|/dist-packages/pip(/|$)' | head
 ```
-
-## Tradeoffs
-
-### Pros
-
-- ✅ System installs work well in containers because there is exactly one interpreter to manage.
-- ✅ APT-managed packages integrate cleanly with the base operating system and follow the image lifecycle.
-- ✅ User-level installs avoid administrator permissions when you only need tools for one account.
-
-### Cons
-
-- ⚠️ System installs are risky on developer machines because one upgrade can affect operating system tooling.
-- ⚠️ Administrator-managed installs outside APT add another package layer that must be tracked separately from the distribution.
-- ⚠️ User installs still share one package directory across every project for that user, so they do not provide project isolation.
-- ⚠️ The remaining sections show why virtual environments, Conda environments, Pipenv environments, and Dev Containers are usually better choices for per-project development workflows.
-

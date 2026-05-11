@@ -2,33 +2,42 @@
 
 This page explains how a Dev Container turns a Python project environment into a complete editor-backed development environment.
 
-## Tiny Webserver Project
+## Pixelpack Project
 
-The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section README at [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/README.md).
+### Project Setup
 
-### Used DevTools
-
-These tools cover the example application's runtime package, development utilities, and the Dev Container tooling used in this section.
+The [Pixelpack Project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/README.md) is a small image-processing CLI built on [Pillow](https://pillow.readthedocs.io/) and [Click](https://click.palletsprojects.com/), with [Karva](https://matthewmckee4.github.io/karva/) and [Ruff](https://docs.astral.sh/ruff/) as project tools, [Nuitka](https://nuitka.net/) for native compilation, and [Dev Containers](https://containers.dev/) hosting the build toolchain. Pillow links against system image libraries and Nuitka invokes the native compiler, which makes a Dev Container a much better fit than a plain virtual environment.
 
 | Component            | Description |
 | -------------------- | ----------- |
-| [Bottle](https://bottlepy.org/docs/dev/) | Bottle is the example application dependency used inside the containerized development setup. It provides a simple web service that makes the Dev Container workflow easy to inspect. |
-| [Karva](https://matthewmckee4.github.io/karva/) | Karva is the test runner used in the project workflow. It demonstrates how development tools can be provisioned automatically inside the Dev Container. |
-| [Ruff](https://docs.astral.sh/ruff/) | Ruff is the linter and formatter used for code-quality checks. It is part of the development toolchain that the container prepares for the editor-backed environment. |
-| [Dev Containers](https://containers.dev/) | Dev Containers are the main topic of this section. They expand the isolation boundary from Python packages to an entire editor-integrated development machine. |
-
-### Project Files
-
-These project files show how the editor-integrated container is configured and how it differs from the separate deployment image.
-
-| Component            | Description |
-| -------------------- | ----------- |
-| [`.devcontainer/devcontainer.json`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/devcontainer.json) | This file is the entry point for the Dev Container setup. It defines workspace behavior, lifecycle hooks, extensions, forwarded ports, and the remote user. |
-| [`.devcontainer/Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/Dockerfile) | This development image builds the environment that VS Code opens. It installs runtimes, system packages, and tools such as `uv` and Nuitka before the editor attaches. |
-| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/Dockerfile) | This separate deployment image builds and runs the Nuitka-based executable. It helps distinguish the interactive development container from the production-oriented runtime image. |
+| [`.devcontainer/devcontainer.json`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/devcontainer.json) | This file is the entry point for the Dev Container setup. It defines workspace behavior, lifecycle hooks, extensions, and the remote user. |
+| [`.devcontainer/Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/.devcontainer/Dockerfile) | This development image builds the environment that VS Code opens. It installs runtimes, the C toolchain, Pillow's system image libraries, and tools such as `uv` and Nuitka before the editor attaches. |
+| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/Dockerfile) | This separate deployment image builds and runs the Nuitka-compiled binary. It helps distinguish the interactive development container from the production-oriented runtime image. |
 | [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-05/pyproject.toml) | This file defines the project metadata and dependencies that `uv sync --group dev` installs inside the container. It ties the editor setup back to the Python packaging configuration of the project. |
 
-## Install `Dev Container`
+## `Dev Container` environment model
+
+Dev Containers emerged in VS Code workflows in 2019 to make full development machines reproducible, not just Python package sets. A virtual environment isolates Python packages, while a Dev Container declares the operating system image, system packages, language runtimes, editor extensions, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one `site-packages` directory to the entire development machine.
+
+### When to use `Dev Container`?
+
+Because they reproduce the operating system, tools, editor integrations, and project setup in one definition, Dev Containers are a strong fit for projects that need more than Python package isolation. Examples include projects with native extensions that need a C toolchain and matching system libraries, compilation steps such as Nuitka or Cython, database clients, browser tooling, or multiple language runtimes. For small projects with only pure-Python dependencies, a plain `venv`, Pipenv, or Conda environment is usually faster to create and easier to maintain.
+
+### Tradeoffs
+
+#### Pros
+
+- ✅ Captures the operating system, tools, editor integration, and project setup in one reproducible boundary.
+- ✅ Keeps host machine dependencies to a minimum while still giving a full development environment.
+- ✅ Makes native build toolchains and multi-runtime setups such as CPython plus PyPy straightforward.
+
+#### Cons
+
+- ⚠️ Heavier than plain `venv`, Conda, or Pipenv workflows because the boundary is an entire containerized machine.
+- ⚠️ Depends on container tooling and editor integration, which adds setup overhead.
+- ⚠️ Build, startup, and image maintenance costs are higher than interpreter-only workflows.
+
+### Install `Dev Container`
 
 Dev Containers are not bundled with Python. They require container tooling and either VS Code's Dev Containers extension or the Dev Containers CLI.
 
@@ -46,19 +55,15 @@ Dev Containers are not bundled with Python. They require container tooling and e
 	npm install -g @devcontainers/cli
 	```
 
-## `Dev Container` environment model
-
-A virtual environment isolates Python packages. A Dev Container declares the operating system image, system packages, language runtimes, editor extensions, forwarded ports, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one `site-packages` directory to the entire development machine.
-
 ### Environment scope
 
 | Aspect                  | Virtual environment                | Dev Container                                         |
 | ----------------------- | ---------------------------------- | ----------------------------------------------------- |
 | Boundary                | Interpreter and packages           | Container plus editor integration                     |
 | System packages         | Inherited from host                | Declared in image or Dev Container features           |
+| Native build toolchain  | Inherited from host                | Declared in the image (`build-essential`, headers)    |
 | Python implementations  | Usually one                        | CPython, PyPy, and others side by side                |
 | Editor setup            | Configured per host                | Declared in `devcontainer.json`                       |
-| Ports and services      | Manual host setup                  | Forwarded in container config                         |
 | Lifecycle commands      | Manual shell commands              | `postCreateCommand` and related hooks                 |
 | Reproducibility scope   | Python dependencies                | OS, tools, runtimes, editor extensions, and project   |
 
@@ -73,9 +78,9 @@ The section ships two images. Each one has a different purpose.
 
 ### Container entrypoints
 
-The `.devcontainer/devcontainer.json` file is the contract between VS Code and the container. It declares the base image, the workspace mount, the remote user, the lifecycle commands, the extensions to install, and the ports to forward. Opening the section folder and running `Dev Containers: Reopen in Container` launches the container, mounts the workspace under `/workspaces/`, runs `postCreateCommand`, and attaches VS Code to the container.
+The `.devcontainer/devcontainer.json` file is the contract between VS Code and the container. It declares the base image, the workspace mount, the remote user, the lifecycle commands, and the extensions to install. Opening the section folder and running `Dev Containers: Reopen in Container` launches the container, mounts the workspace under `/workspaces/`, runs `postCreateCommand`, and attaches VS Code to the container.
 
-The remote user is `vscode`, which matches the user created inside the image. Mounted source files are owned by that user, so terminal commands and editor saves operate on the same files. Port `8080` is forwarded automatically, which makes the Bottle endpoint reachable from the host browser.
+The remote user is `vscode`, which matches the user created inside the image. Mounted source files are owned by that user, so terminal commands and editor saves operate on the same files.
 
 === "VS Code"
 
@@ -101,25 +106,34 @@ npm install -g @devcontainers/cli
 
 ### Runtimes and tooling
 
-The Dev Container installs both CPython and PyPy from APT. PyPy is a separate Python implementation with a JIT compiler. Installing it next to CPython makes interpreter comparisons easy without changing the host machine.
+The development image installs both CPython and PyPy from APT. PyPy is a separate Python implementation with a JIT compiler. Installing it next to CPython makes interpreter comparisons easy without changing the host machine.
 
-The Bottle project uses `uv` for the project workflow. The `postCreateCommand` setting runs `uv sync --group dev` after VS Code mounts the workspace, so the project environment is created against the real source tree rather than against an image-time copy.
+The development image also installs `build-essential`, `python3-dev`, `patchelf`, and the system libraries Pillow links against (`libjpeg-dev`, `libpng-dev`, `zlib1g-dev`). Pillow needs those headers to build its native extension, and Nuitka needs the compiler and `patchelf` to produce the standalone binary.
 
-| Tool or runtime | Role in this section                                                   |
-| --------------- | ---------------------------------------------------------------------- |
-| CPython         | Default interpreter for the project workflow                           |
-| PyPy            | Alternate interpreter for side-by-side inspection and comparison       |
-| `uv`            | Project dependency sync, command execution, and build workflow         |
-| Nuitka          | Produces the standalone deployment binary                              |
+The Pixelpack project uses `uv` for the project workflow. The `postCreateCommand` setting runs `uv sync --group dev` after VS Code mounts the workspace, so the project environment is created against the real source tree rather than against an image-time copy.
+
+| Tool or runtime   | Role in this section                                              |
+| ----------------- | ----------------------------------------------------------------- |
+| CPython           | Default interpreter for the project workflow                      |
+| PyPy              | Alternate interpreter for side-by-side inspection and comparison  |
+| `uv`              | Project dependency sync, command execution, and build workflow    |
+| C build toolchain | Builds Pillow's native extension and the Nuitka-compiled binary   |
+| Nuitka            | Produces the standalone deployment binary                         |
 
 ## Workflow
 
 ### Development workflow
 
-Run the Bottle application:
+Run the CLI:
 
 ```bash
-uv run tiny-webserver
+uv run pixelpack --help
+```
+
+Resize an image:
+
+```bash
+uv run pixelpack resize input.png output.png --width 320 --height 240
 ```
 
 Run the tests:
@@ -145,16 +159,16 @@ uv build --wheel
 Build the Nuitka deployment image:
 
 ```bash
-docker build -t tiny-webserver-nuitka .
+docker build -t pixelpack-nuitka .
 ```
 
-Run the deployment image:
+Run the deployment image against a mounted directory:
 
 ```bash
-docker run --rm -p 8080:8080 tiny-webserver-nuitka
+docker run --rm -v "$PWD":/data -w /data pixelpack-nuitka resize input.png output.png --width 320 --height 240
 ```
 
-The deployment runtime starts a standalone Nuitka-compiled executable. It does not install the project wheel.
+The deployment runtime starts a standalone Nuitka-compiled executable. It does not install the project wheel and does not ship a Python interpreter for the application code.
 
 ### Runtime inspection
 
@@ -184,28 +198,8 @@ Show the Python that `uv` selected for the project environment:
 uv run python -c "import sys; print(sys.executable); print(sys.version)"
 ```
 
-Verify the forwarded endpoint from the host:
+Show the Pillow build that the project resolved:
 
 ```bash
-curl http://localhost:8080/
+uv run python -c "import PIL; print(PIL.__version__)"
 ```
-
-Expected response:
-
-```json
-{"message": "Hello from tiny webserver"}
-```
-
-## Tradeoffs
-
-### Pros
-
-- ✅ Captures the operating system, tools, editor integration, and project setup in one reproducible boundary.
-- ✅ Keeps host machine dependencies to a minimum while still giving a full development environment.
-- ✅ Makes multi-runtime setups such as CPython plus PyPy straightforward.
-
-### Cons
-
-- ⚠️ Heavier than plain `venv`, Conda, or Pipenv workflows because the boundary is an entire containerized machine.
-- ⚠️ Depends on container tooling and editor integration, which adds setup overhead.
-- ⚠️ Build, startup, and image maintenance costs are higher than interpreter-only workflows.

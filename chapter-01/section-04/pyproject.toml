@@ -3,16 +3,18 @@ requires = ["uv_build>=0.11.8,<0.12"]
 build-backend = "uv_build"
 
 [project]
-name = "tiny-webserver"
+name = "fastapi-crud"
 version = "1.0.0"
-description = "Example project for pipenv"
+description = "FastAPI CRUD API showcase for Pipenv"
 requires-python = ">=3.12"
 dependencies = [
-    "bottle==0.13.4",
+    "fastapi==0.115.5",
+    "pydantic==2.9.2",
+    "uvicorn==0.32.1",
 ]
 
 [project.scripts]
-tiny-webserver = "tiny_webserver.app:main"
+fastapi-crud = "fastapi_crud.main:main"
 
 [dependency-groups]
 dev = [

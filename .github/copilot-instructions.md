@@ -21,13 +21,13 @@ This repository contains teaching material for modern Python engineering. When e
 
 ## Chapter 01 Layout
 
-- Start each Chapter 01 section page with a concise introduction, then a level-two `Tiny Webserver Project` section.
-- In Chapter 01, split the `Tiny Webserver Project` section into level-three `Used DevTools` and `Project Files` subsections.
+- Start each Chapter 01 section page with a concise introduction, then a level-two example-project section. Sections 01 and 02 use `Tiny Webserver Project`. Section 03 (Conda) uses `Image Processor Project` (OpenCV + NumPy showcase). Section 04 (Pipenv) uses `FastAPI CRUD Project` (FastAPI + Pydantic + uvicorn showcase). Section 05 (Dev Containers) uses `Pixelpack Project` (Pillow + Click + Nuitka showcase). Use the matching project name as the level-two heading on each page.
+- In Chapter 01, split that example-project section into level-three `Used DevTools` and `Project Files` subsections.
 - Start each of those subsections with a short sentence that explains what the table covers.
 - In Chapter 01, both tables should use the columns `Component` and `Description`.
 - Write the description column as short, direct prose. Prefer about two sentences per component so the description can cover both what the component is and why it matters in that section.
 - Cross-reference important project files directly, especially `Dockerfile`, `Dockerfile.devEnv`, `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, `pyproject.toml`, `environment.yml`, `Pipfile`, and `Pipfile.lock`.
-- Except for Chapter 01, Section 01, add a level-two ``Install {environment}`` section after `Tiny Webserver Project`, such as ``Install `venv````, ``Install `Conda````, ``Install `Pipenv````, or ``Install `Dev Container```.
+- Except for Chapter 01, Section 01, add a level-two ``Install {environment}`` section after the example-project section, such as ``Install `venv````, ``Install `Conda````, ``Install `Pipenv````, or ``Install `Dev Container```.
 - When an environment tool is bundled with Python, such as `venv`, say so directly before showing any operating-system package needed on Debian-based systems.
 - Keep each `Install {environment}` section limited to installing the tool itself. Move environment creation, activation, and startup commands into the later workflow or container-entrypoint section.
 - After `Install {environment}` and before `Workflow`, use a level-two ``{environment}` environment model` section. Put the concise explanation directly under that heading instead of adding a separate `Summary` subheading.

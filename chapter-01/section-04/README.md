@@ -1,6 +1,6 @@
-# Tiny Webserver `pipenv` Environment
+# FastAPI CRUD `pipenv` Environment
 
-This section shows how Pipenv combines installation, virtual-environment management, and a real lockfile into a single workflow. It runs the tiny Bottle web server through that environment.
+This section shows how Pipenv combines installation, virtual-environment management, and a real lockfile into a single workflow. It builds a tiny FastAPI CRUD API (an `Item` resource with create, read, list, and delete) that benefits from deterministic, hash-pinned installs through `Pipfile.lock`.
 
 For background on `Pipfile` and `Pipfile.lock`, see the [MkDocs page](../../docs/chapter-01/section-04.md).
 
@@ -10,6 +10,8 @@ For background on `Pipfile` and `Pipfile.lock`, see the [MkDocs page](../../docs
 - Python 3.12 (for the on-host path).
 - `pipenv`.
 - `uv` for the project development workflow.
+
+## Setup Environment
 
 ### With Docker
 
@@ -25,7 +27,7 @@ Open an interactive shell in the development image:
 ../build.sh build --path section-04/Dockerfile.devEnv
 ```
 
-Build and run the deployment image:
+Build and run the deployment image (FastAPI listens on `8080`):
 
 ```bash
 ../build.sh build --path section-04/Dockerfile
@@ -51,30 +53,32 @@ Keep the managed environment next to the project:
 export PIPENV_VENV_IN_PROJECT=1
 ```
 
-Create the environment from the lockfile:
+Generate the lockfile (first time only):
 
 ```bash
-pipenv install
+pipenv lock
 ```
 
-Install development dependencies as well:
+Install runtime and development dependencies from the lockfile:
 
 ```bash
-pipenv install --dev
+pipenv install --deploy --dev
 ```
 
 ## Usage Guide
 
-Run the Bottle application through Pipenv:
+Run the FastAPI app through Pipenv:
 
 ```bash
-pipenv run python -m tiny_webserver.app
+pipenv run python -m fastapi_crud.main
 ```
 
-Open an interactive shell in the environment:
+Open the interactive API docs at <http://localhost:8080/docs>.
+
+Create an item with `curl`:
 
 ```bash
-pipenv shell
+curl -X POST http://localhost:8080/items -H 'content-type: application/json' -d '{"name":"Book","price":9.5}'
 ```
 
 Reinstall exactly what is recorded in the lockfile:

@@ -4,22 +4,9 @@ This page covers Python's standard-library `venv` module.
 
 ## Tiny Webserver Project
 
-The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md).
+### Project Setup
 
-### Used DevTools
-
-These tools cover the example application's runtime package, development utilities, and the environment tool being explained in this section.
-
-| Component            | Description |
-| -------------------- | ----------- |
-| [Bottle](https://bottlepy.org/docs/dev/) | Bottle is the application dependency used by the sample web server. It provides a concrete runtime package to install into the virtual environment. |
-| [Karva](https://matthewmckee4.github.io/karva/) | Karva is the test runner used for the section workflow. It shows how development-only tools can live inside the same isolated environment as the application. |
-| [Ruff](https://docs.astral.sh/ruff/) | Ruff is the linter and formatter used for code-quality checks. It is part of the shared project tooling that benefits from per-project isolation. |
-| [`venv`](https://docs.python.org/3/library/venv.html) | `venv` is Python's built-in virtual environment tool. It is the main subject of this section and defines the package boundary being inspected. |
-
-### Project Files
-
-These project files show how the virtual-environment workflow is reproduced in development and deployment for the tiny web server example.
+The [Tiny Webserver Project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md) uses [Bottle](https://bottlepy.org/docs/dev/) as the runtime dependency, with [Karva](https://matthewmckee4.github.io/karva/) for tests and [Ruff](https://docs.astral.sh/ruff/) for linting and formatting. The project files below show how [`venv`](https://docs.python.org/3/library/venv.html) reproduces that project-local environment in development and deployment.
 
 | Component            | Description |
 | -------------------- | ----------- |
@@ -27,7 +14,35 @@ These project files show how the virtual-environment workflow is reproduced in d
 | [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/Dockerfile) | This deployment image builds the project wheel and installs it into the same virtual-environment layout. It shows how the `venv` pattern carries from interactive development into container deployment. |
 | [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/pyproject.toml) | This file defines the package metadata and dependencies for the example project. Those dependencies are what get installed into the virtual environment during the workflow shown below. |
 
-## Install `venv`
+### Run the project
+
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md).
+
+## `venv` environment model
+
+`venv` has shipped with Python since Python 3.3 in 2012, when it was introduced to give Python a standard built-in tool for project-level isolation. 
+
+It creates a project-local directory with a private interpreter, `pip`, package directory, console scripts, and a `pyvenv.cfg` file. Activation is mostly a `PATH` change so that the environment-local interpreter resolves first, while the standard library still comes from the base Python installation.
+
+### When to use `venv`?
+
+Because it is built in, lightweight, and close to standard Python packaging, `venv` is a good default for small web services, command-line tools, tutorials, libraries, and scripts whose dependencies come cleanly from PyPI. It is also a good fit when you want to inspect Python's environment mechanics directly.
+
+### Tradeoffs
+
+#### Pros
+
+- ✅ Bundled with Python and familiar to most users.
+- ✅ Lightweight folder-based environment that is easy to inspect and remove.
+- ✅ Clear `PATH` and `sys.path` behavior once the environment is activated.
+
+#### Cons
+
+- ⚠️ Does not manage Python versions by itself.
+- ⚠️ Cannot install non-Python system libraries such as compiler toolchains or database client packages.
+- ⚠️ Does not provide a built-in lockfile for fully reproducible installs.
+
+### Install `venv`
 
 `venv` is bundled with Python, so there is no separate Python package to install. On Debian-based systems, the `python3-venv` operating system package provides the pieces needed to create environments with the distribution Python.
 
@@ -36,10 +51,6 @@ Install the `venv` support package when it is not already present:
 ```bash
 sudo apt install python3-venv
 ```
-
-## `venv` environment model
-
-`venv` ships with Python. It creates a project-local directory with a private interpreter, `pip`, package directory, console scripts, and a `pyvenv.cfg` file. Activation is mostly a `PATH` change so that the environment-local interpreter resolves first.
 
 ### Environment layout
 
@@ -107,7 +118,7 @@ A typical environment uses this layout:
     include-system-site-packages = false
     version = 3.12.3
     executable = /usr/bin/python3.12
-    command = /usr/bin/python3 -m venv /tmp/tmp.XUOUzoskul/.venv
+    command = /usr/bin/python3 -m venv /path/to/chapter-01/section-02/.venv
     ```
 
 ### Activation and import path
@@ -190,10 +201,6 @@ The new environment starts with the `pip` version supplied by the Python install
 	uv pip install .
 	```
 
-### Run the project
-
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md).
-
 ## Inspection
 
 Show the active prefixes:
@@ -208,16 +215,3 @@ Show where installed packages live:
 python3 -c "import bottle, tiny_webserver; print(bottle.__file__); print(tiny_webserver.__file__)"
 ```
 
-## Tradeoffs
-
-### Pros
-
-- ✅ Bundled with Python and familiar to most users.
-- ✅ Lightweight folder-based environment that is easy to inspect and remove.
-- ✅ Clear `PATH` and `sys.path` behavior once the environment is activated.
-
-### Cons
-
-- ⚠️ Does not manage Python versions by itself.
-- ⚠️ Cannot install non-Python system libraries such as compiler toolchains or database client packages.
-- ⚠️ Does not provide a built-in lockfile for fully reproducible installs.

@@ -10,6 +10,8 @@ For the folder layout, activation behavior, and tradeoffs, see the [MkDocs page]
 - Python 3.12 with the standard-library `venv` module (for the on-host path).
 - `pip` and `uv`.
 
+## Setup Environment
+
 ### With Docker
 
 Build the development image through the chapter helper:

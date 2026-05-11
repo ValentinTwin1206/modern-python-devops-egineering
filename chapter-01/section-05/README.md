@@ -1,6 +1,6 @@
-# Tiny Webserver Dev Containers
+# Pixelpack Dev Containers
 
-This section demonstrates a VS Code Dev Container with CPython, PyPy, `uv`, and the Nuitka build toolchain, plus a Nuitka-based deployment image that ships a single self-contained binary.
+This section demonstrates a VS Code Dev Container with CPython, PyPy, `uv`, and the Nuitka build toolchain, plus a Nuitka-based deployment image that ships a single self-contained binary. The sample project, `pixelpack`, is a small Pillow-based image-processing CLI. Pillow links against system image libraries and Nuitka invokes the native compiler, which is exactly the situation a Dev Container is designed for.
 
 For background on Dev Containers, the image overview, and VS Code integration details, see the [MkDocs page](../../docs/chapter-01/section-05.md).
 
@@ -24,7 +24,7 @@ Run the Nuitka deployment image through the helper:
 ../build.sh build --path section-05/Dockerfile
 ```
 
-The deployment image runs a Nuitka-compiled standalone executable on port `8080`.
+The deployment image runs a Nuitka-compiled standalone executable that exposes the `pixelpack` CLI.
 
 ### On Host
 
@@ -50,22 +50,34 @@ npm install -g @devcontainers/cli
 
 ## Usage Guide
 
-Run the Bottle application from inside the Dev Container:
+Run the CLI from inside the Dev Container:
 
 ```bash
-uv run tiny-webserver
+uv run pixelpack --help
 ```
 
-Verify the forwarded endpoint from the host:
+Resize an image:
 
 ```bash
-curl http://localhost:8080/
+uv run pixelpack resize input.png output.png --width 320 --height 240
+```
+
+Convert an image format (inferred from the destination suffix):
+
+```bash
+uv run pixelpack convert input.png output.jpg
+```
+
+Convert an image to grayscale:
+
+```bash
+uv run pixelpack grayscale input.png output.png
 ```
 
 Run the Nuitka deployment image directly:
 
 ```bash
-docker run --rm -p 8080:8080 tiny-webserver-nuitka
+docker run --rm -v "$PWD":/data -w /data pixelpack-nuitka resize input.png output.png --width 320 --height 240
 ```
 
 ## Development Guide
@@ -97,5 +109,5 @@ uv build --wheel
 Build the Nuitka deployment image:
 
 ```bash
-docker build -t tiny-webserver-nuitka .
+docker build -t pixelpack-nuitka .
 ```

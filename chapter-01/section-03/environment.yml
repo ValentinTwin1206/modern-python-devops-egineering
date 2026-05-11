@@ -1,13 +1,15 @@
 # Conda environment definition.
 #
-# Runtime packages come from conda-forge. Karva is installed with pip because
-# it is part of the shared Chapter 1 dev stack and is distributed on PyPI.
-name: tiny-webserver
+# OpenCV and NumPy are scientific packages with native binary dependencies
+# (BLAS, libstdc++, libjpeg, etc.). Installing them through conda-forge gives
+# a self-contained, reproducible toolchain without compiling anything locally.
+name: image-processor
 channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - bottle=0.13.4
+  - numpy=2.1.3
+  - opencv=4.10.0
   - ruff=0.15.12
   - pip
   - pip:

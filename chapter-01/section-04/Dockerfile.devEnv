@@ -1,33 +1,30 @@
 # DEVELOPMENT IMAGE:
-#   - uses ubuntu:24.04 and installs pipenv
-#   - creates the project-local .venv from Pipfile.lock
-#   - opens an interactive shell with the venv activated
+#   - uses python:3.12-slim and installs pipenv
+#   - installs the locked dependency graph with `pipenv install --deploy --dev`
+#   - opens an interactive shell with the venv and dev tools pre-configured
 # # # # # # # # # # #
-FROM ubuntu:24.04
+FROM python:3.12-slim
 
-# Install CPython and a minimal source-build toolchain.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        bash \
-        build-essential \
-        python3 \
-        python3-pip \
-        python3-venv \
-    && rm -rf /var/lib/apt/lists/*
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIPENV_VENV_IN_PROJECT=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
 # Install pipenv into the system Python.
-RUN pip3 install --break-system-packages --no-cache-dir pipenv==2024.4.0
+RUN pip install --no-cache-dir pipenv==2024.4.0
 
-# Copy the locked dependency definitions.
-COPY Pipfile Pipfile.lock ./
+# Copy the locked dependency definitions first to maximize Docker layer caching.
+COPY Pipfile Pipfile.lock* ./
 
-# Put the venv inside the project and install locked dependencies.
-ENV PIPENV_VENV_IN_PROJECT=1
-RUN pipenv install --ignore-pipfile
+# Generate a lockfile if one is not committed, then install runtime + dev deps
+# from the lockfile in deploy mode (fails the build if Pipfile drifted).
+RUN if [ ! -f Pipfile.lock ]; then pipenv lock; fi \
+    && pipenv install --deploy --dev
 
-# Put the pipenv-managed venv first on PATH.
+# Put the pipenv-managed venv first on PATH for the rest of the image.
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH=/app/.venv/bin:$PATH
 
@@ -37,9 +34,11 @@ COPY src ./src
 COPY tests ./tests
 ENV PYTHONPATH=/app/src
 
-# Auto-activate the pipenv-managed venv for interactive bash shells.
+# Auto-activate the venv for interactive bash shells.
 RUN echo 'source /app/.venv/bin/activate' >> /root/.bashrc \
     && echo 'cd /app' >> /root/.bashrc
+
+EXPOSE 8080
 
 # Default to an interactive development shell.
 CMD ["/bin/bash"]
