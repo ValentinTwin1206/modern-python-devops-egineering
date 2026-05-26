@@ -1,14 +1,15 @@
 [project]
-name = "tiny-webserver"
+name = "journal-admin"
 version = "1.0.0"
-description = "Tiny webserver for demonstrating Python system environment"
+description = "Small admin CLI that reads systemd journal entries using python3-systemd"
 requires-python = ">=3.11"
-dependencies = [
-    "bottle",
-]
+# Intentionally no runtime dependencies on PyPI.
+# The only runtime dependency is `systemd.journal` from the APT package
+# `python3-systemd`, which is installed through the system package manager.
+dependencies = []
 
 [project.scripts]
-tiny-webserver = "tiny_webserver.app:main"
+journal-admin = "journal_admin.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12"]

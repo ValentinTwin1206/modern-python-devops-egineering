@@ -6,6 +6,18 @@ OpenCV is a good showcase for Conda because it ships compiled C++ extensions and
 
 For background on Conda channels, the YAML schema, and the tradeoffs against `venv`, see the [MkDocs page](../../docs/chapter-01/section-03.md).
 
+## Project Components
+
+The table below lists the main files that support the Conda example project.
+
+| Component | Description |
+| --------- | ----------- |
+| [src/image_processor/main.py](src/image_processor/main.py) | This module generates a synthetic grayscale image, blurs it, runs Canny edge detection, and writes the result to disk. It is intentionally short so the focus stays on the binary dependencies the environment supplies. |
+| [environment.yml](environment.yml) | This file declares the Conda environment for the example project. It pins the interpreter, NumPy, and OpenCV from `conda-forge`, and records extra Python tools installed through `pip`. |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image is based on `continuumio/miniconda3` and creates the named environment with `conda env create`. It provides a reproducible Conda setup with OpenCV, NumPy, and dev tools pre-configured. |
+| [Dockerfile](Dockerfile) | This deployment image builds the project wheel and runs it inside a dedicated Conda environment. It shows how the same environment model can be used beyond local inspection. |
+| [pyproject.toml](pyproject.toml) | This file defines the Python package metadata for the image processor. It is the source of the package that later gets installed into the Conda environment. |
+
 ## Required Developer Tools
 
 - Docker or Podman.

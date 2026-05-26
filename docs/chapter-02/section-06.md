@@ -93,4 +93,4 @@ hist_calc max 1,-2,4
 ## See also
 
 - The split runtime and dev requirements layout in [Section 05](section-05.md).
-- Modern environment isolation through Dev Containers in [Chapter 01, Section 05](../chapter-01/section-05.md).
+- Modern environment isolation through Dev Containers in [Chapter 01, Section 04](../chapter-01/section-04.md).

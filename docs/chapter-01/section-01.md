@@ -2,23 +2,15 @@
 
 This page explains how Python is installed on common operating systems and where packages land.
 
-## Tiny Webserver Project
-
-The example uses the tiny Bottle web server project. Step-by-step development workflow instructions live in the section [`README.md`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
+## Applied Project
 
 ### Project Setup
 
-This example uses [Bottle](https://bottlepy.org/docs/dev/) as the application dependency, with [Karva](https://matthewmckee4.github.io/karva/) and [Ruff](https://docs.astral.sh/ruff/) as user-facing development tools. The project files below show how that setup maps onto the system, administrator, and user installation targets discussed in this section.
+The applied project is a small admin CLI called `journal-admin` that reads recent `systemd` journal entries. It imports [`systemd.journal`](https://www.freedesktop.org/software/systemd/python-systemd/journal.html) from the APT package [`python3-systemd`](https://packages.ubuntu.com/noble/python3-systemd) and declares no PyPI runtime dependencies because the binding comes from the distribution package manager and links against `libsystemd` in `/usr/lib`. This makes it a good fit for the system environment because the runtime dependency is intentionally owned by the operating system package manager instead of a project-local environment.
 
-| Component            | Description |
-| -------------------- | ----------- |
-| [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine. |
-| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/Dockerfile) | This deployment image shows the same system-level installation model in a runtime container. It complements the discussion by demonstrating how a single system interpreter can be sufficient in container-focused workflows. |
-| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/pyproject.toml) | This file holds the Python project metadata for the tiny web server example. It defines the package and dependencies that later installation commands place into different Python package targets. |
+### Run the Project
 
-### Run the project
-
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-01/README.md#project-components) section of the section README.
 
 ## Python System Setup
 
@@ -64,13 +56,17 @@ Python can be installed by the operating system, by a language-specific installe
 
     Windows does not ship a distribution-managed Python in the same way Debian-based Linux does. The usual choices are the [python.org installer](https://www.python.org/downloads/windows/), [winget](https://learn.microsoft.com/windows/package-manager/winget/), or the Microsoft Store package.
 
-    The Python launcher (`py`) is useful on Windows because multiple Python versions can be installed at the same time without relying only on `PATH` order.
+    !!! info
+
+        The Python launcher (`py`) is useful on Windows because multiple Python versions can be installed at the same time without relying only on `PATH` order. It is typically installed alongside the above mentioned installation packages.
 
 === "macOS"
 
-    Modern macOS does not ship a full Python for project development. Since macOS Monterey 12.3, Apple expects developers to install their own Python from [python.org](https://www.python.org/downloads/macos/), [Homebrew](https://brew.sh/), `uv`, or `pyenv`.
+    Modern macOS does not provide a full Python setup for project development. Since macOS Monterey 12.3, Apple has discouraged relying on the system-provided Python for development work, so developers usually install Python from [python.org](https://www.python.org/downloads/macos/), [Homebrew](https://brew.sh/), `uv`, or `pyenv`.
 
-    On Ventura, Sonoma, and Sequoia, `python3` may be missing, may point to an Apple-managed `/usr/bin/python3` stub, or may come from Xcode Command Line Tools. Do not treat that interpreter as a stable project dependency.
+    !!! info
+
+        On Ventura, Sonoma, and Sequoia, `python3` may be missing, may point to an Apple-managed `/usr/bin/python3` stub, or may come from Xcode Command Line Tools. Do not treat that interpreter as a stable project dependency.
 
 #### Install another version
 
@@ -144,7 +140,7 @@ Python can be installed by the operating system, by a language-specific installe
 
 ### Installation footprint
 
-A Python installation includes the CPython interpreter, standard library modules, package directories, native extension headers, build configuration, and shell integration through `PATH` or a launcher.
+A Python installation includes the CPython interpreter, standard library modules, package directories, native extension headers, build configuration, and integration with the operating system shell through `PATH` entries or launchers.
 
 === "Linux (Debian-based)"
 
@@ -152,10 +148,9 @@ A Python installation includes the CPython interpreter, standard library modules
     | --------- | ------------------------ |
     | Interpreter | `/usr/bin/python3` |
     | Standard library | `/usr/lib/python3.x/` |
-    | Installed packages | `/usr/lib/python3/dist-packages/` |
-    | Administrator packages | `/usr/local/lib/python3.x/dist-packages/` |
+    | Interpreter installation packages | `/usr/lib/python3/dist-packages/` |
+    | System-wide administrator-installed packages | `/usr/local/lib/python3.x/dist-packages/` |
     | User packages | `~/.local/lib/python3.x/site-packages/` |
-    | Virtual environment packages | `.venv/lib/python3.x/site-packages/` |
     | Header files | `/usr/include/python3.x/` |
 
 === "Windows"
@@ -164,10 +159,9 @@ A Python installation includes the CPython interpreter, standard library modules
     | --------- | ------------------- |
     | Interpreter | `%LocalAppData%\Programs\Python\Python313\python.exe` |
     | Standard library | `%LocalAppData%\Programs\Python\Python313\Lib` |
-    | Installed packages | `%LocalAppData%\Programs\Python\Python313\Lib\site-packages` |
-    | Administrator packages | `C:\Program Files\Python313\Lib\site-packages` |
+    | Interpreter installation packages |  |
+    | System-wide administrator-installed packages | `C:\Program Files\Python313\Lib\site-packages` if Python is installed for all users |
     | User packages | `%AppData%\Python\Python313\site-packages` |
-    | Virtual environment packages | `.venv\Lib\site-packages` |
     | Header files | `%LocalAppData%\Programs\Python\Python313\include` |
 
 === "macOS"
@@ -176,47 +170,82 @@ A Python installation includes the CPython interpreter, standard library modules
     | --------- | ----------------- |
     | Interpreter | `/opt/homebrew/bin/python3.13` |
     | Standard library | `/opt/homebrew/Frameworks/Python.framework/Versions/3.13/lib/python3.13/` |
-    | Installed packages | `/opt/homebrew/lib/python3.13/site-packages` |
-    | Administrator packages | `/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages` |
+    | Interpreter installation packages |  |
+    | System-wide administrator-installed packages | `/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages` |
     | User packages | `~/Library/Python/3.13/lib/python/site-packages` |
-    | Virtual environment packages | `.venv/lib/python3.13/site-packages` |
     | Header files | `/opt/homebrew/Frameworks/Python.framework/Versions/3.13/include/python3.13/` |
 
 - **Standard library:** built-in modules such as `os`, `pathlib`, `json`, and `subprocess` ship with Python itself.
 
+- **Interpreter installation packages:** in this section, the concrete example is the Debian [system target](#system-target), where a package such as `python3-systemd` lands under `/usr/lib/python3/dist-packages/`.
+
+- **System-wide administrator-installed packages:** packages installed into the administrator-controlled prefix affect every project that uses that interpreter. They are covered in [Local administrator target](#local-administrator-target).
+
+- **User packages:** packages installed with `--user` stay under the current user's home directory and are only available to that user's Python processes. They are covered in [User target](#user-target).
+
 - **Header files:** development headers are needed when packages compile C or C++ extension modules against the current interpreter. On Debian-based Linux, they come from packages such as `python3-dev` or `python3.13-dev`; python.org installers for Windows and macOS include the development files needed for common extension builds.
-
-- **Installed-package imports:** `import bottle` only works when `bottle` is installed into one of the package directories on the active interpreter's `sys.path`.
-
-    ```python
-    import bottle
-    ```
-
-- **Import resolution:** the exact file that Python imports depends on where the package was installed, because `sys.path` determines which matching module or package directory is found first.
 
 ### Package installation targets
 
-Python packages can land in operating-system, administrator, user, or environment-specific locations. The target decides who can import them and which projects are affected by future upgrades.
+Python packages can land in [operating-system](#system-target), [administrator](#local-administrator-target), or [user](#user-target) locations. A package can be used with an `import` statement when it is installed into a directory that the active interpreter searches on `sys.path`. The target decides who can import the package and which projects are affected by future upgrades.
+
+```python
+import systemd.journal
+
+print(systemd.journal.__file__)
+```
+
+Python chooses the first matching module or package directory on `sys.path`, so the exact imported file depends on where the package was installed. The [PATH and import path](#path-and-import-path) inspection commands show how to check that search path.
 
 #### System target
 
 === "Linux (Debian-based)"
 
-    The system target is owned by APT. Packages typically land under `/usr/lib/python3/dist-packages/` and update with the base operating system.
+    The system target is owned by APT. Importable Python packages typically land under `/usr/lib/python3/dist-packages/`. This exists because Linux distributions package Python libraries for operating-system tools and stable release updates.
 
-    Install a distribution-managed Python package with the distribution package manager:
+    Use APT for Python libraries that support system services, distribution-managed automation, or operating-system integration. The `journal-admin` project in this section is a concrete example: it imports `systemd.journal`, which is part of the APT package `python3-systemd` and binds to `libsystemd` shipped with the operating system. There is no equivalent wheel on PyPI that works without that system library, so APT is the right install path. Avoid APT for normal project dependencies like `python3-requests`, as APT packages follow the operating-system release cycle and can be older or patched differently than the versions on PyPI.
+
+    Install the distribution-managed Python binding with the distribution package manager:
 
     ```bash
     sudo apt install python3-systemd
     ```
 
+    Import it with the system interpreter:
+
+    ```python
+    import systemd.journal
+
+    print(systemd.journal.__file__)
+    ```
+
 === "Windows"
 
-    Windows does not have an APT-like Python package target that is part of the operating system. Packages are installed into the selected Python distribution, a user site directory, or a virtual environment.
+    Windows does not have an APT-like Python package target that is part of the operating system. 
+
+    !!! info
+
+        WinGet is useful for installing Python, applications, and tools such as `uv`, but Python libraries for `import` statements usually come from [Local administrator targets](#local-administrator-target), [User targets](#user-target), or a virtual environment.
+
+        Install `uv` with Windows Package Manager:
+
+        ```powershell
+        winget install astral-sh.uv
+        ```
 
 === "macOS"
 
-    Apple-managed Python paths are for operating-system or developer-tool use. Project packages should go into a separate Python installation, a user site directory, or a virtual environment.
+    Apple-managed Python paths are for operating-system or developer-tool use.
+
+    !!! info
+
+        Homebrew can install Python-based tools such as `uv`, but those packages live in Homebrew's own prefix, not in an Apple-managed system Python target. Python libraries for `import` statements usually come from [Local administrator targets](#local-administrator-target), [User targets](#user-target), or a virtual environment.
+
+        Install `uv` with Homebrew:
+
+        ```bash
+        brew install uv
+        ```
 
 #### Local administrator target
 
@@ -229,7 +258,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the local administrator target with `uv`:
 
         ```bash
-        uv pip install --system --break-system-packages bottle
+        uv pip install --system --break-system-packages requests
         ```
 
     === "pip"
@@ -237,7 +266,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the local administrator target with `pip`:
 
         ```bash
-        pip3 install --break-system-packages bottle
+        pip3 install --break-system-packages requests
         ```
 
 === "Windows"
@@ -249,7 +278,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the selected all-users interpreter with `uv`:
 
         ```powershell
-        uv pip install --python "C:\Program Files\Python313\python.exe" bottle
+        uv pip install --python "C:\Program Files\Python313\python.exe" requests
         ```
 
     === "pip"
@@ -257,7 +286,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the selected all-users interpreter with `pip`:
 
         ```powershell
-        py -3.13 -m pip install bottle
+        py -3.13 -m pip install requests
         ```
 
 === "macOS"
@@ -269,7 +298,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the selected interpreter prefix with `uv`:
 
         ```bash
-        uv pip install --python /opt/homebrew/bin/python3.13 --break-system-packages bottle
+        uv pip install --python /opt/homebrew/bin/python3.13 --break-system-packages requests
         ```
 
     === "pip"
@@ -277,7 +306,7 @@ Python packages can land in operating-system, administrator, user, or environmen
         Install a package into the selected interpreter prefix with `pip`:
 
         ```bash
-        python3.13 -m pip install --break-system-packages bottle
+        python3.13 -m pip install --break-system-packages requests
         ```
 
 #### User target
@@ -298,7 +327,7 @@ Python packages can land in operating-system, administrator, user, or environmen
     py -3.13 -m pip install --user karva ruff
     ```
 
-    User packages usually land under `%AppData%\Python\Python313\site-packages`, while virtual environment packages land under `.venv\Lib\site-packages`.
+    User packages usually land under `%AppData%\Python\Python313\site-packages`.
 
 === "macOS"
 
@@ -308,7 +337,7 @@ Python packages can land in operating-system, administrator, user, or environmen
     python3.13 -m pip install --user karva ruff
     ```
 
-    User packages usually land under `~/Library/Python/3.13/lib/python/site-packages`, while virtual environment packages land under `.venv/lib/python3.13/site-packages`.
+    User packages usually land under `~/Library/Python/3.13/lib/python/site-packages`.
 
 ## Inspection
 
@@ -336,10 +365,10 @@ python3 -m site
 
 ### Inspecting installed packages
 
-Show where a `uv`-installed system package lives:
+Show where the APT-managed `systemd.journal` binding lives:
 
 ```bash
-python3 -c "import bottle; print(bottle.__file__)"
+python3 -c "import systemd.journal; print(systemd.journal.__file__)"
 ```
 
 Show where user-installed packages and their console scripts live:
@@ -351,5 +380,5 @@ python3 -c "import karva, ruff; print(karva.__file__); print(ruff.__file__)"
 Show the files owned by an APT-managed Python package:
 
 ```bash
-dpkg -L python3-pip | grep -E '/usr/bin/pip3$|/dist-packages/pip(/|$)' | head
+dpkg -L python3-systemd | grep -E '/dist-packages/systemd(/|$)' | head
 ```

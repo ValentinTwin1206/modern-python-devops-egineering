@@ -2,27 +2,19 @@
 
 This page covers Python's standard-library `venv` module.
 
-## Tiny Webserver Project
+## Applied Project
 
 ### Project Setup
 
-The [Tiny Webserver Project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md) uses [Bottle](https://bottlepy.org/docs/dev/) as the runtime dependency, with [Karva](https://matthewmckee4.github.io/karva/) for tests and [Ruff](https://docs.astral.sh/ruff/) for linting and formatting. The project files below show how [`venv`](https://docs.python.org/3/library/venv.html) reproduces that project-local environment in development and deployment.
+The applied project is a small web service called `Tiny Webserver Project`. It uses [Bottle](https://bottlepy.org/docs/dev/) as the runtime dependency. This makes it a good fit for `venv` because a small PyPI-based service shows clearly how one project-local environment can isolate application dependencies.
 
-| Component            | Description |
-| -------------------- | ----------- |
-| [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/Dockerfile.devEnv) | This development image creates and activates a virtual environment at `/opt/venv`. It gives you a reproducible example of how the project and its tools are installed into an isolated interpreter. |
-| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/Dockerfile) | This deployment image builds the project wheel and installs it into the same virtual-environment layout. It shows how the `venv` pattern carries from interactive development into container deployment. |
-| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/pyproject.toml) | This file defines the package metadata and dependencies for the example project. Those dependencies are what get installed into the virtual environment during the workflow shown below. |
+### Run the Project
 
-### Run the project
-
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-02/README.md#project-components) section of the section README.
 
 ## `venv` environment model
 
-`venv` has shipped with Python since Python 3.3 in 2012, when it was introduced to give Python a standard built-in tool for project-level isolation. 
-
-It creates a project-local directory with a private interpreter, `pip`, package directory, console scripts, and a `pyvenv.cfg` file. Activation is mostly a `PATH` change so that the environment-local interpreter resolves first, while the standard library still comes from the base Python installation.
+`venv` has shipped with Python since Python 3.3 in 2012, when it was introduced to give Python a standard built-in tool for project-level isolation. It creates a project-local directory with a private interpreter, `pip`, a package directory, console scripts, and a `pyvenv.cfg` file, while activation is mostly a `PATH` change so the environment-local interpreter resolves first even though the standard library still comes from the base Python installation.
 
 ### When to use `venv`?
 
@@ -32,57 +24,111 @@ Because it is built in, lightweight, and close to standard Python packaging, `ve
 
 #### Pros
 
-- ✅ Bundled with Python and familiar to most users.
+- ✅ Bundled with Python 
+- ✅ Familiar to most Python users.
 - ✅ Lightweight folder-based environment that is easy to inspect and remove.
 - ✅ Clear `PATH` and `sys.path` behavior once the environment is activated.
 
 #### Cons
 
 - ⚠️ Does not manage Python versions by itself.
-- ⚠️ Cannot install non-Python system libraries such as compiler toolchains or database client packages.
+- ⚠️ Cannot install non-Python system libraries (e.g. compiler toolchains, etc.)
 - ⚠️ Does not provide a built-in lockfile for fully reproducible installs.
 
 ### Install `venv`
 
-`venv` is bundled with Python, so there is no separate Python package to install. On Debian-based systems, the `python3-venv` operating system package provides the pieces needed to create environments with the distribution Python.
+`venv` is bundled with Python, so there is no separate PyPI package to install.
 
-Install the `venv` support package when it is not already present:
+=== "Linux (Debian-based)"
 
-```bash
-sudo apt install python3-venv
-```
+    If `venv` support is absent, install the distribution-supported package with `apt`:
+
+    ```bash
+    sudo apt install python3-venv
+    ```
+
+=== "Windows"
+
+    If Python is not installed yet, follow [Install Python](section-01.md#install-python).
+    
+=== "macOS"
+
+    If Python is not installed yet, follow [Install Python](section-01.md#install-python).
 
 ### Environment layout
 
-A typical environment uses this layout:
+The exact directory names vary by operating system, but each `venv` still contains an environment-local interpreter, console scripts, a package directory, headers, and `pyvenv.cfg`.
 
-```text
-.venv/
-├── bin/
-│   ├── Activate.ps1
-│   ├── activate
-│   ├── activate.csh
-│   ├── activate.fish
-│   ├── pip
-│   ├── pip3
-│   ├── pip3.x
-│   ├── python
-│   ├── python3
-│   └── python3.x
-├── include/
-│   └── python3.x/
-├── lib/
-│   └── python3.x/
-│       └── site-packages/
-│           ├── pip/
-│           └── pip-*.dist-info/
-├── lib64/
-└── pyvenv.cfg
-```
+=== "Linux"
+
+    ```text
+    .venv/
+    ├── bin/
+    │   ├── activate
+    │   ├── activate.csh
+    │   ├── activate.fish
+    │   ├── pip
+    │   ├── pip3
+    │   ├── pip3.x
+    │   ├── python
+    │   ├── python3
+    │   └── python3.x
+    ├── include/
+    │   └── python3.x/
+    ├── lib/
+    │   └── python3.x/
+    │       └── site-packages/
+    │           ├── pip/
+    │           └── pip-*.dist-info/
+    ├── lib64/
+    └── pyvenv.cfg
+    ```
+
+=== "Windows"
+
+    ```text
+    .venv\
+    ├── Include\
+    ├── Lib\
+    │   └── site-packages\
+    │       ├── pip\
+    │       └── pip-*.dist-info\
+    ├── Scripts\
+    │   ├── Activate.ps1
+    │   ├── activate.bat
+    │   ├── pip.exe
+    │   ├── python.exe
+    │   └── pythonw.exe
+    └── pyvenv.cfg
+    ```
+
+=== "macOS"
+
+    ```text
+    .venv/
+    ├── bin/
+    │   ├── activate
+    │   ├── activate.csh
+    │   ├── activate.fish
+    │   ├── pip
+    │   ├── pip3
+    │   ├── pip3.x
+    │   ├── python
+    │   ├── python3
+    │   └── python3.x
+    ├── include/
+    │   └── python3.x/
+    ├── lib/
+    │   └── python3.x/
+    │       └── site-packages/
+    │           ├── pip/
+    │           └── pip-*.dist-info/
+    └── pyvenv.cfg
+    ```
 
 ### Key directories and files
 
-- **`bin/`:** contains the virtual environment's Python executables, `pip`, and the shell activation scripts. On Linux, a fresh `venv` commonly uses symlinks for the Python executables, so the environment-local `python3` can still point back to the base interpreter while the surrounding environment changes where packages and scripts are installed.
+- **Executable directory:** on Linux and macOS, `.venv/bin/` contains the virtual environment's Python executables, `pip`, and shell activation scripts. On Windows, the equivalent directory is `.venv\Scripts\`, which holds `python.exe`, `pip.exe`, and activation scripts such as `Activate.ps1` and `activate.bat`. On Linux, a fresh `venv` commonly uses symlinks for the Python executables, so the environment-local `python3` can still point back to the base interpreter while the surrounding environment changes where packages and scripts are installed.
 
     Inspect the executable directory:
 
@@ -103,9 +149,9 @@ A typical environment uses this layout:
 
     The arrows show the redirect chain. `python` points to `python3`, `python3.12` points to `python3`, and `python3` points to the base interpreter at `/usr/bin/python3`.
 
-- **`include/python3.x/`:** contains headers used when native extensions compile against the interpreter inside the virtual environment.
+- **Header directory:** Linux and macOS store headers under `.venv/include/python3.x/`, while Windows uses `.venv\Include\`. These headers are used when native extensions compile against the interpreter inside the virtual environment.
 
-- **`lib/python3.x/site-packages/`:** contains the packages installed into the virtual environment. On a fresh Python 3.x `venv` contains `pip/` and its `.dist-info` metadata by default and no other Python packages.
+- **Package directory:** Linux and macOS store installed packages under `.venv/lib/python3.x/site-packages/`, while Windows uses `.venv\Lib\site-packages\`. A fresh Python 3.x `venv` typically contains `pip/` and its `.dist-info` metadata and no project dependencies yet.
 
 - **`lib64/`:** is a platform-specific library alias that appears on some Linux systems.
 
@@ -123,7 +169,7 @@ A typical environment uses this layout:
 
 ### Activation and import path
 
-- **Environment-local interpreter:** the `activate` script puts `.venv/bin/` at the front of `PATH` on Linux. It does not change Python itself; it changes which executable the shell finds first when you run `python`, `python3`, or `pip`.
+- **Environment-local interpreter:** activation puts the virtual environment's executable directory at the front of `PATH`. On Linux and macOS that means `.venv/bin/`; on Windows it means `.venv\Scripts\`. It does not change Python itself; it changes which executable the shell finds first when you run `python`, `python3`, `py`, or `pip`.
 
     ```text
     Before activation:
@@ -135,7 +181,7 @@ A typical environment uses this layout:
     python3 -> /path/to/project/.venv/bin/python3
     ```
 
-- **Environment-local packages:** installed packages land under `.venv/lib/python3.x/site-packages/`, which keeps them separate from the system interpreter. A virtual environment does not replace the base standard library; it uses the base Python's standard library and puts the environment-local `site-packages/` ahead of any inherited package directories.
+- **Environment-local packages:** installed packages land under the environment-local `site-packages` directory, such as `.venv/lib/python3.x/site-packages/` on Linux or macOS and `.venv\Lib\site-packages\` on Windows. This keeps project dependencies separate from the base interpreter. A virtual environment does not replace the base standard library; it uses the base Python's standard library and puts the environment-local package directory ahead of any inherited package directories.
 
 - **System package visibility:** with the default `include-system-site-packages = false` setting in `pyvenv.cfg`, system-wide package directories are normally omitted. That is why a `venv` feels isolated even though it still relies on the base standard library.
 
@@ -159,15 +205,29 @@ In practice, rebuilding is safer than relocating. If the project moves, the usua
 
 Create the environment from the section folder:
 
-```bash
-python3 -m venv .venv
-```
+=== "Linux and macOS"
 
-Activate it on Linux or macOS:
+    ```bash
+    python3 -m venv .venv
+    ```
 
-```bash
-source .venv/bin/activate
-```
+    Activate it:
+
+    ```bash
+    source .venv/bin/activate
+    ```
+
+=== "Windows"
+
+    ```powershell
+    py -m venv .venv
+    ```
+
+    Activate it in PowerShell:
+
+    ```powershell
+    .\.venv\Scripts\Activate.ps1
+    ```
 
 The new environment starts with the `pip` version supplied by the Python installation. Upgrade it before installing project dependencies.
 

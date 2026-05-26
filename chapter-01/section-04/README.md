@@ -1,114 +1,124 @@
-# FastAPI CRUD `pipenv` Environment
+# Pixelpack Dev Containers
 
-This section shows how Pipenv combines installation, virtual-environment management, and a real lockfile into a single workflow. It builds a tiny FastAPI CRUD API (an `Item` resource with create, read, list, and delete) that benefits from deterministic, hash-pinned installs through `Pipfile.lock`.
+This section demonstrates a VS Code Dev Container with CPython, PyPy, `uv`, and the Nuitka build toolchain, plus a Nuitka-based deployment image that ships a single self-contained binary. The sample project, `pixelpack`, is a small Pillow-based image-processing CLI. Pillow links against system image libraries and Nuitka invokes the native compiler, which is exactly the situation a Dev Container is designed for.
 
-For background on `Pipfile` and `Pipfile.lock`, see the [MkDocs page](../../docs/chapter-01/section-04.md).
+For background on Dev Containers, the image overview, and VS Code integration details, see the [MkDocs page](../../docs/chapter-01/section-04.md).
+
+## Project Components
+
+The table below lists the main files that support the Dev Container example project.
+
+| Component | Description |
+| --------- | ----------- |
+| [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) | This file is the entry point for the Dev Container setup. It defines workspace behavior, lifecycle hooks, extensions, and the remote user. |
+| [.devcontainer/Dockerfile](.devcontainer/Dockerfile) | This development image builds the environment that VS Code opens. It installs runtimes, the C toolchain, Pillow's system image libraries, and tools such as `uv` and Nuitka before the editor attaches. |
+| [Dockerfile](Dockerfile) | This separate deployment image builds and runs the Nuitka-compiled binary. It helps distinguish the interactive development container from the production-oriented runtime image. |
+| [pyproject.toml](pyproject.toml) | This file defines the project metadata and dependencies that `uv sync --group dev` installs inside the container. It ties the editor setup back to the Python packaging configuration of the project. |
 
 ## Required Developer Tools
 
 - Docker or Podman.
-- Python 3.12 (for the on-host path).
-- `pipenv`.
-- `uv` for the project development workflow.
-
-## Setup Environment
+- VS Code with the Dev Containers extension, or Node.js with the Dev Containers CLI.
+- `uv` for project commands inside the container.
 
 ### With Docker
 
-Build the development image through the chapter helper:
+Build the deployment image through the chapter helper:
 
 ```bash
-../build.sh build --path section-04/Dockerfile.devEnv --build-only
+../build.sh build --path section-04/Dockerfile --build-only
 ```
 
-Open an interactive shell in the development image:
-
-```bash
-../build.sh build --path section-04/Dockerfile.devEnv
-```
-
-Build and run the deployment image (FastAPI listens on `8080`):
+Run the Nuitka deployment image through the helper:
 
 ```bash
 ../build.sh build --path section-04/Dockerfile
 ```
 
+The deployment image runs a Nuitka-compiled standalone executable that exposes the `pixelpack` CLI.
+
 ### On Host
 
-Install Python on Ubuntu:
+Open the section in VS Code:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y python3 python3-pip
+code .
 ```
 
-Install Pipenv:
+Then run `Dev Containers: Reopen in Container` from the Command Palette.
+
+Drive the same setup from a shell with `npx`:
 
 ```bash
-pip install pipenv
+npx @devcontainers/cli up --workspace-folder .
 ```
 
-Keep the managed environment next to the project:
+Install the Dev Containers CLI globally instead:
 
 ```bash
-export PIPENV_VENV_IN_PROJECT=1
-```
-
-Generate the lockfile (first time only):
-
-```bash
-pipenv lock
-```
-
-Install runtime and development dependencies from the lockfile:
-
-```bash
-pipenv install --deploy --dev
+npm install -g @devcontainers/cli
 ```
 
 ## Usage Guide
 
-Run the FastAPI app through Pipenv:
+Run the CLI from inside the Dev Container:
 
 ```bash
-pipenv run python -m fastapi_crud.main
+uv run pixelpack --help
 ```
 
-Open the interactive API docs at <http://localhost:8080/docs>.
-
-Create an item with `curl`:
+Resize an image:
 
 ```bash
-curl -X POST http://localhost:8080/items -H 'content-type: application/json' -d '{"name":"Book","price":9.5}'
+uv run pixelpack resize input.png output.png --width 320 --height 240
 ```
 
-Reinstall exactly what is recorded in the lockfile:
+Convert an image format (inferred from the destination suffix):
 
 ```bash
-pipenv sync
+uv run pixelpack convert input.png output.jpg
+```
+
+Convert an image to grayscale:
+
+```bash
+uv run pixelpack grayscale input.png output.png
+```
+
+Run the Nuitka deployment image directly:
+
+```bash
+docker run --rm -v "$PWD":/data -w /data pixelpack-nuitka resize input.png output.png --width 320 --height 240
 ```
 
 ## Development Guide
 
-Sync the project environment with `uv`:
+Sync the development environment:
 
 ```bash
-uv sync
+uv sync --group dev
 ```
 
-Run the tests through Pipenv:
+Run the tests:
 
 ```bash
-pipenv run karva test tests/
+uv run karva test tests/
 ```
 
-Run the linter through Pipenv:
+Run the linter:
 
 ```bash
-pipenv run ruff check .
+uv run ruff check .
 ```
 
-Build a wheel:
+Build the project wheel:
 
 ```bash
 uv build --wheel
+```
+
+Build the Nuitka deployment image:
+
+```bash
+docker build -t pixelpack-nuitka .
 ```

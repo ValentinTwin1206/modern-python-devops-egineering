@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "workspaceFolder": "/workspaces/section-05",
+    "workspaceFolder": "/workspaces/section-04",
     "customizations": {
         "vscode": {
             "extensions": [

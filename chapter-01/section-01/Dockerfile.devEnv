@@ -1,6 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses ubuntu:24.04 and its APT-managed Python 3.12
 #   - compares user-level pip installs with system-level uv installs
+#   - installs the APT-managed `python3-systemd` binding used by journal-admin
 #   - opens an interactive shell for inspection
 # # # # # # # # # # #
 FROM ubuntu:24.04
@@ -13,11 +14,13 @@ ENV PYTHONPATH=/app/src
 WORKDIR /app
 
 # Install Ubuntu's Python packages plus small inspection tools.
+# `python3-systemd` is the APT-only binding that journal-admin imports.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         python3 \
         python3-pip \
+        python3-systemd \
         tree \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,11 +28,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Install developer tools as user-level Python packages.
 RUN pip3 install --user --break-system-packages karva ruff
-
-# Install Bottle into the APT-managed interpreter for comparison.
-RUN uv pip install --system --break-system-packages bottle
-
-EXPOSE 8080
 
 # Source files are expected to be bind-mounted into /app at runtime.
 ENTRYPOINT ["/bin/bash"]

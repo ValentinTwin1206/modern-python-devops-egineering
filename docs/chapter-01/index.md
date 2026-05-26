@@ -7,5 +7,4 @@ Use the navigation on the left to move through the chapter's sections:
 - Section 01: Python system environment
 - Section 02: Python `venv` environments
 - Section 03: Python `conda` environments
-- Section 04: Python `pipenv` environments
-- Section 05: Python dev containers
+- Section 04: Python dev containers

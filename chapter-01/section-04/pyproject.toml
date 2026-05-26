@@ -1,20 +1,19 @@
-[build-system]
-requires = ["uv_build>=0.11.8,<0.12"]
-build-backend = "uv_build"
-
 [project]
-name = "fastapi-crud"
+name = "pixelpack"
 version = "1.0.0"
-description = "FastAPI CRUD API showcase for Pipenv"
+description = "Tiny Pillow-based image-processing CLI for demonstrating Python dev containers"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi==0.115.5",
-    "pydantic==2.9.2",
-    "uvicorn==0.32.1",
+    "click>=8.1.7",
+    "pillow>=10.4.0",
 ]
 
 [project.scripts]
-fastapi-crud = "fastapi_crud.main:main"
+pixelpack = "pixelpack.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [

@@ -6,11 +6,12 @@
 name: image-processor
 channels:
   - conda-forge
+  # - defaults  # Served from repo.anaconda.com and added by default, so it usually does not need to be listed explicitly.
 dependencies:
   - python=3.12
   - numpy=2.1.3
   - opencv=4.10.0
-  - ruff=0.15.12
   - pip
   - pip:
+      - ruff>=0.15.12
       - karva>=0.0.1a5

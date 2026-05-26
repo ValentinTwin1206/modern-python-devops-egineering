@@ -1,34 +1,24 @@
-# Python `Conda` environments
+# Python Conda environments
 
 This page covers Conda, both as a package manager and as an environment manager. Conda can replace the usual `pip` plus `venv` workflow when you need one tool to manage Python, Python packages, and non-Python packages together.
 
-## Image Processor Project
+## Applied Project
 
 ### Project Setup
 
-The [Image Processor Project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/README.md) is a small image-processing pipeline built on [OpenCV](https://opencv.org/) and [NumPy](https://numpy.org/), with [Karva](https://matthewmckee4.github.io/karva/) and [Ruff](https://docs.astral.sh/ruff/) as project tools. The project files below show how [Conda](https://docs.conda.io/) declares and reproduces that environment in development and deployment.
+The applied project is a small image-processing pipeline called `Image Processor Project`. It is built on [OpenCV](https://opencv.org/) and [NumPy](https://numpy.org/). This makes it a good fit for Conda because the workflow combines Python packages with native libraries that are easier to manage together in one Conda environment.
 
-| Component            | Description |
-| -------------------- | ----------- |
-| [`src/image_processor/main.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/src/image_processor/main.py) | This module generates a synthetic grayscale image, blurs it, runs Canny edge detection, and writes the result to disk. It is intentionally short so the focus stays on the binary dependencies the environment supplies. |
-| [`environment.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/environment.yml) | This file declares the Conda environment for the example project. It pins the interpreter, NumPy, and OpenCV from `conda-forge`, and records extra Python tools installed through `pip`. |
-| [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/Dockerfile.devEnv) | This development image is based on `continuumio/miniconda3` and creates the named environment with `conda env create`. It provides a reproducible Conda setup with OpenCV, NumPy, and dev tools pre-configured. |
-| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/Dockerfile) | This deployment image builds the project wheel and runs it inside a dedicated Conda environment. It shows how the same environment model can be used beyond local inspection. |
-| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/pyproject.toml) | This file defines the Python package metadata for the image processor. It is the source of the package that later gets installed into the Conda environment. |
+### Run the Project
 
-### Run the project
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/README.md#project-components) section of the section README.
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-03/README.md).
+## Conda environment model
 
-## `Conda` environment model
+Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. Unlike `venv`, it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels, so one Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
 
-Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. 
+### When to use Conda?
 
-Unlike `venv`, it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels. A Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system, which is why it is common in data-science and Jupyter notebook workflows as well as application projects.
-
-### When to use `Conda`?
-
-Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. The later [Environment layout](#environment-layout) and [Practical demo: one install, two models](#practical-demo-one-install-two-models) sections show that structure in more detail.
+Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. The later [Environment layout](#environment-layout) and [Workflow](#workflow) sections show that structure in more detail.
 
 ### Tradeoffs
 
@@ -36,6 +26,7 @@ Because it can keep Python, native dependencies, and interpreter version constra
 
 - ✅ Manages Python interpreter versions as part of the environment definition.
 - ✅ Installs non-Python packages (such as the native libraries OpenCV needs) from Conda channels alongside Python packages.
+- ✅ Keeps Python bindings and native binaries together inside the same environment prefix instead of splitting them across the project and the host operating system.
 - ✅ Works well for scientific or compiled dependencies that are awkward in plain `pip` workflows, which is exactly the case for the OpenCV pipeline used here.
 - ✅ Fits teams that already use Anaconda or Conda-based tooling across platforms and languages.
 
@@ -46,160 +37,314 @@ Because it can keep Python, native dependencies, and interpreter version constra
 - ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
 - ⚠️ Pure-Python projects with straightforward PyPI dependencies are often simpler with `venv` and `pip` or `uv`.
 
-### Install `Conda`
+### Install Conda
 
-On Debian-based Linux, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3`, while this section's Docker image is based on `continuumio/miniconda3` where Miniconda already lives at `/opt/conda`.
+On Linux, Windows, and macOS, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3` on Unix-like systems, while this section's Docker image is based on `continuumio/miniconda3` where Miniconda already lives at `/opt/conda`.
 
-Download the Miniconda installer:
+=== "Linux (Debian-based)"
 
-```bash
-curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-```
+    Download the Miniconda installer:
 
-Run the installer into a user-local prefix:
+    ```bash
+    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    ```
 
-```bash
-bash miniconda.sh -b -p "$HOME/miniconda3"
-```
+    Run the installer into a user-local prefix:
 
-Put Conda on `PATH` for the current shell:
+    ```bash
+    bash miniconda.sh -b -p "$HOME/miniconda3"
+    ```
 
-```bash
-export PATH="$HOME/miniconda3/bin:$PATH"
-```
+    Put Conda on `PATH` for the current shell:
 
-Initialize Conda for future Bash shells:
+    ```bash
+    export PATH="$HOME/miniconda3/bin:$PATH"
+    ```
 
-```bash
-conda init bash
-```
+    !!! warning
+
+        To make `conda activate` work in future Bash shells, you can run:
+
+        ```bash
+        conda init bash
+        ```
+
+        This edits `~/.bashrc`. In a clean Ubuntu test, a new Bash shell came back with the `base` environment already active. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
+
+=== "Windows"
+
+    Install Miniconda with Windows Package Manager:
+
+    ```powershell
+    winget install Anaconda.Miniconda3
+    ```
+
+    Check that Conda is available:
+
+    ```powershell
+    conda --version
+    ```
+
+    !!! warning
+
+        To make `conda activate` work in future PowerShell sessions, you can run:
+
+        ```powershell
+        conda init powershell
+        ```
+
+        This changes future PowerShell startup behavior and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
+
+=== "macOS"
+
+    Download the Miniconda installer for Apple Silicon:
+
+    ```bash
+    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
+    ```
+
+    Run the installer into a user-local prefix:
+
+    ```bash
+    bash miniconda.sh -b -p "$HOME/miniconda3"
+    ```
+
+    Put Conda on `PATH` for the current shell:
+
+    ```bash
+    export PATH="$HOME/miniconda3/bin:$PATH"
+    ```
+
+    !!! warning
+
+        To make `conda activate` work in future Zsh shells, you can run:
+
+        ```bash
+        conda init zsh
+        ```
+
+        This edits your shell startup file and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
 
 ### Environment layout
 
-Because environments are usually stored centrally, environment names need to be unique within one Conda installation. Use descriptive names such as `image-processor` instead of generic names such as `venv`. A fresh Conda environment created with `conda create -n fresh-env python=3.12 pip` looks like this:
+#### Environment name and location
 
-```text
-<conda-prefix>/
-├── bin/
-│   └── conda
-├── envs/
-│   └── fresh-env/
-│       ├── bin/
-│       │   ├── pip
-│       │   ├── pip3
-│       │   ├── python
-│       │   ├── python3
-│       │   └── python3.12
-│       ├── compiler_compat/
-│       ├── conda-meta/
-│       ├── etc/
-│       ├── include/
-│       │   └── python3.12/
-│       ├── lib/
-│       │   └── python3.12/
-│       │       └── site-packages/
-│       │           ├── packaging/
-│       │           ├── pip/
-│       │           ├── setuptools/
-│       │           └── wheel/
-│       ├── man/
-│       ├── share/
-│       ├── ssl/
-│       └── x86_64-conda-linux-gnu/
-└── pkgs/
+Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `image-processor` instead of a generic name such as `venv` when creating a Conda environment:
+
+```bash
+conda create -y -n image-processor python=3.12 pip
 ```
 
-### Key directories and files
+By default, the environment is stored under `~/miniconda3` on Linux or macOS and `%UserProfile%\miniconda3` on Windows. 
 
-- **`/opt/conda/bin/conda`:** is the top-level Conda executable that manages environments and packages.
+=== "Linux (Debian-based)"
 
-- **`<conda-prefix>/envs/<name>/`:** is the named environment directory; in this section's development image that path is `/opt/conda/envs/image-processor`.
+    ```text
+    <conda-prefix>/
+    ├── bin/
+    │   └── conda
+    ├── envs/
+    │   └── image-processor/
+    │       ├── bin/
+    │       │   ├── pip
+    │       │   ├── python
+    │       │   └── python3.12
+    │       ├── conda-meta/
+    │       ├── include/python3.12/
+    │       ├── lib/python3.12/site-packages/
+    │       └── x86_64-conda-linux-gnu/
+    └── pkgs/
+    ```
 
-- **`bin/`:** contains the environment-local executables, including Python, `pip`, and any console scripts installed into the environment.
+=== "Windows"
 
-- **`lib/python3.12/site-packages/`:** contains the Python packages installed into the Conda environment, regardless of whether they came from Conda channels or from `pip`.
+    ```text
+    <conda-prefix>\
+    ├── condabin\
+    │   └── conda.bat
+    ├── envs\
+    │   └── image-processor\
+    │       ├── python.exe
+    │       ├── Scripts\
+    │       │   ├── pip.exe
+    │       │   └── activate.bat
+    │       ├── Lib\site-packages\
+    │       ├── Library\bin\
+    │       └── conda-meta\
+    └── pkgs\
+    ```
+
+=== "macOS"
+
+    ```text
+    <conda-prefix>/
+    ├── bin/
+    │   └── conda
+    ├── envs/
+    │   └── image-processor/
+    │       ├── bin/
+    │       │   ├── pip
+    │       │   ├── python
+    │       │   └── python3.12
+    │       ├── conda-meta/
+    │       ├── include/python3.12/
+    │       ├── lib/python3.12/site-packages/
+    │       └── lib/
+    └── pkgs/
+    ```
+
+#### Key directories and files
+
+- **Top-level Conda executable:** the main Conda command lives under the installation prefix, such as `~/miniconda3/bin/conda` on Linux or macOS, or `%UserProfile%\miniconda3\condabin\conda.bat` on Windows.
+
+- **`<conda-prefix>/envs/<name>/`:** is the named environment directory.
+
+- **Environment-local executables:** Linux and macOS store them under `bin/`, while Windows uses `python.exe` at the environment root together with `Scripts\` for `pip.exe`, activation scripts, and console entry points.
+
+- **Python packages:** Linux and macOS store them under `lib/python3.12/site-packages/`, while Windows uses `Lib\site-packages\`. These directories contain Python packages installed from Conda channels or from `pip`.
+
+- **Native runtime files:** Conda also installs shared libraries and other runtime files into the environment, such as `lib/` on Linux or macOS and `Library\bin\` on Windows.
 
 - **`conda-meta/`:** stores Conda's package records and history for the environment.
 
-- **`compiler_compat/`:** contains linker and compiler-compatibility helpers bundled into the environment.
-
 - **`pkgs/`:** stores the shared package cache for the Conda installation prefix.
 
-### Activation and import path
+#### Environment definition (`environment.yml`)
 
-- **Environment-local interpreter:** after `conda activate image-processor`, the environment's `python3` becomes the first interpreter on `PATH`.
-
-- **Environment-local packages:** imports resolve from `/opt/conda/envs/image-processor/lib/python3.12/site-packages/` in this section's Docker image.
-
-- **Environment location:** unlike `venv`, the environment does not live inside the project folder by default; it lives under the Conda installation prefix.
-
-  ```python
-  import sys
-  print(sys.prefix)
-  print(sys.executable)
-  ```
-
-### Environment definition
-
-The environment is described in `environment.yml`:
+The `environment.yml` file describes the [respective Conda environment](#environment-layout) from outside and is stored **within the project tree** next to the source code and other project files.
 
 ```yaml
 name: image-processor
 channels:
   - conda-forge
+  # - defaults  # Served from repo.anaconda.com and added by default, so it usually does not need to be listed explicitly.
 dependencies:
   - python=3.12
   - numpy=2.1.3
   - opencv=4.10.0
-  - ruff=0.15.12
   - pip
   - pip:
+      - ruff>=0.15.12
       - karva>=0.0.1a5
 ```
 
-NumPy and OpenCV come from `conda-forge`, which provides their compiled native libraries. Karva is installed through `pip` because it is published on PyPI and is not part of any Conda channel used here.
+- `name`: sets the Conda environment name to `image-processor`.
+- `channels`: tells Conda from where to resolve Conda-managed packages.
 
-### Package sources
+    | Source | Kind | Examples |
+    | ------ | ---- | -------- |
+    | `conda-forge` | Community Conda channel | `numpy`, `opencv`, `python` |
+    | `defaults` | Anaconda-hosted Conda channel set, served from `repo.anaconda.com` | `python`, `numpy`, `pandas` |
 
-Conda does not download packages from `pypi.org` by default. In its default configuration, it installs packages from Anaconda-hosted Conda channels such as `repo.anaconda.com`, and many projects use community channels such as `conda-forge` for broader package availability.
+- `dependencies`: lists the Conda-managed packages to install, including Python, NumPy, OpenCV, and `pip` itself.
+- `dependencies.pip`: lists the PyPI-only project tools to install through the nested `pip:` block. PyPI sources, including proprietary ones, do not belong in `channels:`; configure them through `pip`, for example with `--index-url` or `--extra-index-url` entries inside the nested `pip:` list or through standard `pip` configuration.
 
-Those Conda channels are package repositories, but they are not mirrors of the Python Package Index at `pypi.org`. Some packages are available from Conda channels and not from PyPI, especially compiled or data-science-oriented packages. Other Python packages are available on PyPI but not from the Conda channels you use, which is why Conda environments often include `pip` as a fallback.
+## Workflow
 
-| Source type            | Typical tool      | Best fit                                                       |
-| ---------------------- | ----------------- | -------------------------------------------------------------- |
-| Conda channel package  | `conda install`   | Python itself, native libraries, and packages published to Conda channels |
-| PyPI package           | `pip install`     | Packages downloaded from `pypi.org` when Conda channels do not provide them |
+### Create and activate
 
-Using both tools in one environment is normal in Conda workflows, but it helps to install Conda packages first and use `pip` only for packages that Conda does not provide. That keeps Conda's package records in `conda-meta/` as complete as possible before PyPI packages are layered on top.
+The examples below show three ways to get to a working project setup. The Conda-based paths keep the Python bindings and native binaries inside the environment, while the non-Conda path splits Python packages and system libraries across different locations.
 
-### Practical demo: one install, two models
+=== "Create from `environment.yml`"
 
-The benefit of Conda is easiest to see when a single `conda install` pulls a Python package together with the compiled C and C++ libraries it depends on. The walkthrough below uses one of the project's showcase packages: `opencv` from `conda-forge`.
-
-The commands differ most clearly when shown side by side:
-
-=== "With `Conda`"
-
-    Create the environment and install Python and OpenCV from `conda-forge` in one step:
+    Create the environment from the section folder:
 
     ```bash
-    conda create -y -n demo -c conda-forge python=3.12 opencv
+    conda env create -f environment.yml
     ```
 
-    Conda solves the environment, downloads the packages, and installs everything under `/opt/conda/envs/demo` (or `~/miniconda3/envs/demo` for a user install).
+    > This command creates the environment and installs the listed packages.
 
-=== "Without `Conda`"
-
-    Update the system package index first:
+    Activate the environment:
 
     ```bash
+    conda activate image-processor
+    ```
+
+    Filesystem excerpt:
+
+    ```text
+    ~/
+    ├── miniconda3/envs/image-processor/    # environment, managed by conda
+    │   ├── bin/python
+    │   ├── lib/python3.12/site-packages/
+    │   │   ├── cv2/
+    │   │   ├── numpy/
+    │   │   ├── ruff/
+    │   │   └── karva/
+    │   └── lib/libopencv_*.so
+    └── image-processor/                    # project
+        ├── environment.yml
+        └── src/image_processor/
+    ```
+    
+=== "Create from scratch"
+
+    Create the same Conda-managed environment defined in `environment.yml`:
+
+    ```bash
+    conda create -y -n image-processor -c conda-forge \
+        python=3.12 \
+        numpy=2.1.3 \
+        opencv=4.10.0 \
+        pip
+    ```
+
+    Activate the environment:
+
+    ```bash
+    conda activate image-processor
+    ```
+
+    Install the PyPI-only tools:
+
+    ```bash
+    (image-processor) $ python -m pip install "ruff>=0.15.12" "karva>=0.0.1a5"
+    ```
+
+    Snapshot the environment requirements back to YAML:
+
+    ```bash
+    (image-processor) $ conda env export --from-history > environment.yml
+    ```
+
+    Filesystem excerpt:
+
+    ```text
+    ~/
+    ├── miniconda3/envs/image-processor/    # environment, managed by conda
+    │   ├── bin/python
+    │   ├── lib/python3.12/site-packages/
+    │   │   ├── cv2/
+    │   │   ├── numpy/
+    │   │   ├── ruff/
+    │   │   └── karva/
+    │   └── lib/libopencv_*.so
+    └── image-processor/                    # project
+        ├── environment.yml
+        └── src/image_processor/
+    ```
+
+=== "Without `conda`"
+
+    On Ubuntu-based systems where Python 3.12 is not yet available, add an external package source first:
+
+    ```bash
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
     sudo apt-get update
     ```
 
-    Install the system libraries OpenCV depends on:
+    Install Python 3.12, `venv` support, and the system libraries OpenCV depends on:
 
     ```bash
-    sudo apt-get install -y python3.12 python3.12-venv libopencv-dev libjpeg-dev libpng-dev libtiff-dev
+    sudo apt-get install -y \
+        python3.12 \
+        python3.12-venv \
+        libopencv-dev \
+        libjpeg-dev \
+        libpng-dev \
+        libtiff-dev
     ```
 
     Create and activate a virtual environment:
@@ -216,112 +361,37 @@ The commands differ most clearly when shown side by side:
 
     This split workflow leaves Python packages in `.venv/` while the native libraries stay under `/usr/`.
 
-#### Filesystem tree after the install
+    Filesystem excerpt:
 
-After that single command, the new environment contains the Python interpreter, the `cv2` Python bindings, the OpenCV C++ shared libraries, and the image-format native libraries OpenCV links against. The relevant parts of the tree look like this:
+    ```text
+    ~/
+    └── image-processor/                     # project
+        ├── .venv/                           # project environment, managed by venv/pip
+        │   ├── bin/python
+        │   └── lib/python3.12/site-packages/
+        │       └── cv2/
+        └── src/image_processor/
 
-```text
-/opt/conda/envs/demo/
-├── bin/
-│   └── python3.12
-├── conda-meta/
-├── lib/
-│   ├── libjpeg.so -> libjpeg.so.8.3.2
-│   ├── libjpeg.so.8
-│   ├── libjpeg.so.8.3.2
-│   ├── libpng16.so -> libpng16.so.16.58.0
-│   ├── libpng16.so.16
-│   ├── libpng16.so.16.58.0
-│   ├── libtiff.so -> libtiff.so.6.2.0
-│   ├── libtiff.so.6
-│   ├── libtiff.so.6.2.0
-│   ├── libopencv_core.so -> libopencv_core.so.413
-│   ├── libopencv_core.so.4.13.0
-│   ├── libopencv_core.so.413
-│   ├── libopencv_imgproc.so
-│   ├── libopencv_imgcodecs.so
-│   ├── libopencv_highgui.so
-│   ├── ... (about 56 libopencv_*.so libraries in total)
-│   └── python3.12/
-│       └── site-packages/
-│           ├── cv2/
-│           │   ├── __init__.py
-│           │   ├── __init__.pyi
-│           │   ├── config.py
-│           │   ├── config-3.12.py
-│           │   └── python-3.12/
-│           │       └── cv2.cpython-312-x86_64-linux-gnu.so
-│           └── numpy/
-└── share/
-```
-
-The Python `cv2` extension under `site-packages/cv2/python-3.12/` resolves its OpenCV symbols against the `libopencv_*.so` files that sit two directories above it. Both halves were installed by the same command, into the same environment prefix.
-
-By contrast, a plain `venv` plus `pip` workflow does not install native libraries. The Python wheel for OpenCV needs the system to provide the matching C and C++ libraries, so the resulting layout is split across the host and the project:
-
-```text
-/usr/                                 # system, managed by apt
-├── include/opencv4/
-├── lib/x86_64-linux-gnu/
-│   ├── libjpeg.so*
-│   ├── libpng16.so*
-│   ├── libtiff.so*
-│   └── libopencv_*.so*
-└── bin/python3.12
-
-.venv/                                # project, managed by pip
-└── lib/python3.12/site-packages/
-    └── cv2/
-        ├── __init__.py
-        └── cv2.abi3.so               # bundled or links to /usr/lib/...
-```
-
-Two package managers now own different parts of the same dependency. `apt` manages the C and C++ libraries on the host, `pip` manages the Python bindings inside the project. Reproducing that combination on another machine means matching both the system package versions and the PyPI package versions.
-
-## Workflow
-
-### Create and activate
-
-Create a fresh environment with Python and `pip`:
-
-```bash
-conda create -y -n fresh-env python=3.12 pip
-```
-
-Create the environment from the section folder:
-
-```bash
-conda env create -f environment.yml
-```
-
-Activate the environment:
-
-```bash
-conda activate image-processor
-```
+    /usr/                                 # OS filesystem
+    ├── bin/python3.12
+    ├── include/opencv4/
+    └── lib/x86_64-linux-gnu/libopencv_*.so*
+    ```
 
 ### Add packages
 
-=== "Conda channel"
+Ensure that the dedicated Conda environment is active (see [Create and activate](#create-and-activate)).
 
-    Add a package from a Conda channel:
-
-    ```bash
-    conda install -c conda-forge <package>
-    ```
-
-=== "PyPI package"
-
-    Add a package from PyPI when it is not available from your chosen Conda channels:
-
-    ```bash
-    python -m pip install <package>
-    ```
-
-Snapshot the environment requirements back to YAML:
+Add a package from a Conda channel:
 
 ```bash
-conda env export --from-history > environment.yml
+(image-processor) $ conda install -c conda-forge <package>
+```
+
+Add a package from PyPI when it is not available from your chosen Conda channels:
+
+```bash
+(image-processor) $ python -m pip install <package>
 ```
 
 ## Inspection
@@ -338,9 +408,8 @@ List all Conda environments:
 conda env list
 ```
 
-Show the active interpreter inside the Conda environment:
+After activation, the environment's Python becomes the first interpreter on `PATH`, and imports resolve from the environment-specific package directory under the [Conda prefix](#environment-layout) instead of from the [project tree](#environment-definition-environmentyml). Show the active interpreter inside the Conda environment:
 
 ```bash
-python3 -c "import sys; print(sys.prefix); print(sys.executable)"
+(image-processor) $ python -c "import sys; print(sys.prefix); print(sys.executable)"
 ```
-

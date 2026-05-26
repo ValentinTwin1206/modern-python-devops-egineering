@@ -22,21 +22,20 @@ npm install -g @devcontainers/cli
 Run it without a global install:
 
 ```bash
-npx @devcontainers/cli up --workspace-folder chapter-01/section-05
+npx @devcontainers/cli up --workspace-folder chapter-01/section-04
 ```
 
 ## Chapter 1: Development Environments
 
 This chapter compares common environment-management approaches, including
-system-level Python, `venv`, `conda`, `pipenv`, and Dev Containers.
+system-level Python, `venv`, `conda`, and Dev Containers.
 
 | Section | Topic | Focus | Details |
 | ------- | ----- | ----- | ------- |
-| [section-01](./chapter-01/section-01/README.md) | Python system environment | APT-managed Linux Python, `PATH`, `sys.path`, and system vs user installs | [README](./chapter-01/section-01/README.md) |
+| [section-01](./chapter-01/section-01/README.md) | Python system environment | APT-managed Linux Python with a `systemd.journal` admin CLI, `PATH`, `sys.path`, and system vs user installs | [README](./chapter-01/section-01/README.md) |
 | [section-02](./chapter-01/section-02/README.md) | Python `venv` environments | standard-library virtual environments | [README](./chapter-01/section-02/README.md) |
 | [section-03](./chapter-01/section-03/README.md) | Python `conda` environments | interpreter and non-Python dependency management | [README](./chapter-01/section-03/README.md) |
-| [section-04](./chapter-01/section-04/README.md) | Python `pipenv` environments | lockfile-based application environments | [README](./chapter-01/section-04/README.md) |
-| [section-05](./chapter-01/section-05/README.md) | Python dev containers | VS Code Dev Containers, multiple runtimes, and a Nuitka binary container | [README](./chapter-01/section-05/README.md) |
+| [section-04](./chapter-01/section-04/README.md) | Python dev containers | VS Code Dev Containers, multiple runtimes, and a Nuitka binary container | [README](./chapter-01/section-04/README.md) |
 
 ## Chapter 2: Python Project Configuration
 

@@ -1,134 +1,297 @@
-# Python `Pipenv` environments
+# Python Dev Containers
 
-This page covers Pipenv, an application-oriented workflow tool that sits on top of `virtualenv` and `pip`. It is not just a classical environment tool, and it is not a pure package manager either: it combines environment creation, dependency resolution, package installation, and a lockfile into one workflow.
+This page explains how a Dev Container turns a Python project environment into a complete editor-backed development environment.
 
-## FastAPI CRUD Project
+## Applied Project
 
 ### Project Setup
 
-The [FastAPI CRUD Project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/README.md) is a small [FastAPI](https://fastapi.tiangolo.com/) service that uses [Pydantic](https://docs.pydantic.dev/) and [uvicorn](https://www.uvicorn.org/) for the application stack, with [Karva](https://matthewmckee4.github.io/karva/) and [Ruff](https://docs.astral.sh/ruff/) as development tools. It is a natural fit for [Pipenv](https://pipenv.pypa.io/en/latest/) because a committed `Pipfile.lock` gives every developer and every container the same dependency graph.
+The applied project is a small image-processing CLI called `Pixelpack Project`. It is built on [Pillow](https://pillow.readthedocs.io/) and [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
 
-| Component            | Description |
-| -------------------- | ----------- |
-| [`src/fastapi_crud/main.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/src/fastapi_crud/main.py) | This module defines the FastAPI app, the Pydantic `Item` model, and the four CRUD endpoints. It is intentionally small so the focus stays on the dependency-management workflow around it. |
-| [`Pipfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/Pipfile) | This file declares the direct runtime (`fastapi`, `pydantic`, `uvicorn`) and development dependencies for the project. It is the human-edited source of truth that Pipenv resolves into a locked dependency graph. |
-| [`Pipfile.lock`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/Pipfile.lock) | This file stores the fully resolved dependency graph with exact versions and hashes. It is what makes the FastAPI service reproducible across machines and containers. |
-| [`Dockerfile.devEnv`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/Dockerfile.devEnv) | This development image is based on `python:3.12-slim`, installs Pipenv, and runs `pipenv install --deploy --dev` against the lockfile. It gives you a pre-configured container with the FastAPI runtime and dev tools ready to use. |
-| [`Dockerfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/Dockerfile) | This deployment image builds the project wheel and runs it through the locked Pipenv environment, exposing port 8080 for uvicorn. It connects Pipenv's development workflow to a reproducible container build. |
-| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/pyproject.toml) | This file contains the Python package metadata used during wheel builds. It complements the Pipenv files, which focus on environment management rather than package metadata. |
+### Run the Project
 
-### Run the project
+Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/README.md#project-components) section of the section README.
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-01/section-04/README.md).
+## Dev Containers environment model
 
-## `Pipenv` environment model
+Dev Containers emerged in VS Code workflows in 2019 to make full development machines reproducible, not just Python package sets. A `venv` isolates a project-local Python interpreter and its Python packages, and Conda can extend that boundary to non-Python runtime packages as well. By contrast, a Dev Container declares the operating system image, system packages, language runtimes, editor extensions, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one project environment to the entire development machine.
 
-Pipenv first appeared in 2017 to combine virtual environment management and lockfile-based dependency workflows behind one application-oriented command-line tool. 
+### When to use Dev Containers?
 
-It keeps direct dependencies in `Pipfile` and the resolved tree in `Pipfile.lock`, but the environment itself is still a virtual environment created through `virtualenv` and populated through `pip`. Setting `PIPENV_VENV_IN_PROJECT=1` places that managed environment at `.venv/` next to the project, which keeps the location obvious during inspection.
+As described in the [Dev Containers environment model](#dev-containers-environment-model), Dev Containers are a strong fit for projects that need more than Python package isolation. Examples include projects with native extensions that need a C toolchain and matching system libraries, compilation steps such as Nuitka or Cython, database clients, browser tooling, or multiple language runtimes.
 
-### When to use `Pipenv`?
-
-Because it combines environment creation, dependency resolution, and a committed lockfile in one workflow, Pipenv is a good fit for web services, small APIs, scheduled jobs, and internal tools that need deterministic installs across laptops, CI, and containers.
+| Capability | `venv` | Conda | Dev Containers |
+| ---------- | ------ | ----- | -------------- |
+| Keep project packages separate from the system Python and other projects | ✅ | ✅ | ✅ |
+| Guarantee every developer uses the exact same Python interpreter version | ❌ | ✅ | ✅ |
+| Install non-Python runtime packages inside the environment boundary | ❌ | ✅ | ✅ |
+| Install OS-level libraries via `apt` or similar inside the environment boundary | ❌ | ❌ | ✅ |
+| Ship tools such as `uv`, `ruff`, or compiler dependencies inside the environment boundary | ❌ | Limited | ✅ |
+| Automatically install editor extensions and apply workspace settings for every developer | ❌ | ❌ | ✅ |
+| Run the same OS, Python, and toolchain locally as the CI pipeline | ❌ | ❌ | ✅ |
 
 ### Tradeoffs
 
 #### Pros
 
-- ✅ Real lockfile with hashes for reproducible application installs, which is what you want for a deployable web service like this FastAPI app.
-- ✅ Clear split between runtime (`fastapi`, `pydantic`, `uvicorn`) and development (`ruff`, `karva`) dependencies.
-- ✅ Single workflow for creating, syncing, and running the project environment, including `pipenv install --deploy` for fail-fast container builds.
+- ✅ Captures the operating system, tools, editor integration, and project setup in one reproducible boundary.
+- ✅ Keeps host machine dependencies to a minimum while still giving a full development environment.
+- ✅ Makes native build toolchains and multi-runtime setups such as CPython plus PyPy straightforward.
 
 #### Cons
 
-- ⚠️ Adds another tool on top of Python and `pip`.
-- ⚠️ Dependency solving can be slower than plain `pip` workflows.
-- ⚠️ Less common in newer projects than `uv`, Poetry, or PDM.
+- ⚠️ Heavier than plain `venv` or Conda workflows because the boundary is an entire containerized machine.
+- ⚠️ Depends on container tooling and editor integration, which adds setup overhead.
+- ⚠️ Build, startup, and image maintenance costs are higher than interpreter-only workflows.
+- ⚠️ Centered on Linux containers, so Windows environments are not supported.
 
-### Install `Pipenv`
+### Install Dev Containers
 
-Pipenv is not bundled with Python. Install it into an existing Python environment with `pip`, or install it as a standalone tool with `uv`.
+#### System requirements
 
-=== "pip"
+The Dev Containers CLI runs on Linux, macOS, and Windows. In typical Python workflows, it works with Linux containers provided by a supported container runtime such as Docker or Podman.
 
-	Install Pipenv into the active Python interpreter:
+On Linux, those containers run directly on the host kernel. On macOS and Windows, Docker Desktop or Podman provides the Linux-container backend.
+
+#### Install the Dev Containers CLI
+
+=== "Linux (Debian-based)"
+
+	Use the official install script. It downloads the Dev Containers CLI together with a bundled Node.js runtime, so no separate `node` or `npm` installation is required:
 
 	```bash
-	pip install pipenv
+	curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/main/scripts/install.sh | sh
+	export PATH="$HOME/.devcontainers/bin:$PATH"
 	```
 
-=== "uv"
-
-	Install Pipenv as an isolated command-line tool:
+	Check that the CLI is available:
 
 	```bash
-	uv tool install pipenv
+	devcontainer --version
 	```
 
-### Dependency files
+=== "Windows"
 
-The dependency declaration uses TOML and pins each direct dependency the FastAPI service needs at runtime:
+	Install Node.js LTS with Windows Package Manager, then install the Dev Containers CLI with npm:
 
-```toml
-[packages]
-fastapi = "==0.115.5"
-pydantic = "==2.9.2"
-uvicorn = "==0.32.1"
+	```powershell
+	winget install OpenJS.NodeJS.LTS
+	npm install -g @devcontainers/cli
+	```
 
-[dev-packages]
-karva = ">=0.0.1a5"
-ruff = ">=0.15.12"
+	Check that the CLI is available:
+
+	```powershell
+	devcontainer --version
+	```
+
+=== "macOS"
+
+	Use the official install script. It supports both Intel and Apple Silicon Macs and installs the Dev Containers CLI together with a bundled Node.js runtime:
+
+	```bash
+	curl -fsSL https://raw.githubusercontent.com/devcontainers/cli/main/scripts/install.sh | sh
+	export PATH="$HOME/.devcontainers/bin:$PATH"
+	```
+
+	Check that the CLI is available:
+
+	```bash
+	devcontainer --version
+	```
+
+### Environment layout
+
+#### Project structure
+
+A Dev Container is configured through a `.devcontainer/` folder at the repository root. The required file is `devcontainer.json`, while `Dockerfile` and helper scripts such as `postCreateCommand.sh` are optional and useful when the project needs system-level setup or more complex lifecycle commands.
+
+```text
+project-root/
+├── .devcontainer/
+│   ├── devcontainer.json
+│   ├── Dockerfile            # optional
+│   └── postCreateCommand.sh  # optional
+├── src/
+├── tests/
+└── pyproject.toml
 ```
 
-`Pipfile.lock` records the resolved graph (FastAPI plus its transitive dependencies such as Starlette and `anyio`) with hashes, and is the file used during reproducible installs.
+#### DevContainer configuration
 
-| File             | Purpose                                                           |
-| ---------------- | ----------------------------------------------------------------- |
-| `Pipfile`        | Direct runtime and development dependency declarations            |
-| `Pipfile.lock`   | Fully resolved dependency graph with hashes                       |
-| `.venv/`         | The managed project-local virtual environment                     |
+The `devcontainer.json` file is the central configuration file. It tells the IDE or CLI how to build and start the development container for the applied project.
+
+```json
+{
+	"name": "Python Dev Containers",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+	"workspaceFolder": "/workspaces/section-04",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"charliermarsh.ruff"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+				"python.terminal.activateEnvironment": true,
+				"ruff.nativeServer": "on"
+			}
+		}
+	},
+	"postCreateCommand": "uv sync --group dev",
+	"remoteUser": "vscode"
+}
+```
+
+- `name`: labels the development container as `Python Dev Containers`.
+- `build`: tells Dev Containers to build the environment from the local `Dockerfile` instead of pulling a prebuilt image directly.
+- `build.dockerfile`: points to `Dockerfile`; see [Container image](#container-image).
+- `build.context`: sets the build context to the project root relative to `.devcontainer/`.
+- `workspaceFolder`: mounts the project into `/workspaces/section-04` inside the container.
+- `customizations.vscode.extensions`: installs the Python, Pylance, and Ruff extensions in VS Code.
+- `customizations.vscode.settings`: sets the default interpreter, enables terminal activation for the project environment, and turns on Ruff's native server.
+- `postCreateCommand`: runs `uv sync --group dev` after the workspace has been mounted; see [Lifecycle commands](#lifecycle-commands).
+- `remoteUser`: runs the development session as the built-in `vscode` user.
+
+#### Container image
+
+The `Dockerfile` defines the content of the container image, such as preinstalled system tools, users, shells, and permissions, while `devcontainer.json` controls how the IDE integrates with that image and which lifecycle commands to run.
+
+```dockerfile
+# DEVELOPMENT IMAGE:
+#   - uses the Ubuntu 24.04 Dev Containers base image
+#   - installs CPython, PyPy, uv, and Nuitka tooling
+#   - runs editor terminals and lifecycle commands as vscode
+# # # # # # # # # # #
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+
+# Avoid interactive APT prompts during image build.
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Put user-level tools installed by uv on PATH.
+ENV PATH="/home/vscode/.local/bin:${PATH}"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# Install Python runtimes, the native tools Nuitka needs, and the system
+# libraries Pillow links against for JPEG, PNG, and zlib support.
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		build-essential \
+		ca-certificates \
+		curl \
+		git \
+		libjpeg-dev \
+		libpng-dev \
+		patchelf \
+		pypy3 \
+		pypy3-venv \
+		python3 \
+		python3-dev \
+		python3-pip \
+		python3-venv \
+		zlib1g-dev \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install user-level tools as the same account VS Code uses.
+USER vscode
+
+# Install Nuitka as a user-level uv tool.
+RUN uv tool install nuitka
+
+# Keep the final image user aligned with devcontainer.json.
+USER vscode
+```
+
+#### Microsoft's DevContainer base images
+
+Microsoft publishes purpose-built base images at [mcr.microsoft.com/devcontainers](https://mcr.microsoft.com/en-us/catalog?search=devcontainers) for common languages and stacks such as Python, JavaScript, and Rust. Unlike general-purpose container images, these Dev Container images are prepared for development workflows.
+
+| Feature / Aspect | `python:3.12` | `mcr.microsoft.com/devcontainers/python:3.12` |
+| ---------------- | ------------- | ---------------------------------------------- |
+| Default user | `root` | `vscode` with `sudo` access |
+| Non-root workflow | Manual setup required | Ready out of the box |
+| Preinstalled tools | Minimal | Extensive |
+| Python tooling | `pip` only | `pip`, `pipx`, and common development tools |
+| Shell | `sh`, `bash` | `sh`, `bash`, `zsh` |
+| VS Code Server support | Manual setup required | Works out of the box |
+
+#### Lifecycle commands
+
+Dev Containers support several lifecycle hooks that run at different points in the environment startup flow:
+
+```mermaid
+flowchart TD
+	A[Container created] --> B[Workspace mounted]
+	B --> C[postCreateCommand]
+	C --> D[Container starts]
+	D --> E[postStartCommand]
+	E --> F[IDE attaches to container]
+	F --> G[postAttachCommand]
+	D --> H[Container restarts]
+	H --> E
+	F --> I[IDE reattaches]
+	I --> G
+```
+
+- `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to install project dependencies with commands such as `uv sync --group dev` or `npm install`.
+- `postStartCommand`: runs each time the container starts, including restarts.
+- `postAttachCommand`: runs each time the IDE attaches to the running container, which makes it useful for editor-session setup tasks.
+
+!!! warning
+
+	Installing dependencies inside the `Dockerfile` instead would not work well for the project workspace itself, because the `Dockerfile` builds the image before the repository is mounted. When the workspace is mounted into `workspaceFolder`, it overlays that path in the container filesystem. Running dependency installation in `postCreateCommand` ensures it happens after the mount and therefore targets the real project tree.
 
 ## Workflow
 
-### Create and use the environment
+### Create and start
 
-Create the environment from the section folder:
+Start the environment from a shell with the globally installed CLI:
 
 ```bash
-pipenv install
+devcontainer up --workspace-folder chapter-01/section-04
 ```
 
-Open a shell inside the environment:
+After the container has started, activate the virtual environment created by `uv`:
+inside it:
 
 ```bash
-pipenv shell
+vscode@container:/workspaces/section-04$ source .venv/bin/activate
 ```
 
-### Manage dependencies
-
-Add a runtime dependency:
-
+Then you can run the applied project:
+ 
 ```bash
-pipenv install <package>
-```
-
-Add a development-only dependency:
-
-```bash
-pipenv install --dev <package>
-```
-
-Reinstall the exact lockfile contents:
-
-```bash
-pipenv sync
+(.venv) vscode@container:/workspaces/section-04$ pixelpack --help
 ```
 
 ## Inspection
 
-Show the active Python prefix:
+Show the workspace location inside the running container:
 
 ```bash
-python -c "import sys; print(sys.prefix)"
+pwd
 ```
 
+Show the current user inside the container:
+
+```bash
+whoami
+```
+
+Show the default Python interpreter inside the container:
+
+```bash
+which python3
+```
+
+Show the active container configuration file:
+
+```bash
+cat .devcontainer/devcontainer.json
+```
