@@ -51,8 +51,6 @@ As described in the [Dev Containers environment model](#dev-containers-environme
 
 The Dev Containers CLI runs on Linux, macOS, and Windows. In typical Python workflows, it works with Linux containers provided by a supported container runtime such as Docker or Podman.
 
-On Linux, those containers run directly on the host kernel. On macOS and Windows, Docker Desktop or Podman provides the Linux-container backend.
-
 #### Install the Dev Containers CLI
 
 === "Linux (Debian-based)"
@@ -226,18 +224,18 @@ Microsoft publishes purpose-built base images at [mcr.microsoft.com/devcontainer
 Dev Containers support several lifecycle hooks that run at different points in the environment startup flow:
 
 ```mermaid
-flowchart TD
-	A[Container created] --> B[Workspace mounted]
+flowchart LR
+	A[Create container] --> B[Mount workspace]
 	B --> C[postCreateCommand]
-	C --> D[Container starts]
+	C --> D[Start container]
 	D --> E[postStartCommand]
-	E --> F[IDE attaches to container]
+	E --> F[Attach IDE]
 	F --> G[postAttachCommand]
-	D --> H[Container restarts]
-	H --> E
-	F --> I[IDE reattaches]
-	I --> G
+	classDef lifecycle fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#0f172a;
+	class A,B,C,D,E,F,G lifecycle;
 ```
+
+On later restarts, `postStartCommand` runs again, and `postAttachCommand` runs again whenever the IDE reconnects.
 
 - `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to install project dependencies with commands such as `uv sync --group dev` or `npm install`.
 - `postStartCommand`: runs each time the container starts, including restarts.
@@ -265,7 +263,7 @@ vscode@container:/workspaces/section-04$ source .venv/bin/activate
 ```
 
 Then you can run the applied project:
- 
+
 ```bash
 (.venv) vscode@container:/workspaces/section-04$ pixelpack --help
 ```

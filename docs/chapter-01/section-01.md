@@ -187,15 +187,8 @@ A Python installation includes the CPython interpreter, standard library modules
 
 ### Package installation targets
 
-Python packages can land in [operating-system](#system-target), [administrator](#local-administrator-target), or [user](#user-target) locations. A package can be used with an `import` statement when it is installed into a directory that the active interpreter searches on `sys.path`. The target decides who can import the package and which projects are affected by future upgrades.
+Python packages can land in [operating-system](#system-target), [administrator](#local-administrator-target), or [user](#user-target) locations. A package can be used with an `import` statement when it is installed into a directory that the active interpreter searches on `sys.path`, and Python resolves that import from the first matching package directory on that search path. The target therefore decides who can import the package and which projects are affected by future upgrades. The [PATH and import path](#path-and-import-path) inspection commands show how to inspect that search path.
 
-```python
-import systemd.journal
-
-print(systemd.journal.__file__)
-```
-
-Python chooses the first matching module or package directory on `sys.path`, so the exact imported file depends on where the package was installed. The [PATH and import path](#path-and-import-path) inspection commands show how to check that search path.
 
 #### System target
 
@@ -213,10 +206,8 @@ Python chooses the first matching module or package directory on `sys.path`, so 
 
     Import it with the system interpreter:
 
-    ```python
-    import systemd.journal
-
-    print(systemd.journal.__file__)
+    ```bash
+    python3 -c "import systemd.journal; print(systemd.journal.__file__)"
     ```
 
 === "Windows"
