@@ -49,7 +49,7 @@ As described in the [Dev Containers environment model](#dev-containers-environme
 
 #### System requirements
 
-The Dev Containers CLI runs on Linux, macOS, and Windows. In typical Python workflows, it works with Linux containers provided by a supported container runtime such as Docker or Podman.
+The Dev Containers CLI runs on Linux, macOS, and Windows. In typical Python workflows, it works with Linux containers provided by a supported container runtime such as Docker or Podman. The following examples use the Dev Containers CLI because its installation and usage are easier to reproduce in documentation than a full IDE setup with the Dev Containers extension, and some editor-driven steps cannot be performed entirely from a shell or other CLI-only environment.
 
 #### Install the Dev Containers CLI
 
@@ -235,15 +235,9 @@ flowchart LR
 	class A,B,C,D,E,F,G lifecycle;
 ```
 
-On later restarts, `postStartCommand` runs again, and `postAttachCommand` runs again whenever the IDE reconnects.
-
-- `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to install project dependencies with commands such as `uv sync --group dev` or `npm install`.
-- `postStartCommand`: runs each time the container starts, including restarts.
-- `postAttachCommand`: runs each time the IDE attaches to the running container, which makes it useful for editor-session setup tasks.
-
-!!! warning
-
-	Installing dependencies inside the `Dockerfile` instead would not work well for the project workspace itself, because the `Dockerfile` builds the image before the repository is mounted. When the workspace is mounted into `workspaceFolder`, it overlays that path in the container filesystem. Running dependency installation in `postCreateCommand` ensures it happens after the mount and therefore targets the real project tree.
+- `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to install project dependencies with commands such as `uv sync --group dev` or `npm install`. ⚠️ **Do not install project dependencies in the `Dockerfile`**: the image is built before the repository is mounted, so the workspace mount would hide those files.
+- `postStartCommand`: runs each time the container starts, including later restarts.
+- `postAttachCommand`: runs each time the IDE attaches to the running container, including later reconnects, which makes it useful for editor-session setup tasks.
 
 ## Workflow
 

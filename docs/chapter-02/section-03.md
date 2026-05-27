@@ -1,20 +1,49 @@
-# Section 03: Python 2.4 and early `setuptools`
+# Python 2.4 and early `setuptools`
 
-This page covers the third packaging snapshot in the Historic Calculator series. The example targets Python 2.4, released on November 30, 2004, with setuptools 0.6c11. This is the first section where dependency declarations are actively enforced at install time.
+Python 2.4 was released in 2004, just as early setuptools began changing packaging from passive metadata into active installation behavior. The distinct shift was `install_requires`: dependencies could now be checked during installation instead of failing later as runtime imports.
 
-## Used Project
+## Applied Project
 
-| Component            | Description |
-| -------------------- | ----------- |
-| Historic Calculator  | Historic Calculator is the example package used to show the first real dependency-aware install workflow in the chapter. This snapshot demonstrates what changed when setuptools began enforcing requirements. |
-| `setup.py`           | This `setup.py` file is driven by early setuptools rather than plain `distutils`. It introduces `install_requires` and entry-point declarations that make installation behavior more active. |
-| Numeric              | Numeric is the runtime dependency used by the project in this era. Setuptools checks for it during installation, which is a meaningful step beyond metadata-only declarations. |
-| `pkg_resources`      | `pkg_resources` is the setuptools runtime API for working with installed distributions. It matters here because it supports the requirement checks and installed-package metadata that setuptools relies on. |
-| `console_scripts`    | `console_scripts` is the entry-point mechanism introduced by setuptools. It registers `hist_calc` on `PATH` without shipping a manually maintained script file. |
+### Project Setup
+
+The applied project is version 3.0.0 of Historic Calculator. It still uses `setup.py`, but this snapshot switches from plain `distutils` to early setuptools so the package can declare `install_requires` and register the `hist_calc` command through `console_scripts`.
+
+Numeric 24.0b2 remains the runtime component for array-style calculations, but setuptools expects it to be registered as an installed distribution. That makes `pkg_resources` important: it checks installed package metadata, not just importable files, before allowing Historic Calculator to install.
+
+!!! info "Historical development image"
+
+    `Dockerfile.devEnv` builds a containerized approximation of the Python 2.4 and early setuptools development environment. It provides Python 2.4, setuptools 0.6c11, and the tooling needed to explore dependency-aware installation without changing the host machine.
+
+### Packaging Matrix
+
+| Field            | Value                                              |
+| ---------------- | -------------------------------------------------- |
+| Project version  | 3.0.0                                              |
+| Python version   | 2.4                                                |
+| Numeric          | 24.0b2, resolved at install                        |
+| setuptools       | 0.6c11, bootstrap dependency                       |
+| Layout           | `setup.py` with setuptools                         |
+| Distribution     | sdist or `bdist_egg`, no wheels                    |
+| Console scripts  | `console_scripts` entry points                     |
 
 ## Background
 
-Setuptools introduces `install_requires=`. During `python setup.py install`, setuptools checks whether the current Python environment already contains a registered distribution that satisfies the declared requirement. A missing dependency now fails at install time instead of surfacing later as an `ImportError`.
+This project belongs to the early setuptools period around Python 2.4, released in 2004. The special change is that `install_requires=` makes dependency declarations active during installation. During `python setup.py install`, setuptools checks whether the current Python environment already contains a registered distribution that satisfies the declared requirement.
+
+The `setup.py` file records the enforceable dependency and the generated console script:
+
+```python
+setup(
+    name="historic_calculator",
+    version="3.0.0",
+    install_requires=["Numeric"],
+    entry_points={
+        "console_scripts": [
+            "hist_calc = historic_calculator.main:main_cli",
+        ],
+    },
+)
+```
 
 The check uses `pkg_resources`. It does not look for an importable file. It looks for an installed distribution recorded in `site-packages`, for example through an `.egg-info` directory or `setuptools.pth`. That is why this section's setup patches Numeric to install with setuptools instead of plain `distutils`. Without the patch, `pkg_resources.require("Numeric")` does not see the package and tries to fetch it from PyPI.
 
@@ -27,25 +56,43 @@ A working environment looks like this:
 `-- setuptools.pth
 ```
 
-## Packaging matrix
-
-| Field            | Value                                              |
-| ---------------- | -------------------------------------------------- |
-| Project version  | 3.0.0                                              |
-| Python version   | 2.4                                                |
-| Numeric          | 24.0b2, resolved at install                        |
-| setuptools       | 0.6c11, bootstrap dependency                       |
-| Layout           | `setup.py` with setuptools                         |
-| Distribution     | sdist or `bdist_egg`, no wheels                    |
-| Console scripts  | `console_scripts` entry points                     |
-
 ## Build and install
+
+### Runtime and build dependencies
+
+This snapshot needs Python 2.4, setuptools 0.6c11, and Numeric 24.0b2 registered as a setuptools distribution. Setuptools checks `install_requires=`, but it can only satisfy the requirement when Numeric is visible through installed distribution metadata.
+
+Fetch and install setuptools 0.6c11:
+
+```bash
+wget https://files.pythonhosted.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz
+tar -xzf setuptools-0.6c11.tar.gz
+cd setuptools-0.6c11 && python setup.py install
+```
+
+Fetch Numeric 24.0b2:
+
+```bash
+wget -O Numeric-24.0b2.tar.gz "https://sourceforge.net/projects/numpy/files/OldFiles/Numeric-24.0b2.tar.gz/download"
+tar -xzf Numeric-24.0b2.tar.gz
+```
+
+Patch Numeric to use setuptools, then install it:
+
+```bash
+sed -i 's/from distutils.core import setup/from setuptools import setup/' Numeric-24.0b2/setup.py
+cd Numeric-24.0b2 && python setup.py install
+```
+
+### Build the package
 
 Build the source distribution:
 
 ```bash
 python setup.py sdist
 ```
+
+### Install the package
 
 Install the package and let setuptools verify dependencies:
 
@@ -54,14 +101,6 @@ python setup.py install
 ```
 
 The install registers `hist_calc` on `PATH` through `console_scripts`, the entry point mechanism that arrived with setuptools.
-
-## Usage
-
-Run the calculator with one of `max`, `min`, `mean`, or `sum`:
-
-```bash
-hist_calc max 1,-2,4
-```
 
 ## Defensive imports
 
@@ -77,7 +116,18 @@ except ImportError:
     raise SystemExit(1)
 ```
 
-## See also
+### Run Project
 
-- The 2010 pip plus `requirements.txt` workflow in [Section 04](section-04.md).
-- Declarative metadata in `setup.cfg` in [Section 05](section-05.md).
+After installation, run the installed launcher:
+
+```bash
+hist_calc max 1,-2,4
+```
+
+Without installation, run the calculator from the source tree:
+
+```bash
+PYTHONPATH=src python -c "from historic_calculator.main import run_calculator; print run_calculator('max', '1,-2,4')"
+```
+
+Additional build and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-03/README.md).
