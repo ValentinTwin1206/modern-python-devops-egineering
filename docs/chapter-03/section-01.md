@@ -1,13 +1,10 @@
-# Dependency Management with Python
-
-
+# Common Dependency Management
 ## Dependency Management
-
 ### Dependency Hell
 
-Modern Python applications are built on top of third-party packages. A web service might use `requests` for HTTP, `pydantic` for validation, and `sqlalchemy` for database access — none of which ship with Python itself. Managing these external libraries across different developers, machines, and deployment environments is called **dependency management**.
+Modern Python applications are built on top of third-party packages that are not shipped with Python itself. Managing these external libraries across different developers, machines, and deployment environments is called **dependency management**.
 
-As covered in [Chapter 02](../chapter-02/index.md), today's standard for declaring project metadata and dependencies is `pyproject.toml`. A minimal project looks like this:
+As covered in [Chapter 02](../chapter-02/index.md), today's standard for declaring project metadata and dependencies is the `pyproject.toml`. A minimal project looks like this:
 
 ```toml
 [project]
@@ -24,7 +21,7 @@ On the surface the declarations look fine — until you look at what each librar
 
 ```
 myapp
-├── requests 2.31.0
+├── requests 2.28.0
 │   └── urllib3 >=1.21.1, <2
 └── old-sdk 1.0.0
     └── urllib3 >=2.0        ← conflict!
@@ -50,9 +47,8 @@ A **lockfile** solves this by recording the exact resolved versions of every pac
 
 ```
 # lockfile (abstract)
-requests              2.31.0    sha256:58cd2187...
-urllib3               1.26.18   sha256:34b174d6...
-certifi               2024.2.2  sha256:abc12345...
+requests              2.28.0    sha256:58cd2187...
+urllib3               2.0.0     sha256:34b174d6...
 charset-normalizer    3.3.2     sha256:def67890...
 ```
 
@@ -60,9 +56,9 @@ There is also the problem of **environment isolation**. Without it, all Python p
 
 ```
 project-a/
-└── .venv/    ← requests 2.31.0, urllib3 1.26.18
+└── .venv/    ← requests 2.28.0, urllib3 2.0.0
 project-b/
-└── .venv/    ← requests 2.28.0, urllib3 1.26.14  (independent)
+└── .venv/    ← requests 2.25.0, urllib3 1.26.14  (independent)
 ```
 
 `pyproject.toml` alone provides none of this — no lockfile generation, no guaranteed resolution across time, no environment or interpreter management. That is where dependency managers come in.
@@ -73,22 +69,35 @@ Each manager builds on `pyproject.toml` and adds the missing pieces — but not 
 
 #### pip
 
-Released in **2008**, `pip` became the standard way to install Python packages and remains bundled with every Python installation today. For a long time it was the only tool most projects needed: declare dependencies in `pyproject.toml` (or the older `setup.py`), run `pip install`, and get packages from PyPI.
+Released in **2008**, `pip` became the standard way to install Python packages and remains bundled with every Python installation today. It covers the basics but provides no lockfile generation, no virtual environment management, and no interpreter pinning. Reproducibility depends entirely on developer discipline.
 
 To get reproducible installs, developers manually maintained a `requirements.txt` file with pinned versions:
 
 ```text
 # requirements.txt
-requests==2.31.0
-urllib3==1.26.18
-certifi==2024.2.2
+requests==2.28.0
+urllib3==2.0.0
 ```
 
-This works for simple cases, but has significant gaps. The file is hand-maintained — there is no tooling to generate or verify it automatically. It captures only what the developer explicitly pins, not the full transitive graph. And `pip` installs everything into the active Python environment with no isolation, so dependencies bleed across projects.
+These two versions are already inconsistent: `requests 2.28.0` requires `urllib3<1.27`, but `urllib3==2.0.0` is pinned — `pip` will not catch this until installation. This file is hand-maintained: there is no tooling to generate or verify it automatically, and it captures only what the developer explicitly pins — not the full transitive graph.
 
-**Drawbacks:** no automatic lockfile, no virtual environment management, no interpreter pinning — reproducibility depends entirely on developer discipline.
+In **2019**, `pip` introduced `pip check`, which validates that all installed packages have their dependencies satisfied in the current environment:
 
----
+```bash
+$ pip check
+requests 2.28.0 has requirement urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0.
+```
+
+However, `pip check` only detects inconsistencies after the fact — it does not prevent them. Existing environments in an inconsistent state are not repaired automatically.
+
+With **pip 20.3** (released **2020**), `pip` gained a backtracking resolver that warns about conflicts at install time. However, it still installs the conflicting package and leaves the environment broken:
+
+```bash
+$ pip install "urllib3==2.0.0"
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
+requests 2.28.0 requires urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0 which is incompatible.
+Successfully installed urllib3-2.0.0
+```
 
 #### pipenv
 
@@ -100,26 +109,29 @@ Running `pipenv install` creates a project-scoped virtual environment automatica
 {
     "default": {
         "requests": {
-            "version": "==2.31.0",
+            "version": "==2.28.0",
             "hashes": ["sha256:58cd2187..."]
         },
         "urllib3": {
-            "version": "==1.26.18",
+            "version": "==2.0.0",
             "hashes": ["sha256:34b174d6..."]
-        },
-        "certifi": {
-            "version": "==2024.2.2",
-            "hashes": ["sha256:abc12345..."]
         }
     }
 }
 ```
 
-This solved the reproducibility and isolation problems that `pip` left open.
+In contrast, when the same conflicting packages are specified, `pipenv` refuses to lock rather than creating a broken environment:
 
-**Drawbacks:** `pipenv`'s dependency resolver was notoriously slow on larger projects, and it does not support building or publishing packages — the workflow stops at dependency management. These limitations drove adoption towards `poetry`.
+```bash
+$ pipenv install -r requirements.txt
+✘ Locking Failed!
+The conflict is caused by:
+    The user requested urllib3==2.0.0
+    requests 2.28.0 depends on urllib3<1.27 and >=1.21.1
+ERROR: ResolutionImpossible
+```
 
----
+`pipenv` solved the reproducibility and isolation problems that `pip` left open, but introduced its own limitations: its dependency resolver was notoriously slow on larger projects, and the workflow stops at dependency management — building and publishing packages are out of scope. These gaps drove adoption towards `poetry`, which aimed to cover the full project lifecycle in a single tool.
 
 #### poetry
 
@@ -128,10 +140,10 @@ Released in **2018**, `poetry` unified the entire Python project workflow — de
 ```toml
 [[package]]
 name = "requests"
-version = "2.31.0"
+version = "2.28.0"
 description = "Python HTTP for Humans."
 files = [
-    {file = "requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187..."},
+    {file = "requests-2.28.0-py3-none-any.whl", hash = "sha256:58cd2187..."},
 ]
 
 [package.dependencies]
@@ -140,82 +152,12 @@ certifi = ">=2017.4.17"
 
 [[package]]
 name = "urllib3"
-version = "1.26.18"
+version = "2.0.0"
 files = [
-    {file = "urllib3-1.26.18-py2.py3-none-any.whl", hash = "sha256:34b174d6..."},
+    {file = "urllib3-2.0.0-py3-none-any.whl", hash = "sha256:34b174d6..."},
 ]
 ```
+
+`poetry` builds a complete dependency graph before installing, resolving the full transitive tree and detecting conflicts upfront — not just for direct dependencies.
 
 **Drawbacks:** `poetry` still relies on an external tool (e.g. `pyenv`) to manage the Python interpreter itself, and its resolver — while better than `pipenv`'s — is written in Python and becomes a bottleneck on large dependency trees. These gaps motivated `uv`.
-
----
-
-#### Summary
-
-| Tool | Introduced | Lockfile | Env Isolation | Interpreter Mgmt | Full Lifecycle |
-|------|------------|:--------:|:-------------:|:----------------:|:--------------:|
-| `pip` | 2008 | ✗ | ✗ | ✗ | ✗ |
-| `pipenv` | 2017 | ✓ | ✓ | ✗ | ✗ |
-| `poetry` | 2018 | ✓ | ✓ | ✗ | ✓ |
-| `uv` | 2024 | ✓ | ✓ | ✓ | ✓ |
-
----
-
-## uv
-
-> Introduced: **2024**
-
-`uv` was built to solve the performance bottleneck that affected all previous Python dependency resolvers. Written in Rust by the team behind Ruff, it resolves and installs packages dramatically faster than `pip` or `poetry`, while maintaining a global cache that avoids redundant downloads across projects.
-
-Beyond raw speed, `uv` consolidates the entire Python project lifecycle: it manages Python interpreter versions, creates virtual environments, resolves and locks dependencies, and runs scripts — replacing `pyenv`, `virtualenv`, `pip`, and `poetry` with a single binary. It is fully compatible with `pyproject.toml` and can also consume `requirements.txt` files, making migration straightforward.
-
-| | |
-|---|---|
-| **Strengths** | Extremely fast resolution and installation, unified single-tool workflow, global dependency cache, strong CI/CD integration |
-| **Weaknesses** | Younger ecosystem, some advanced features still stabilising |
-
-**Key files:**
-
-| Filename | Description |
-|----------|-------------|
-| `pyproject.toml` | Project metadata and dependency declarations |
-| `uv.lock` | Fully resolved dependency versions and hashes for reproducible installs |
-| `.venv` | Virtual environment created and managed by `uv` |
-
-Dependencies are declared in the standard `[project]` table of `pyproject.toml`:
-
-```toml
-[project]
-name = "myapp"
-version = "1.0.0"
-requires-python = ">=3.11"
-dependencies = [
-    "requests>=2.31.0",
-]
-
-[dependency-groups]
-dev = [
-    "pytest>=7.4.0",
-]
-```
-
-`uv.lock` uses a structured TOML format and records every resolved package with its source and hashes:
-
-```toml
-version = 1
-requires-python = ">=3.11"
-
-[[package]]
-name = "requests"
-version = "2.31.0"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/.../requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187..." },
-]
-```
-
----
-
-## Summary
-
-The Python dependency management landscape evolved from manual `pip` installs and hand-maintained `requirements.txt` files, through `pipenv`'s introduction of true lockfiles, to the unified workflows of `poetry` and the high-performance tooling of `uv`. Each tool raised the bar for reproducibility and developer experience — the common thread running through all of them is `pyproject.toml` as the shared project declaration format.
