@@ -9,7 +9,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # --- Configuration -----------------------------------------------------------
-DEPS_FILE="${1:-dependencies.txt}"
+CLEAN_UP=false
+DEPS_FILE="dependencies.txt"
+for arg in "$@"; do
+  case "$arg" in
+    --clean-up) CLEAN_UP=true ;;
+    *)          DEPS_FILE="$arg" ;;
+  esac
+done
+
 MANAGERS=("pip" "uv" "poetry")
 LAYERS_BASE_DIR="layers"
 METRICS_DIR="metrics"
@@ -225,6 +233,12 @@ process_image() {
   # Write metrics
   write_metrics "$layer_output" "$tool" "$line_num" "$packages" "$image_tag" "$packages"
 
+  # Clean up layer directory if requested
+  if [[ "$CLEAN_UP" == "true" ]]; then
+    rm -rf "$layer_output"
+    ok "Layer directory removed (--clean-up)"
+  fi
+
   # Clean up image
   info "Removing image ${image_tag} ..."
   docker rmi "$image_tag" >/dev/null 2>&1 || true
@@ -264,7 +278,12 @@ main() {
 
   # Final summary
   header "Analysis Complete"
-  ok "Layer data stored in: ${LAYERS_BASE_DIR}/"
+  if [[ "$CLEAN_UP" == "true" ]]; then
+    rm -rf "$LAYERS_BASE_DIR"
+    ok "Layers directory removed (--clean-up active)"
+  else
+    ok "Layer data stored in: ${LAYERS_BASE_DIR}/"
+  fi
   ok "Metrics stored in:    ${METRICS_DIR}/"
   echo ""
   info "Results per line:"
