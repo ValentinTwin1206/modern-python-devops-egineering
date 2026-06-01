@@ -1,29 +1,8 @@
 # Modern Python Engineering
 
-This repository collects small, self-contained examples for teaching how
-modern Python projects are packaged and how their development environments
-are managed.
+Modern Python DevOps Engineering is a hands-on course repository that teaches modern Python packaging, development environments, CI/CD, containerization, and deployment through practical examples and real-world project structures.
 
-## System Requirements
-
-- Linux-based operating system. Use a Linux host or Linux VM.
-- Docker Desktop or Podman Desktop. Docker installer: https://docs.docker.com/desktop/setup/install/linux/ Podman installer: https://podman-desktop.io/downloads
-- Dev Containers CLI. Install guide: https://containers.dev/supporting#devcontainer-cli
-
-### Dev Containers CLI
-
-Install on Linux (Debian based):
-
-```bash
-sudo apt-get update && sudo apt-get install -y nodejs npm
-npm install -g @devcontainers/cli
-```
-
-Run it without a global install:
-
-```bash
-npx @devcontainers/cli up --workspace-folder chapter-01/section-04
-```
+---
 
 ## Chapter 1: Development Environments
 
@@ -36,6 +15,8 @@ system-level Python, `venv`, `conda`, and Dev Containers.
 | [section-02](./chapter-01/section-02/README.md) | Python `venv` environments | standard-library virtual environments | [README](./chapter-01/section-02/README.md) |
 | [section-03](./chapter-01/section-03/README.md) | Python `conda` environments | interpreter and non-Python dependency management | [README](./chapter-01/section-03/README.md) |
 | [section-04](./chapter-01/section-04/README.md) | Python dev containers | VS Code Dev Containers, multiple runtimes, and a Nuitka binary container | [README](./chapter-01/section-04/README.md) |
+
+---
 
 ## Chapter 2: Python Project Configuration
 
@@ -50,3 +31,22 @@ eras, from early `distutils` through a `pyproject.toml`-based workflow.
 | [section-04](./chapter-02/section-04/README.md) | 2010 | Python 2.7 | `setup.py` plus pinned `requirements.txt` | [README](./chapter-02/section-04/README.md) |
 | [section-05](./chapter-02/section-05/README.md) | 2016 | Python 3.5 / 2016 workflow | `setup.py` + `setup.cfg` + `requirements*.txt` | [README](./chapter-02/section-05/README.md) |
 | [section-06](./chapter-02/section-06/README.md) | 2022 | Python 3.11 / 2022 workflow | `pyproject.toml` only | [README](./chapter-02/section-06/README.md) |
+
+---
+
+### Chapter 3 (WIP)
+
+---
+
+### Chapter 4
+
+This chapter uses the Depsight project to show how a modern Python tool is
+structured, packaged, distributed, and delivered through CI/CD.
+
+| Section | Topic | Focus | Details |
+| ------- | ----- | ----- | ------- |
+| [section-01](./docs/chapter-04/section-01.md) | Project overview | `pyproject.toml`, entry points, dependency groups, and project metadata | [Section 01](./docs/chapter-04/section-01.md) |
+| [section-02](./docs/chapter-04/section-02.md) | Development environment | Dev Containers, reproducible tooling, and local setup | [Section 02](./docs/chapter-04/section-02.md) |
+| [section-03](./docs/chapter-04/section-03.md) | CLI architecture | Click-based CLI structure, command dispatch, and plugin-oriented design | [Section 03](./docs/chapter-04/section-03.md) |
+| [section-04](./docs/chapter-04/section-04.md) | Distribution | Wheels, PyPI publishing, and container image packaging | [Section 04](./docs/chapter-04/section-04.md) |
+| [section-05](./docs/chapter-04/section-05.md) | CI/CD | GitHub Actions pipelines, security scanning, and automated release workflows | [Section 05](./docs/chapter-04/section-05.md) |
