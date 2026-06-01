@@ -6,8 +6,7 @@ Modern Python DevOps Engineering is a hands-on course repository that teaches mo
 
 ## Chapter 1: Development Environments
 
-This chapter compares common environment-management approaches, including
-system-level Python, `venv`, `conda`, and Dev Containers.
+This chapter compares common environment-management approaches, including system-level Python, `venv`, `conda`, and Dev Containers.
 
 | Section | Topic | Focus | Details |
 | ------- | ----- | ----- | ------- |
@@ -20,8 +19,7 @@ system-level Python, `venv`, `conda`, and Dev Containers.
 
 ## Chapter 2: Python Project Configuration
 
-This chapter walks through the same small package across multiple packaging
-eras, from early `distutils` through a `pyproject.toml`-based workflow.
+This chapter walks through the same small package across multiple packaging eras, from early `distutils` through a `pyproject.toml`-based workflow.
 
 | Section | Year | Era | Packaging shape | Details |
 | ------- | ---- | --- | --------------- | ------- |
@@ -38,10 +36,9 @@ eras, from early `distutils` through a `pyproject.toml`-based workflow.
 
 ---
 
-### Chapter 4
+### Chapter 4: Real-World Project
 
-This chapter uses the Depsight project to show how a modern Python tool is
-structured, packaged, distributed, and delivered through CI/CD.
+This chapter uses the Depsight project to show how a modern Python tool is structured, packaged, distributed, and delivered through CI/CD.
 
 | Section | Topic | Focus | Details |
 | ------- | ----- | ----- | ------- |
