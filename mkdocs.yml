@@ -7,7 +7,9 @@ theme:
   language: en
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.instant
     - navigation.indexes
     - navigation.top
     - content.code.copy
