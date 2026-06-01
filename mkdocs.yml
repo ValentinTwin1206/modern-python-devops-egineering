@@ -1,4 +1,4 @@
-site_name: Modern Python Engineering
+site_name: Modern Python DevOps Engineering
 site_description: Technical course notes for Python packaging and development environments.
 docs_dir: docs
 
@@ -56,6 +56,7 @@ markdown_extensions:
       permalink: true
 
 nav:
+  - Home: index.md
   - Chapter 01:
       - chapter-01/index.md
       - Section 01: chapter-01/section-01.md
