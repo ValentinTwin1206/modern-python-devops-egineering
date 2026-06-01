@@ -24,18 +24,18 @@ Because it can keep Python, native dependencies, and interpreter version constra
 
 #### Pros
 
-- ✅ Manages Python interpreter versions as part of the environment definition.
-- ✅ Installs non-Python packages (such as the native libraries OpenCV needs) from Conda channels alongside Python packages.
-- ✅ Keeps Python bindings and native binaries together inside the same environment prefix instead of splitting them across the project and the host operating system.
-- ✅ Works well for scientific or compiled dependencies that are awkward in plain `pip` workflows, which is exactly the case for the OpenCV pipeline used here.
-- ✅ Fits teams that already use Anaconda or Conda-based tooling across platforms and languages.
+- ✅ Manages the Python version as part of the environment.
+- ✅ Installs Python and non-Python packages together from Conda channels.
+- ✅ Keeps Python bindings and native binaries in one environment prefix.
+- ✅ Works well for scientific or compiled dependencies, including this OpenCV pipeline.
+- ✅ Fits teams already using Anaconda or other Conda-based tooling.
 
 #### Cons
 
-- ⚠️ Heavier than `venv` in both tooling footprint and environment size.
-- ⚠️ Maintains a separate ecosystem alongside PyPI, which means you often need to understand both `conda` and `pip`.
+- ⚠️ Heavier than `venv` in tooling footprint and environment size.
+- ⚠️ Uses a separate ecosystem alongside PyPI, so you often need both `conda` and `pip`.
 - ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
-- ⚠️ Pure-Python projects with straightforward PyPI dependencies are often simpler with `venv` and `pip` or `uv`.
+- ⚠️ Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
 
 ### Install Conda
 

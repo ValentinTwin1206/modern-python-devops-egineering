@@ -33,7 +33,8 @@ Because it is built in, lightweight, and close to standard Python packaging, `ve
 
 - ⚠️ Does not manage Python versions by itself.
 - ⚠️ Cannot install non-Python system libraries (e.g. compiler toolchains, etc.)
-- ⚠️ Does not provide a built-in lockfile for fully reproducible installs.
+- ⚠️ Does not manage dependencies or reproducible installs by itself
+- ⚠️ Zero portability once created (paths are hardcoded)
 
 ### Install `venv`
 

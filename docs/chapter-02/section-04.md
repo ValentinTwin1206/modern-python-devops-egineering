@@ -29,28 +29,32 @@ NumPy replaces the earlier Numeric packages as the runtime component for array-s
 
 This project belongs to the Python 2.7 era that began in 2010, when `pip` and `requirements.txt` became the practical packaging workflow for many teams. PEP 477 later backported `ensurepip` to Python 2.7.9 in December 2014, so `pip` shipped with the interpreter from that release on.
 
-The idiomatic project layout pairs `setup.py` with `install_requires=` for abstract runtime dependencies and `requirements.txt` with `==` pins for concrete deployments. `pip install -r requirements.txt` resolves and installs from PyPI, and the same pinned file reproduces the dependency set across machines. What the era still lacks is environment isolation by default, a modern resolver, and a true lockfile that captures the full transitive graph with hashes.
+The idiomatic project layout pairs `setup.py` with `install_requires=` for abstract runtime dependencies and `requirements.txt` with `==` pins for concrete deployments. `pip install -r requirements.txt` resolves and installs from PyPI, and the same pinned file reproduces the dependency set across machines. What the era still lacks is environment isolation by default, a modern resolver, and a true lockfile that captures the full transitive graph with hashes:
 
-The `setup.py` file keeps the abstract runtime dependency and console-script registration:
+=== "`setup.py`"
 
-```python
-setup(
-	name="historic_calculator",
-	version="4.0.0",
-	install_requires=["numpy"],
-	entry_points={
-		"console_scripts": [
-			"hist_calc = historic_calculator.main:main_cli",
-		],
-	},
-)
-```
+	The `setup.py` file keeps the abstract runtime dependency and console-script registration:
+	
+	```python
+	setup(
+		name="historic_calculator",
+		version="4.0.0",
+		install_requires=["numpy"],
+		entry_points={
+			"console_scripts": [
+				"hist_calc = historic_calculator.main:main_cli",
+			],
+		},
+	)
+	```
 
-The concrete deployment pin lives in `requirements.txt`:
+=== "`requirements.txt`"
 
-```text
-numpy==1.9.2
-```
+	The concrete deployment pin lives in `requirements.txt`:
+
+	```text
+	numpy==1.9.2
+	```
 
 ## Build and install
 

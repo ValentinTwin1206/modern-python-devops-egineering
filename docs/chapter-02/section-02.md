@@ -27,7 +27,7 @@ Numeric 24.0b2 is the runtime component for array-style calculations. The metada
 
 ## Background
 
-This project belongs to the Python 2.3 era in 2003, when packaging metadata became more expressive but installation stayed mostly manual. PEP 314 produced Metadata 1.1, which introduced `Requires`, `Provides`, and `Obsoletes`. The metadata is stored in the package, but no tool acts on it during install.
+This project belongs to the Python 2.3 era in 2003, when packaging metadata became more expressive but installation stayed mostly manual. PEP 314 produced Metadata 1.1, which introduced `requires`, `provides`, and `obsoletes`. These keywords were purely informational metadata; no tool ever used them to download or install packages automatically; developers had to find, download, and install each dependency by hand
 
 The `setup.py` file records those metadata fields directly:
 

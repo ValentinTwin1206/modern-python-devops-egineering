@@ -28,24 +28,71 @@ The runtime components are pinned in `requirements.txt`: NumPy provides array-st
 
 ## Background
 
-This project belongs to the Python 3.5 and 2016 packaging era, when declarative configuration became normal for setuptools projects. Setuptools 30.3.0 in December 2016 added `[metadata]` and `[options]` sections in `setup.cfg`. From that moment, almost everything previously written imperatively in `setup.py` could be expressed declaratively in `setup.cfg`, and `setup.py` collapsed into a one-line `setup()` shim that legacy tools can still invoke.
+This project belongs to the Python 3.5 and 2016 packaging era, when declarative configuration became normal for setuptools projects. Setuptools 30.3.0 in December 2016 added `[metadata]` and `[options]` sections in `setup.cfg`. From that moment, almost everything previously written imperatively in `setup.py` could be expressed declaratively in `setup.cfg`, and `setup.py` collapsed into a one-line `setup()` shim that legacy tools can still invoke:
 
-The `setup.cfg` file records package metadata, dependencies, and entry points declaratively:
+=== "`setup.cfg`"
 
-```ini
-[metadata]
-name = historic_calculator
-version = 5.0.0
+	```ini
+	[metadata]
+	name = historic_calculator
+	version = 5.0.0
+	description = A tiny vector calculator using NumPy and Click.
 
-[options]
-install_requires =
-	numpy
-	click
+	[options]
+	package_dir =
+		=src
+	packages = find:
+	install_requires =
+		numpy
+		click
 
-[options.entry_points]
-console_scripts =
-	hist_calc = historic_calculator.main:cli
-```
+	[options.packages.find]
+	where = src
+	exclude =
+		tests
+		tests.*
+
+	[options.entry_points]
+	console_scripts =
+		hist_calc = historic_calculator.main:cli
+
+	[bdist_wheel]
+	universal = 0
+
+	[tool:pytest]
+	testpaths = tests
+	addopts = -ra
+	```
+
+=== "`requirements.txt`"
+
+	```text
+	numpy==1.11.3
+	click==6.6
+	```
+
+=== "`requirements-dev.txt`"
+
+	```text
+	-r requirements.txt
+	pytest==3.0.7
+	```
+
+=== "`setup.py`"
+
+	The `setup.py` was still required because `pip` internally depended on it. Consequently, removing it would cause installs to fail entirely:
+
+	```
+    $ pip install -e .
+    Obtaining file:///{PATH_TO_PROJECT_ROOT}/my-package
+    ERROR: file:///{PATH_TO_PROJECT_ROOT}/my-package does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found.
+    ```
+
+	```python
+	from setuptools import setup
+
+	setup()
+	```
 
 The dependency story splits across two files. Runtime pins live in `requirements.txt`. Development pins live in `requirements-dev.txt` and usually start with `-r requirements.txt`. Together, they were the period's accepted answer to reproducible installs while a real lockfile standard was missing.
 
