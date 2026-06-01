@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+# pip is already included in the base image; upgrade to latest
+RUN pip install --upgrade pip
+
+ARG PACKAGES=""
+
+RUN set -e && \
+    START_NS=$(date +%s%N) && \
+    pip install --no-cache-dir $PACKAGES && \
+    END_NS=$(date +%s%N) && \
+    ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 )) && \
+    printf '{"tool":"pip","packages":"%s","install_time_ms":%d,"timestamp_ns":%d}\n' \
+      "$PACKAGES" "$ELAPSED_MS" "$END_NS" > /tmp/install_metrics.json
+
+CMD ["cat", "/tmp/install_metrics.json"]
