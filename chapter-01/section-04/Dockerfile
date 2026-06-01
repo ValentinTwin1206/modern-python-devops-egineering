@@ -1,46 +1,64 @@
 # BUILD STAGE:
-#   - uses python:3.12 to build the project wheel
-#   - copies only metadata and source code needed for packaging
+#   - uses python:3.12, matching the other Chapter 1 deploy images
+#   - installs the native compiler/linker tools Nuitka needs and the
+#     image libraries Pillow links against
+#   - builds the project wheel with uv and installs that wheel into the builder
+#   - compiles the installed CLI module into a one-file executable
 # # # # # # # # # # #
 FROM python:3.12 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-WORKDIR /build
-
-# Copy packaging inputs before building the wheel.
-COPY pyproject.toml ./
-COPY src ./src
-
-RUN uv build --wheel
-
-# RUNTIME STAGE:
-#   - uses python:3.12-slim with a pipenv-managed virtual environment
-#   - installs the wheel and starts the console entry point
-# # # # # # # # # # #
-FROM python:3.12-slim AS runtime
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-# Install pipenv into the runtime interpreter.
-RUN pip install --no-cache-dir pipenv==2024.4.0
+# install system tools and Pillow build dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        libjpeg-dev \
+        libpng-dev \
+        patchelf \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the locked dependency definitions.
-COPY Pipfile Pipfile.lock ./
+# Copy project metadata first so Docker can cache dependency installation
+COPY pyproject.toml ./
+COPY src ./src
 
-ENV PIPENV_VENV_IN_PROJECT=1
-RUN pipenv install --ignore-pipfile
+# Build the wheel, then install that wheel and Nuitka into the builder.
+RUN uv build --wheel \
+    && pip install --no-cache-dir nuitka dist/*.whl
 
-ENV VIRTUAL_ENV=/app/.venv
-ENV PATH=/app/.venv/bin:$PATH
+# Compile the installed CLI into one executable.
+RUN python -m nuitka \
+        --onefile \
+        --output-dir=/out \
+        --output-filename=pixelpack \
+        --include-package=PIL \
+        --include-package=click \
+        "$(python -c 'import pixelpack.cli as m; print(m.__file__)')"
 
-COPY --from=builder /build/dist /tmp/dist
+# RUNTIME STAGE:
+#   - uses python:3.12-slim, matching the Chapter 1 deploy runtime pattern
+#   - keeps the Pillow runtime libraries available for the compiled binary
+# # # # # # # # # # #
+FROM python:3.12-slim AS runtime
 
-# Install the project wheel into the pipenv-managed environment.
-RUN /app/.venv/bin/pip install --no-cache-dir /tmp/dist/tiny_webserver-*.whl \
-    && rm -rf /tmp/dist
+ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8080
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libjpeg62-turbo \
+        libpng16-16 \
+        zlib1g \
+    && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["tiny-webserver"]
+WORKDIR /app
 
+# Copy only the compiled executable from the build stage into the runtime image.
+COPY --from=builder /out/pixelpack /usr/local/bin/pixelpack
+
+ENTRYPOINT ["/usr/local/bin/pixelpack"]

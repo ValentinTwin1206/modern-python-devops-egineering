@@ -1,16 +1,20 @@
-# Section 01: Python 1.6 and `distutils`
+# Python 1.6 and `distutils`
 
-This page covers the earliest packaging shape in the Historic Calculator series. The example targets Python 1.6, released on September 5, 2000. It uses the standard-library `distutils` module and the Numerical extension that later evolved into NumPy.
+Python 1.6 was released in 2000, when `distutils` became part of the Python standard library. It was the first standard packaging toolkit for Python projects: enough to describe files, build a source distribution, and run an install command, but not enough to resolve or install runtime dependencies.
 
-The version 1.0.0 layout is the simplest one in the chapter. There is one `setup.py` file that calls `distutils.core.setup` with `name`, `version`, and `packages`. There is no dependency declaration vocabulary, no resolver, and no package index.
+## Applied Project
 
-## Background
+### Project Setup
 
-In 2000, `distutils` graduated from a separately installable package into the Python standard library. It only describes what your package ships. It has no way to talk about what your package needs at runtime.
+The applied project is version 1.0.0 of Historic Calculator, a small command-line package used throughout Chapter 02 to compare packaging eras. In this snapshot, the project has one `setup.py` file that calls `distutils.core.setup` with the package name, version, shipped modules, and the `bin/hist_calc` script.
 
-A consumer reads this section's README, downloads the Numerical 15.3 source archive by hand, runs `python setup.py install` for it, and only then installs `historic_calculator`. A missing dependency surfaces as an `ImportError` at runtime rather than at install time.
+Numerical 15.3 is the runtime component that provides array-style calculations. It is the predecessor of NumPy, but it is not declared in a way that `distutils` can install automatically. A user must install Numerical first, then install Historic Calculator, which shows the manual dependency workflow of the time.
 
-## Packaging matrix
+!!! info "Historical development image"
+
+	`Dockerfile.devEnv` builds a containerized approximation of the Python 1.6 development environment. It compiles Python 1.6 on an old Debian base image and provides the tooling needed to explore the packaging workflow without changing the host machine.
+
+### Packaging Matrix
 
 This is the first row of the chapter-wide packaging matrix.
 
@@ -23,7 +27,44 @@ This is the first row of the chapter-wide packaging matrix.
 | Distribution     | sdist, no wheels, no eggs            |
 | Console scripts  | `scripts=` in `setup.py`             |
 
+## Background
+
+This project belongs to the Python 1.6 era in 2000, when `distutils` graduated from a separately installable package into the Python standard library. The important new idea was a standard way to describe and install a Python package, but `distutils` only describes what the package ships. It has no way to resolve or install runtime dependencies.
+
+The `setup.py` file records the shipped package and script directly:
+
+```python
+setup(
+	name="historic_calculator",
+	version="1.0.0",
+	package_dir={"": "src"},
+	packages=["historic_calculator"],
+	scripts=["bin/hist_calc"],
+)
+```
+
 ## Build and install
+
+### Runtime and build dependencies
+
+This snapshot needs Python 1.6, a working C toolchain, and Numerical 15.3 installed before the project itself. `distutils` can build and install the package, but it cannot install Numerical for you.
+
+Fetch and unpack Numerical 15.3:
+
+```bash
+wget -O Numerical-15.3.tgz "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"
+tar -xzf Numerical-15.3.tgz
+```
+
+Build and install Numerical from its own `setup.py`:
+
+```bash
+cd Numerical-15.3 && python setup.py install
+```
+
+The install copies Numeric and its compiled extensions into the Python 1.6 prefix, typically `/usr/local/lib/python1.6/site-packages/`. That target existed, but automatic dependency discovery and installation did not.
+
+### Build the package
 
 Build the source distribution:
 
@@ -31,33 +72,28 @@ Build the source distribution:
 python setup.py sdist
 ```
 
-Install the package system wide:
+### Install the package
+
+Install the package and the `hist_calc` launcher system wide:
 
 ```bash
 python setup.py install
 ```
 
-The install registers a launcher script through the `scripts=` argument in `setup.py`. Console-script entry points only arrived later, with setuptools.
+> This command registers `hist_calc` through `scripts=`. If Numerical is missing, running `hist_calc` fails with `ImportError`.
 
-## Usage
+### Run Project
 
-The package exposes one command-line tool that reduces a comma-separated vector with `max`, `min`, `mean`, or `sum`:
+After installation, run the installed launcher:
 
 ```bash
 hist_calc max 1,-2,4
 ```
 
-Use it from Python code:
+Without installation, run the source-tree launcher directly:
 
-```python
-from historic_calculator.main import run_calculator, make_vector
-
-print run_calculator("max", "1,-2,4")
-v = make_vector([1, 2, 3, 4])
-print v * 2
+```bash
+PYTHONPATH=src python bin/hist_calc max 1,-2,4
 ```
 
-## See also
-
-- Metadata-only dependency hints arriving with PEP 314 in [Section 02](section-02.md).
-- Real install-time dependency resolution with setuptools in [Section 03](section-03.md).
+Additional build and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-01/README.md).

@@ -4,11 +4,23 @@ This section shows how Python's standard-library `venv` module isolates dependen
 
 For the folder layout, activation behavior, and tradeoffs, see the [MkDocs page](../../docs/chapter-01/section-02.md).
 
+## Project Components
+
+The table below lists the main files that support the `venv` example project.
+
+| Component | Description |
+| --------- | ----------- |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image creates and activates a virtual environment at `/opt/venv`. It gives you a reproducible example of how the project and its tools are installed into an isolated interpreter. |
+| [Dockerfile](Dockerfile) | This deployment image builds the project wheel and installs it into the same virtual-environment layout. It shows how the `venv` pattern carries from interactive development into container deployment. |
+| [pyproject.toml](pyproject.toml) | This file defines the package metadata and dependencies for the example project. Those dependencies are what get installed into the virtual environment during the workflow shown below. |
+
 ## Required Developer Tools
 
 - Docker or Podman.
 - Python 3.12 with the standard-library `venv` module (for the on-host path).
 - `pip` and `uv`.
+
+## Setup Environment
 
 ### With Docker
 

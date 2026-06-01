@@ -2,6 +2,8 @@
 
 Chapter 02 follows one small package through the history of Python packaging, from early `distutils` layouts to a modern `pyproject.toml` workflow.
 
+Each section starts with an applied project setup, a packaging matrix, and background on the year or era behind that packaging style.
+
 Use the navigation on the left to move through the chapter's sections:
 
 - Section 01: Python 1.6 and `distutils`

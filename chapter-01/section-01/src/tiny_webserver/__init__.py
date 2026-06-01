@@ -1,1 +1,0 @@
-"""Tiny Bottle webserver used to inspect Python environment layout."""

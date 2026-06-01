@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "workspaceFolder": "/workspaces/section-05",
+    "workspaceFolder": "/workspaces/section-04",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -17,15 +17,6 @@
                 "python.terminal.activateEnvironment": true,
                 "ruff.nativeServer": "on"
             }
-        }
-    },
-    "forwardPorts": [
-        8080
-    ],
-    "portsAttributes": {
-        "8080": {
-            "label": "tiny-webserver",
-            "onAutoForward": "notify"
         }
     },
     "postCreateCommand": "uv sync --group dev",

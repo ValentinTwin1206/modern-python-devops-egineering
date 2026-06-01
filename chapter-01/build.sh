@@ -51,13 +51,13 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
 ${BLUE}${BOLD}EXAMPLES${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}section-02/Dockerfile.devEnv${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}section-03/Dockerfile${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}-p${RESET} ${CYAN}section-05/.devcontainer/Dockerfile${RESET} ${YELLOW}--rebuild${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}-p${RESET} ${CYAN}section-04/.devcontainer/Dockerfile${RESET} ${YELLOW}--rebuild${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"chapter-01-.*"${RESET}
 
 ${BLUE}${BOLD}DEVCONTAINER CLI${RESET}
     Install Node.js/npm:  ${CYAN}sudo apt-get update && sudo apt-get install -y nodejs npm${RESET}
     Install globally:     ${CYAN}npm install -g @devcontainers/cli${RESET}
-    Or run once with:     ${CYAN}npx @devcontainers/cli build --workspace-folder section-05${RESET}
+    Or run once with:     ${CYAN}npx @devcontainers/cli build --workspace-folder section-04${RESET}
 EOF
 }
 

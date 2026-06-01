@@ -13,13 +13,16 @@ ENV PATH="/home/vscode/.local/bin:${PATH}"
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install Python runtimes and the native tools needed by Nuitka.
+# Install Python runtimes, the native tools Nuitka needs, and the system
+# libraries Pillow links against for JPEG, PNG, and zlib support.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
         curl \
         git \
+        libjpeg-dev \
+        libpng-dev \
         patchelf \
         pypy3 \
         pypy3-venv \
@@ -27,6 +30,7 @@ RUN apt-get update \
         python3-dev \
         python3-pip \
         python3-venv \
+        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install user-level tools as the same account VS Code uses.

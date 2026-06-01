@@ -1,4 +1,4 @@
-site_name: Modern Python Engineering
+site_name: Modern Python DevOps Engineering
 site_description: Technical course notes for Python packaging and development environments.
 docs_dir: docs
 
@@ -7,7 +7,9 @@ theme:
   language: en
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.instant
     - navigation.indexes
     - navigation.top
     - content.code.copy
@@ -31,13 +33,21 @@ theme:
 extra_css:
   - assets/python-palette.css
 
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - assets/javascripts/mermaid.js
+
 markdown_extensions:
   - admonition
   - tables
   - attr_list
   - md_in_html
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
@@ -48,13 +58,13 @@ markdown_extensions:
       permalink: true
 
 nav:
+  - Home: index.md
   - Chapter 01:
       - chapter-01/index.md
       - Section 01: chapter-01/section-01.md
       - Section 02: chapter-01/section-02.md
       - Section 03: chapter-01/section-03.md
       - Section 04: chapter-01/section-04.md
-      - Section 05: chapter-01/section-05.md
   - Chapter 02:
       - chapter-02/index.md
       - Section 01: chapter-02/section-01.md
@@ -71,3 +81,10 @@ nav:
       - Section 04: chapter-03/section-04.md
       - Section 05: chapter-03/section-05.md
       - Section 06: chapter-03/section-06.md
+  - Chapter 04:
+      - chapter-04/index.md
+      - Section 01: chapter-04/section-01.md
+      - Section 02: chapter-04/section-02.md
+      - Section 03: chapter-04/section-03.md
+      - Section 04: chapter-04/section-04.md
+      - Section 05: chapter-04/section-05.md
