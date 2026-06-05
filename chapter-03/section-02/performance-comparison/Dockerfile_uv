@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+ARG PACKAGES=""
+
+RUN set -e && \
+    START_NS=$(date +%s%N) && \
+    uv pip install --system $PACKAGES && \
+    END_NS=$(date +%s%N) && \
+    ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 )) && \
+    printf '{"tool":"uv","packages":"%s","install_time_ms":%d,"timestamp_ns":%d}\n' \
+      "$PACKAGES" "$ELAPSED_MS" "$END_NS" > /tmp/install_metrics.json
+
+CMD ["cat", "/tmp/install_metrics.json"]
