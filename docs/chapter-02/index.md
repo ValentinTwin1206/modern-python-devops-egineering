@@ -18,9 +18,9 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Chapter | Summary |
 |---------|-------- |
-| [Section 01](./section-01.md) | Python 1.6 and `distutils` |
-| [Section 02](./section-02.md) | Python 2.3 and metadata-only dependency hints |
-| [Section 03](./section-03.md) | Python 2.4 and early `setuptools` |
-| [Section 04](./section-04.md) | Python 2.7 with pinned requirements files |
-| [Section 05](./section-05.md) | Python 3.5 with `setup.cfg` |
-| [Section 06](./section-06.md) | Python 3.11 with `pyproject.toml` |
+| [Section 01](./section-01.md) | Python 1.6 |
+| [Section 02](./section-02.md) | Python 2.3 |
+| [Section 03](./section-03.md) | Python 2.4 |
+| [Section 04](./section-04.md) | Python 2.7 |
+| [Section 05](./section-05.md) | Python 3.5 |
+| [Section 06](./section-06.md) | Python 3.11 |

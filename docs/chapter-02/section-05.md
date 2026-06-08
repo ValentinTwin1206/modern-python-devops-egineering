@@ -1,36 +1,32 @@
-# Python 3.5 with `setup.cfg` and split requirements
+# Python 3.5
 
-Python 3.5 was released in 2015, shortly before declarative setuptools configuration became the normal project shape. By 2016, many projects used `setup.cfg` for static metadata, kept `setup.py` as a compatibility shim, and split runtime and development dependencies across separate requirements files.
+This section introduces the Python 3.5 packaging workflow built around
+declarative `setup.cfg`, a small `setup.py` compatibility shim, and split
+runtime and development requirements.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is version 5.0.0 of Historic Calculator. It moves most package metadata into `setup.cfg`, while `setup.py` becomes a small compatibility shim for tools that still expect that file.
+The applied project is Historic Calculator, release 5.0.0. This snapshot is set in 2015, the release year of Python 3.5, and contains the `historic_calculator` package plus the `hist_calc` command-line script.
 
-The runtime components are pinned in `requirements.txt`: NumPy provides array-style calculations, and Click provides the structured `hist_calc` command-line interface. `requirements-dev.txt` extends the runtime set with development tooling such as pytest, showing the common split between application dependencies and test dependencies in this era.
+### Run the Project
 
-!!! info "Historical development image"
-
-	`Dockerfile.devEnv` builds a containerized approximation of the Python 3.5 development environment. It provides the interpreter, pip, setuptools, wheel support, and project files needed to explore the `setup.cfg` plus split requirements workflow without changing the host machine.
-
-### Packaging Matrix
-
-| Field            | Value                                                    |
-| ---------------- | -------------------------------------------------------- |
-| Project version  | 5.0.0                                                    |
-| Python version   | 3.5                                                      |
-| NumPy            | 1.11.3, pinned in `requirements.txt`                     |
-| Click            | 6.6, pinned in `requirements.txt`                        |
-| pytest           | 3.0.7, pinned in `requirements-dev.txt`                  |
-| Layout           | `setup.py` shim plus declarative `setup.cfg`             |
-| Distribution     | wheel and sdist                                          |
+Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-05/README.md).
 
 ## Background
 
-This project belongs to the Python 3.5 and 2016 packaging era, when declarative configuration became normal for setuptools projects. Setuptools 30.3.0 in December 2016 added `[metadata]` and `[options]` sections in `setup.cfg`. From that moment, almost everything previously written imperatively in `setup.py` could be expressed declaratively in `setup.cfg`, and `setup.py` collapsed into a one-line `setup()` shim that legacy tools can still invoke:
+This project belongs to the Python 3.5 and 2016 packaging era, when declarative configuration became normal for setuptools projects. Setuptools 30.3.0 added `[metadata]` and `[options]` sections in `setup.cfg`, giving projects a declarative place for:
+
+- Recording package metadata
+- Finding packages in a `src` layout
+- Declaring runtime dependencies
+- Registering console-script entry points
+- Configuring wheel and test tooling
 
 === "`setup.cfg`"
+
+	The `setup.cfg` file records the package metadata, dependencies, entry point, and tool settings:
 
 	```ini
 	[metadata]
@@ -64,29 +60,16 @@ This project belongs to the Python 3.5 and 2016 packaging era, when declarative 
 	addopts = -ra
 	```
 
-=== "`requirements.txt`"
-
-	```text
-	numpy==1.11.3
-	click==6.6
-	```
-
-=== "`requirements-dev.txt`"
-
-	```text
-	-r requirements.txt
-	pytest==3.0.7
-	```
+	- `[metadata]` stores the distribution name, version, and human-readable description.
+	- `[options]` maps packages to the `src` directory, discovers packages, and declares runtime dependencies.
+	- `[options.packages.find]` tells setuptools where to find packages and which test packages to exclude.
+	- `[options.entry_points]` registers the `hist_calc` command through `console_scripts`.
+	- `[bdist_wheel]` configures the wheel build.
+	- `[tool:pytest]` records pytest discovery and reporting settings.
 
 === "`setup.py`"
 
-	The `setup.py` was still required because `pip` internally depended on it. Consequently, removing it would cause installs to fail entirely:
-
-	```
-    $ pip install -e .
-    Obtaining file:///{PATH_TO_PROJECT_ROOT}/my-package
-    ERROR: file:///{PATH_TO_PROJECT_ROOT}/my-package does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found.
-    ```
+	The compatibility `setup.py` stays small because the metadata moved into `setup.cfg`:
 
 	```python
 	from setuptools import setup
@@ -94,13 +77,47 @@ This project belongs to the Python 3.5 and 2016 packaging era, when declarative 
 	setup()
 	```
 
-The dependency story splits across two files. Runtime pins live in `requirements.txt`. Development pins live in `requirements-dev.txt` and usually start with `-r requirements.txt`. Together, they were the period's accepted answer to reproducible installs while a real lockfile standard was missing.
+	- `setup()` lets older tools continue to invoke the setuptools build while reading configuration from `setup.cfg`.
 
-The CLI gains real structure. Click 1.0 shipped in April 2014 and was the dominant choice by 2016. Decorators replace hand-rolled `argparse` plumbing, and `console_scripts` registers `hist_calc` on `PATH`.
+=== "`requirements.txt`"
 
-## Build and install
+	The runtime dependency pins live in `requirements.txt`:
+
+	```text
+	numpy==1.11.3
+	click==6.6
+	```
+
+	- `numpy==1.11.3` pins the NumPy release used for array-style calculations.
+	- `click==6.6` pins the Click release used for the command-line interface.
+
+=== "`requirements-dev.txt`"
+
+	The development dependency pins live in `requirements-dev.txt`:
+
+	```text
+	-r requirements.txt
+	pytest==3.0.7
+	```
+
+	- `-r requirements.txt` reuses the runtime dependency set.
+	- `pytest==3.0.7` pins the test runner used by this project snapshot.
+
+## Dependency Management
+
+### Overview
+
+Declarative configuration and split requirements made project setup clearer, but the model still had important limits:
+
+- ⚠️ `requirements.txt` and `requirements-dev.txt` pinned direct install inputs, not a complete lockfile with hashes.
+- ⚠️ Runtime dependencies were duplicated conceptually between package metadata and requirements files.
+- ⚠️ `setup.py` was still required as a compatibility shim for many tools.
 
 ### Runtime and build dependencies
+
+Use `Dockerfile.devEnv` for the Python 3.5 development environment. It keeps the historical interpreter, pip, setuptools, wheel support, and build tooling isolated from the host machine.
+
+NumPy provides array-style calculations, and Click provides the structured `hist_calc` command-line interface. `requirements.txt` pins the runtime dependency set, while `requirements-dev.txt` extends it with pytest for local development and tests.
 
 Install the runtime dependencies:
 
@@ -137,19 +154,3 @@ Install the project:
 ```bash
 pip install .
 ```
-
-### Run Project
-
-After installation, run the installed console script:
-
-```bash
-hist_calc max 1,-2,4
-```
-
-Without installation, run the CLI module from the source tree:
-
-```bash
-PYTHONPATH=src python -m historic_calculator.main max 1,-2,4
-```
-
-Additional build and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-05/README.md).

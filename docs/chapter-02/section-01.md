@@ -1,35 +1,27 @@
-# Python 1.6 and `distutils`
+# Python 1.6
 
-Python 1.6 was released in 2000, when `distutils` became part of the Python standard library. It was the first standard packaging toolkit for Python projects: enough to describe files, build a source distribution, and run an install command, but not enough to resolve or install runtime dependencies.
+This section introduces Python 1.6 packaging with `distutils` and uses a
+small command-line project to show how early Python packages were described,
+built, and installed.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is version 1.0.0 of Historic Calculator, a small command-line package used throughout Chapter 02 to compare packaging eras. In this snapshot, the project has one `setup.py` file that calls `distutils.core.setup` with the package name, version, shipped modules, and the `bin/hist_calc` script.
+The applied project is Historic Calculator, release 1.0.0. This snapshot is set in 2000, the release year of Python 1.6, and contains the `historic_calculator` package plus the `hist_calc` command-line script.
 
-Numerical 15.3 is the runtime component that provides array-style calculations. It is the predecessor of NumPy, but it is not declared in a way that `distutils` can install automatically. A user must install Numerical first, then install Historic Calculator, which shows the manual dependency workflow of the time.
+### Run the Project
 
-!!! info "Historical development image"
-
-	`Dockerfile.devEnv` builds a containerized approximation of the Python 1.6 development environment. It compiles Python 1.6 on an old Debian base image and provides the tooling needed to explore the packaging workflow without changing the host machine.
-
-### Packaging Matrix
-
-This is the first row of the chapter-wide packaging matrix.
-
-| Field            | Value                                |
-| ---------------- | ------------------------------------ |
-| Project version  | 1.0.0                                |
-| Python version   | 1.6                                  |
-| Numerical        | 15.3, manually installed             |
-| Layout           | `setup.py` only                      |
-| Distribution     | sdist, no wheels, no eggs            |
-| Console scripts  | `scripts=` in `setup.py`             |
+Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-01/README.md).
 
 ## Background
 
-This project belongs to the Python 1.6 era in 2000, when `distutils` graduated from a separately installable package into the Python standard library. The important new idea was a standard way to describe and install a Python package, but `distutils` only describes what the package ships. It has no way to resolve or install runtime dependencies.
+This project belongs to the Python 1.6 era in 2000, when `distutils` graduated from a separately installable package into the Python standard library. It was Python's first standard packaging toolkit and gave Python projects a common `setup.py` interface for:
+
+- Declaring package metadata
+- Listing source files
+- Building source distributions
+- Installing packages into a Python environment
 
 The `setup.py` file records the shipped package and script directly:
 
@@ -43,11 +35,27 @@ setup(
 )
 ```
 
-## Build and install
+- `name` gives the distribution its package name.
+- `version` records the release number that build and install commands use.
+- `package_dir` maps packages to the `src` directory instead of the project root.
+- `packages` lists the Python package included in the distribution.
+- `scripts` installs the `bin/hist_calc` launcher as an executable script.
+
+## Dependency Management
+
+### Overview
+
+`distutils` was an important step toward standardized packaging, but the model still had important limits:
+
+- ⚠️ It did not resolve or install runtime dependencies.
+- ⚠️ Tools such as wheels, build isolation, lock files, and modern dependency resolvers did not exist yet.
+- ⚠️ Users still had to prepare much of the environment by hand.
 
 ### Runtime and build dependencies
 
-This snapshot needs Python 1.6, a working C toolchain, and Numerical 15.3 installed before the project itself. `distutils` can build and install the package, but it cannot install Numerical for you.
+Use `Dockerfile.devEnv` for the Python 1.6 development environment. It keeps the historical interpreter and build tooling isolated from the host machine.
+
+Numerical 15.3 is the runtime component that provides array-style calculations for this project. It is the predecessor of NumPy, but it is not declared in a way that `distutils` can install automatically. A user must install Numerical before installing Historic Calculator, which shows the manual dependency workflow of the time.
 
 Fetch and unpack Numerical 15.3:
 
@@ -81,19 +89,3 @@ python setup.py install
 ```
 
 > This command registers `hist_calc` through `scripts=`. If Numerical is missing, running `hist_calc` fails with `ImportError`.
-
-### Run Project
-
-After installation, run the installed launcher:
-
-```bash
-hist_calc max 1,-2,4
-```
-
-Without installation, run the source-tree launcher directly:
-
-```bash
-PYTHONPATH=src python bin/hist_calc max 1,-2,4
-```
-
-Additional build and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-01/README.md).

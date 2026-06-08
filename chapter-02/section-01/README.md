@@ -11,7 +11,7 @@ A small command-line utility that reduces a comma-separated vector to its `max`,
 
 ### With Docker
 
-Build the development image through the chapter helper:
+`Dockerfile.devEnv` builds a containerized approximation of the Python 1.6 development environment. It compiles Python 1.6 on an old Debian base image and provides the tooling needed to explore the packaging workflow without changing the host machine. Build the development image through the chapter helper:
 
 ```bash
 ../build.sh build --path section-01/Dockerfile.devEnv --build-only
