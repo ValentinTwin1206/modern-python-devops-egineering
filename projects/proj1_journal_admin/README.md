@@ -10,7 +10,7 @@ The table below lists the main files that support the system-environment example
 
 | Component | Description |
 | --------- | ----------- |
-| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine, and installs `python3-systemd` so the `journal_admin` package can be imported. |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine, and includes `python3-systemd`, `uv`, and the Debian packaging tools needed to build the local `.deb` package. |
 | [pyproject.toml](pyproject.toml) | This file holds the Python project metadata for the `journal-admin` CLI. It declares no PyPI runtime dependencies because the only runtime requirement, `systemd.journal`, comes from the APT package `python3-systemd`. |
 | [debian/](debian/) | This directory contains the minimal Debian packaging files for building a local `.deb` package. The package ships the prebuilt project wheel under `/opt/journal_admin`, installs it into the system Python interpreter from a `postinst` script, and registers a `journal-admin.service` systemd unit. |
 
@@ -22,6 +22,8 @@ The table below lists the main files that support the system-environment example
 - Debian packaging tools: `build-essential`, `devscripts`, and `debhelper`.
 
 ### With Docker
+
+The development image already includes Python, `uv`, `python3-systemd`, `build-essential`, `devscripts`, `debhelper`, Karva, and Ruff.
 
 Build the development image through the projects helper:
 
@@ -57,7 +59,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## Usage Guide
 
-After installing the Debian package, use the `journal-admin` command to show recent journal entries:
+Install the local Debian package with APT. Run this command from the directory that contains `journal-admin_1.0.0-1_all.deb`:
+
+```bash
+sudo apt install ./journal-admin_1.0.0-1_all.deb
+```
+
+After the package is installed, use the `journal-admin` command to show recent journal entries:
 
 ```bash
 journal-admin --since-minutes 15
