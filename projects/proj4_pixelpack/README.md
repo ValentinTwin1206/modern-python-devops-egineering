@@ -60,70 +60,70 @@ npm install -g @devcontainers/cli
 
 ## Usage Guide
 
-Run the CLI from inside the Dev Container:
+Run the CLI from inside the Dev Container or the synced project environment:
 
 ```bash
-uv run pixelpack --help
+PYTHONPATH=src uv run python -m pixelpack.cli --help
 ```
 
 Resize an image:
 
 ```bash
-uv run pixelpack resize input.png output.png --width 320 --height 240
+PYTHONPATH=src uv run python -m pixelpack.cli resize input.png output.png --width 320 --height 240
 ```
 
 Convert an image format (inferred from the destination suffix):
 
 ```bash
-uv run pixelpack convert input.png output.jpg
+PYTHONPATH=src uv run python -m pixelpack.cli convert input.png output.jpg
 ```
 
 Convert an image to grayscale:
 
 ```bash
-uv run pixelpack grayscale input.png output.png
+PYTHONPATH=src uv run python -m pixelpack.cli grayscale input.png output.png
 ```
 
 ## Development Guide
 
-Sync the development environment:
+### Sync Environment
+
+Sync the project environment, including the `dev` group that provides Karva, Ruff, and Nuitka:
 
 ```bash
 uv sync --group dev
 ```
 
-Run the tests:
+### Run Tests
+
+Run the test suite with Karva:
 
 ```bash
-uv run karva test tests/
+PYTHONPATH=src uv run karva test tests/
 ```
 
-Run the linter:
+### Lint
+
+Run Ruff against the source tree:
 
 ```bash
 uv run ruff check .
 ```
 
-Build the project wheel:
-
-```bash
-uv build --wheel
-```
-
-## Build The Project
+### Build Guide
 
 Pixelpack is compiled into a self-contained standalone binary using [Nuitka](https://nuitka.net). The resulting executable bundles the Python runtime and all dependencies, so the binary runs on any compatible Linux host without a Python installation.
 
-Compile the `pixelpack` entry point into a single-file executable:
+Compile the `pixelpack` CLI into a single-file executable:
 
 ```bash
-python -m nuitka \
+uv run python -m nuitka \
     --onefile \
     --output-dir=dist \
     --output-filename=pixelpack \
     --include-package=PIL \
     --include-package=click \
-    "$(python -c 'import pixelpack.cli as m; print(m.__file__)')"
+    src/pixelpack/cli.py
 ```
 
 The binary is written to `dist/pixelpack`. Run it directly without activating any environment:

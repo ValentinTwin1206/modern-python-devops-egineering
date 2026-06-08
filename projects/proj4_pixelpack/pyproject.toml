@@ -1,25 +1,26 @@
 [project]
 name = "pixelpack"
 version = "1.0.0"
-description = "Tiny Pillow-based image-processing CLI for demonstrating Python dev containers"
+description = "Pillow + Click image-processing CLI distributed as a Nuitka-compiled standalone binary"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.1.7",
     "pillow>=10.4.0",
 ]
 
-[project.scripts]
-pixelpack = "pixelpack.cli:main"
-
-[build-system]
-requires = ["uv_build>=0.11.8,<0.12"]
-build-backend = "uv_build"
-
 [dependency-groups]
 dev = [
     "karva>=0.0.1a5",
+    "nuitka>=2.4",
     "ruff>=0.15.12",
 ]
+
+[tool.uv]
+# Pixelpack ships as a Nuitka-compiled binary, not as a Python wheel.
+# uv manages a virtual environment for the runtime and dev dependencies
+# but does not build or install the project itself, so no PEP 517
+# build-system needs to be declared above.
+package = false
 
 [tool.ruff]
 target-version = "py312"

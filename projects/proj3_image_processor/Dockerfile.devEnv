@@ -29,7 +29,7 @@ ENV PATH=$CONDA_DIR/envs/image-processor/bin:$PATH
 ENV CONDA_DEFAULT_ENV=image-processor
 
 # Copy project files and expose the source tree for live development.
-COPY pyproject.toml ./
+COPY ruff.toml ./
 COPY src ./src
 COPY tests ./tests
 ENV PYTHONPATH=/app/src

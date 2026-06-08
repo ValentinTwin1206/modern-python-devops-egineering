@@ -15,14 +15,13 @@ The table below lists the main files that support the Conda example project.
 | [src/image_processor/main.py](src/image_processor/main.py) | This module generates a synthetic grayscale image, blurs it, runs Canny edge detection, and writes the result to disk. It is intentionally short so the focus stays on the binary dependencies the environment supplies. |
 | [environment.yml](environment.yml) | This file declares the Conda environment for the example project. It pins the interpreter, NumPy, and OpenCV from `conda-forge`, and records extra Python tools installed through `pip`. |
 | [Dockerfile.devEnv](Dockerfile.devEnv) | This development image is based on `continuumio/miniconda3` and creates the named environment with `conda env create`. It provides a reproducible Conda setup with OpenCV, NumPy, and dev tools pre-configured. |
-| [pyproject.toml](pyproject.toml) | This file defines the Python package metadata for the image processor. It is the source of the package that later gets installed into the Conda environment. |
-| [recipe/meta.yaml](recipe/meta.yaml) | This file is the Conda recipe consumed by `conda-build`. It declares the package metadata, the build script, and the runtime dependencies, and pulls OpenCV and NumPy from `conda-forge` so the produced Conda package resolves the binary stack at install time. |
+| [recipe/meta.yaml](recipe/meta.yaml) | This file is the Conda recipe consumed by `conda-build`. It is the sole packaging declaration for the project: it copies the `image_processor` package into the env's site-packages, registers the `image-processor` entry point, and pulls OpenCV and NumPy from `conda-forge` at install time. |
+| [ruff.toml](ruff.toml) | This file holds the Ruff lint configuration. It exists as a standalone config because the project does not ship a `pyproject.toml`. |
 
 ## Required Developer Tools
 
 - Docker or Podman.
 - Miniconda or Anaconda (for the on-host path).
-- `uv` for the project development workflow.
 - `conda-build` (for building the Conda package).
 
 ### With Docker
@@ -93,27 +92,33 @@ conda env export --from-history > environment.yml
 
 ## Development Guide
 
-Sync the development environment with `uv`:
+### Sync Environment
+
+Update the Conda environment to match `environment.yml`, removing any packages that are no longer listed:
 
 ```bash
-uv sync
+conda env update -f environment.yml --prune
 ```
 
-Run the tests:
+### Run Tests
+
+Run the test suite with Karva from inside the activated Conda environment:
 
 ```bash
-PYTHONPATH=src uv run karva test tests/
+PYTHONPATH=src karva test tests/
 ```
 
-Run the linter:
+### Lint
+
+Run Ruff against the source tree:
 
 ```bash
-uv run ruff check .
+ruff check .
 ```
 
-## Distribute as a Conda Package
+### Build Guide
 
-The project can also be distributed as a Conda package. That way the binary OpenCV stack and NumPy come from `conda-forge` at install time instead of being pulled in by `pip`. The recipe lives in [recipe/meta.yaml](recipe/meta.yaml) and the build process turns the source tree plus that recipe into a `.conda` archive that any Conda-based environment can install.
+The project is distributed as a Conda package built from [recipe/meta.yaml](recipe/meta.yaml). The recipe copies the `image_processor` source straight into the env's `site-packages` directory and registers the `image-processor` console entry point, so the project ships without a `pyproject.toml` or a PEP 517 build backend. OpenCV and NumPy come from `conda-forge` at install time instead of being pulled in by `pip`.
 
 Install `conda-build` into the base environment:
 
@@ -127,7 +132,7 @@ Build the package from the project root. The recipe references the project sourc
 conda build recipe/ --channel conda-forge
 ```
 
-`conda-build` resolves the host and runtime dependencies, runs the project's PEP 517 build backend through `pip`, executes the recipe's `test` block, and writes a `.conda` archive into the local Conda build cache. The path to the artifact is printed at the end of the build, typically:
+`conda-build` resolves the host and runtime dependencies, runs the recipe's build script and `test` block, and writes a `.conda` archive into the local Conda build cache. The path to the artifact is printed at the end of the build, typically:
 
 ```text
 $CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda

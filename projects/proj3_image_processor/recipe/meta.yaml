@@ -12,15 +12,18 @@ source:
 build:
   number: 0
   noarch: python
-  # --no-build-isolation lets pip use the uv build backend that is already
-  # present in the host environment instead of downloading it from PyPI.
-  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+  # conda-build generates the console-script wrapper for this entry point.
+  entry_points:
+    - image-processor = image_processor.main:main
+  # Pure-Python project without a setup.py or pyproject.toml. Copy the
+  # package straight into the env's site-packages directory.
+  script: |
+    mkdir -p ${SP_DIR}/image_processor
+    cp -r src/image_processor/. ${SP_DIR}/image_processor/
 
 requirements:
   host:
     - python >=3.12
-    - pip
-    - uv
   run:
     - python >=3.12
     - numpy >=2.1

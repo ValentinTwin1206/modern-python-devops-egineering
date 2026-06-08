@@ -68,19 +68,37 @@ deactivate
 
 ## Usage Guide
 
-Run the Bottle application:
+The deployment image in [Dockerfile](Dockerfile) ships the Bottle server as the container entry point. Build the image once with the [Build Guide](#build-guide), then start the server with the `docker` CLI directly.
+
+Start the server in the foreground and publish its port on the host:
 
 ```bash
-python -m tiny_webserver.app
+docker run --rm -p 8080:8080 tiny-webserver
 ```
 
-Inspect the active prefix:
+Send a request from another terminal:
 
 ```bash
-python -c "import sys; print(sys.prefix); print(sys.base_prefix)"
+curl http://localhost:8080
+```
+
+The Bottle app responds with `{"message": "Hello from tiny webserver"}`. Stop the server with `Ctrl+C`.
+
+Run the container detached and give it a name so you can manage it explicitly:
+
+```bash
+docker run --rm --detach --name tiny-webserver --publish 8080:8080 tiny-webserver
+```
+
+Stop the detached container when you are done:
+
+```bash
+docker stop tiny-webserver
 ```
 
 ## Development Guide
+
+### Sync Environment
 
 Sync the project environment with `uv`:
 
@@ -88,36 +106,36 @@ Sync the project environment with `uv`:
 uv sync
 ```
 
-Run the tests:
+### Run Tests
+
+Run the test suite with Karva:
 
 ```bash
 uv run karva test tests/
 ```
 
-Run the linter:
+### Lint
+
+Run Ruff against the source tree:
 
 ```bash
 uv run ruff check .
 ```
 
-## Build with Docker
+### Build Guide
 
-The deployment image in [Dockerfile](Dockerfile) builds the project wheel and installs it into a virtual environment at `/opt/venv`, then starts the Bottle server on port 8080.
+The deployment image in [Dockerfile](Dockerfile) is a two-stage build. The first stage uses `uv build --wheel` to produce the project wheel, the second stage installs that wheel into a virtual environment at `/opt/venv`, and the runtime stage starts the `tiny-webserver` console script on port 8080.
 
-Build the deployment image through the projects helper:
-
-```bash
-../build.sh build --path proj2_tiny_webserver/Dockerfile --build-only
-```
-
-Build and open an interactive shell inside the deployment container:
+Build the deployment image from the project directory using the `docker` CLI directly:
 
 ```bash
-../build.sh build --path proj2_tiny_webserver/Dockerfile
+docker build --file Dockerfile --tag tiny-webserver .
 ```
 
-Map a host port if you want to reach the server from outside the container:
+Inspect the resulting image:
 
 ```bash
-../build.sh build --path proj2_tiny_webserver/Dockerfile --port 8080:8080
+docker image inspect tiny-webserver
 ```
+
+See the [Usage Guide](#usage-guide) for the `docker run` invocations that exercise the built image.

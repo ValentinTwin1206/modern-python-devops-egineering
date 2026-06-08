@@ -92,31 +92,31 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
 
 The project workflow uses a `uv`-managed virtual environment for testing and linting, but the runtime story always points back to the system interpreter.
 
+### Sync Environment
+
 Sync the project environment with `uv`:
 
 ```bash
 uv sync
 ```
 
-Run the tests:
+### Run Tests
+
+Run the test suite with Karva:
 
 ```bash
 uv run karva test tests/
 ```
 
-Run the linter:
+### Lint
+
+Run Ruff against the source tree:
 
 ```bash
 uv run ruff check .
 ```
 
-Build a wheel:
-
-```bash
-uv build --wheel
-```
-
-## Build and Install the APT Package
+### Build Guide
 
 The Debian package configuration lives in [debian/](debian/). It uses `debhelper` and `dh-python` directly instead of building through `uv`, because this project is meant to install into the system Python environment and use the APT-managed `python3-systemd` binding.
 
