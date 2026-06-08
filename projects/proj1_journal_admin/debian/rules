@@ -1,12 +1,17 @@
 #!/usr/bin/make -f
 
+# Minimal rules file.
+#
+# The project wheel is built upstream with `uv build --wheel` and shipped
+# under /opt/journal_admin via debian/journal-admin.install. There is no
+# in-package Python build step, so the dh_auto_* hooks are intentional
+# no-ops. dh_installsystemd picks up debian/journal-admin.service
+# automatically and dh_installdeb installs the postinst/prerm scripts.
+
 %:
-	dh $@ --with python3
+	dh $@
 
 override_dh_auto_configure:
-
 override_dh_auto_build:
-
 override_dh_auto_test:
-
 override_dh_auto_install:

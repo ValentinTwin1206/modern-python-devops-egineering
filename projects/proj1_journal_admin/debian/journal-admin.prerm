@@ -1,0 +1,25 @@
+#!/bin/sh
+# prerm script for journal-admin
+#
+# Before the package is removed, uninstall the wheel that postinst
+# installed into the system Python interpreter so no stray files are
+# left in /usr/local/lib/python3*/dist-packages.
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        if python3 -m pip show journal-admin >/dev/null 2>&1; then
+            python3 -m pip uninstall \
+                --break-system-packages \
+                --yes \
+                journal-admin || true
+        fi
+        ;;
+    failed-upgrade)
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -12,15 +12,14 @@ The table below lists the main files that support the system-environment example
 | --------- | ----------- |
 | [Dockerfile.devEnv](Dockerfile.devEnv) | This development image defines a safe environment for inspecting Python installation targets. It mirrors the package-installation layers discussed below without modifying the host machine, and installs `python3-systemd` so the `journal_admin` package can be imported. |
 | [pyproject.toml](pyproject.toml) | This file holds the Python project metadata for the `journal-admin` CLI. It declares no PyPI runtime dependencies because the only runtime requirement, `systemd.journal`, comes from the APT package `python3-systemd`. |
-| [debian/](debian/) | This directory contains the minimal Debian packaging files for building a local `.deb` package. The package installs the Python module into the system interpreter, exposes `/usr/bin/journal-admin`, and declares `python3-systemd` as an APT dependency. |
+| [debian/](debian/) | This directory contains the minimal Debian packaging files for building a local `.deb` package. The package ships the prebuilt project wheel under `/opt/journal_admin`, installs it into the system Python interpreter from a `postinst` script, and registers a `journal-admin.service` systemd unit. |
 
 ## Required Developer Tools
 
 - Docker or Podman.
 - A Linux host or Linux VM (for the on-host path). The host needs `systemd` if you want to read real journal entries.
-- `uv` for the project workflow.
-- `pip3` for user-level installs.
-- Debian packaging tools: `build-essential`, `devscripts`, `debhelper`, `dh-python`, and `python3-all`.
+- `uv` for the project workflow and for building the wheel.
+- Debian packaging tools: `build-essential`, `devscripts`, and `debhelper`.
 
 ### With Docker
 
@@ -47,7 +46,7 @@ sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-syste
 Install the Debian package build tools:
 
 ```bash
-sudo apt-get install -y build-essential devscripts debhelper dh-python python3-all
+sudo apt-get install -y build-essential devscripts debhelper
 ```
 
 Install `uv`:
@@ -56,36 +55,24 @@ Install `uv`:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Install user-level developer tools:
-
-```bash
-pip3 install --user karva ruff
-```
-
 ## Usage Guide
 
-Run the admin CLI directly with the system Python:
+After installing the Debian package, use the `journal-admin` command to show recent journal entries:
 
 ```bash
-python3 -m journal_admin.cli --since-minutes 15
+journal-admin --since-minutes 15
 ```
 
-Filter by a specific systemd unit:
+Filter entries for a specific systemd unit:
 
 ```bash
-python3 -m journal_admin.cli --unit ssh.service --priority 6
+journal-admin --unit ssh.service --priority 6
 ```
 
-Inspect the active import path:
+Emit JSON when another tool needs structured output:
 
 ```bash
-python3 -c "import sys; [print(p) for p in sys.path]"
-```
-
-Inspect where the APT-managed binding lives:
-
-```bash
-python3 -c "import systemd.journal; print(systemd.journal.__file__)"
+journal-admin --since-minutes 30 --format json
 ```
 
 ## Development Guide
@@ -118,39 +105,69 @@ uv run ruff check .
 
 ### Build Guide
 
-The Debian package configuration lives in [debian/](debian/). It uses `debhelper` and `dh-python` directly instead of building through `uv`, because this project is meant to install into the system Python environment and use the APT-managed `python3-systemd` binding.
+The project is shipped as a Debian package that bundles the prebuilt project wheel under `/opt/journal_admin/`. A `postinst` script installs that wheel into the system Python interpreter through `pip`, and `dh_installsystemd` registers the bundled [journal-admin.service](debian/journal-admin.service) unit so the CLI can be run on demand under journald.
 
-Build a binary `.deb` package from the project root:
+Build the project wheel into the local `dist/` directory:
+
+```bash
+uv build --wheel
+```
+
+The wheel is written to:
+
+```text
+dist/journal_admin-1.0.0-py3-none-any.whl
+```
+
+Build a binary `.deb` package from the project root. `debian/journal-admin.install` picks up the wheel from `dist/` and places it under `/opt/journal_admin/` inside the package:
 
 ```bash
 dpkg-buildpackage -us -uc -b
 ```
 
-The `-b` flag builds the binary package only. That keeps this local project workflow simple and writes the package artifact to the parent directory:
+The `-b` flag builds the binary package only and writes the artifact to the parent directory:
 
 ```text
 ../journal-admin_1.0.0-1_all.deb
 ```
 
-Install the package with APT so runtime dependencies, including `python3-systemd`, are resolved through the operating system package manager:
+Install the package with APT so runtime dependencies, including `python3-systemd` and `python3-pip`, are resolved through the operating system package manager:
 
 ```bash
 sudo apt install ../journal-admin_1.0.0-1_all.deb
 ```
 
-Check the files installed by the package:
+During `configure`, the `postinst` script runs `python3 -m pip install --break-system-packages /opt/journal_admin/journal_admin-*.whl`. The console script lands at `/usr/local/bin/journal-admin` and the package is importable as `journal_admin` from the system interpreter.
+
+Check the files installed by the package and by `pip`:
 
 ```bash
 dpkg -L journal-admin
 ```
 
-Run the installed CLI:
+```bash
+python3 -m pip show --files journal-admin
+```
+
+Run the installed CLI directly:
 
 ```bash
 journal-admin --since-minutes 15
 ```
 
-Remove the package again when you are done experimenting:
+Trigger the bundled systemd service to record the last hour of entries through journald under the `journal-admin.service` unit:
+
+```bash
+sudo systemctl start journal-admin.service
+```
+
+Check the unit's recent runs:
+
+```bash
+journalctl -u journal-admin.service --since "1 hour ago"
+```
+
+Remove the package again when you are done experimenting. The `prerm` script first uninstalls the wheel from the system interpreter, then `dpkg` cleans up `/opt/journal_admin/`:
 
 ```bash
 sudo apt remove journal-admin

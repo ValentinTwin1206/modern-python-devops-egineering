@@ -1,2 +1,1 @@
-src/journal_admin usr/lib/python3/dist-packages
-debian/journal-admin usr/bin
+dist/journal_admin-*.whl opt/journal_admin/
