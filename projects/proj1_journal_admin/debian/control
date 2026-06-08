@@ -1,0 +1,23 @@
+Source: journal-admin
+Section: admin
+Priority: optional
+Maintainer: Modern Python Engineering <maintainers@example.invalid>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ python3-all
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
+
+Package: journal-admin
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+ python3-systemd
+Description: small admin CLI for reading systemd journal entries
+ Journal Admin is a small command-line tool that reads recent systemd journal
+ entries through the APT-managed python3-systemd binding. It is packaged for
+ the system Python interpreter because its runtime dependency comes from the
+ operating system package manager rather than from PyPI.

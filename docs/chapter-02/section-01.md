@@ -12,7 +12,7 @@ The applied project is Historic Calculator, release 1.0.0. This snapshot is set 
 
 ### Run the Project
 
-Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/chapter-02/section-01/README.md).
+Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_historic_calculator/2000/README.md).
 
 ## Background
 

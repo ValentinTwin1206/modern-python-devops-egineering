@@ -118,17 +118,15 @@ Apply these rules to both generated MkDocs pages and rewritten section README fi
 
 ## Section README Shrink Rules
 
-Update only the README files inside concrete section folders, for example:
+Update only the README files inside concrete project folders, for example:
 
-- `chapter-01/section-01/README.md`
-- `chapter-01/section-02/README.md`
-- `chapter-02/section-06/README.md`
+- `projects/proj1_journal_admin/README.md`
+- `projects/proj2_tiny_webserver/README.md`
+- `projects/proj5_historic_calculator/2022/README.md`
 
 Do not apply this shrink rule to:
 
 - root `README.md`
-- `chapter-01/README.md`
-- `chapter-02/README.md`
 
 Each section README should become a normal, short project README with this structure:
 
@@ -143,7 +141,7 @@ Short list of tools needed to work with this section.
 
 ### With Docker
 
-Steps to build, run, or inspect the section through the chapter helper and container files.
+Steps to build, run, or inspect the section through the projects helper and container files.
 
 ### On Host
 
@@ -160,7 +158,7 @@ Commands needed for local development, checks, formatting, tests, builds, or pac
 
 The `Required Developer Tools` section must be specific to the section. Include only tools that are actually needed, such as Python, Docker or Podman, `uv`, `pip`, `setuptools`, `build`, `pipenv`, `conda`, Node.js, npm, the Dev Containers CLI, or compiler toolchains. Do not list tools that the section does not use.
 
-Under `With Docker`, explain the container-based path first. Use the chapter helper where it applies.
+Under `With Docker`, explain the container-based path first. Use the projects helper where it applies.
 
 Under `On Host`, explain the direct host setup. Include installation or setup commands for the section's tools when those commands are reliable and appropriate for the represented era.
 
@@ -228,26 +226,26 @@ Build legacy source and wheel distributions:
 python setup.py sdist bdist_wheel
 ```
 
-Build a section container image through the chapter helper:
+Build a project container image through the projects helper:
 
 ```bash
-../build.sh build --path section-01/Dockerfile --build-only
+../build.sh build --path proj2_tiny_webserver/Dockerfile --build-only
 ```
 
 Do not invent commands that the project cannot run. Inspect `pyproject.toml`, `setup.py`, `requirements*.txt`, `Pipfile`, `environment.yml`, Dockerfiles, and existing README content before choosing commands.
 
 ## Chapter 02 README Perspective
 
-When rewriting README files under `chapter-02/section-*`, write from the perspective of a project maintainer working in the historical year represented by that section.
+When rewriting README files under `projects/proj5_historic_calculator/<year>/`, write from the perspective of a project maintainer working in the historical year represented by that folder.
 
-Use the year and packaging era from `chapter-02/README.md` as the source of truth. For example:
+Use the year and packaging era from the `proj5_historic_calculator` year subfolders as the source of truth. For example:
 
-- `chapter-02/section-01` represents the year 2000, so its README should use instructions, wording, and code patterns that make sense for a maintainer in 2000.
-- `chapter-02/section-02` represents the year 2003.
-- `chapter-02/section-03` represents the year 2004.
-- `chapter-02/section-04` represents the year 2010.
-- `chapter-02/section-05` represents the year 2016.
-- `chapter-02/section-06` represents the year 2022.
+- `projects/proj5_historic_calculator/2000` represents the year 2000, so its README should use instructions, wording, and code patterns that make sense for a maintainer in 2000.
+- `projects/proj5_historic_calculator/2003` represents the year 2003.
+- `projects/proj5_historic_calculator/2004` represents the year 2004.
+- `projects/proj5_historic_calculator/2010` represents the year 2010.
+- `projects/proj5_historic_calculator/2016` represents the year 2016.
+- `projects/proj5_historic_calculator/2022` represents the year 2022.
 
 Apply these rules to Chapter 02 section READMEs:
 

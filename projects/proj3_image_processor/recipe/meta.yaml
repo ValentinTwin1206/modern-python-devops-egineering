@@ -1,0 +1,38 @@
+{% set name = "image-processor" %}
+{% set version = "1.0.0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  # Build from the project root next to this recipe directory.
+  path: ..
+
+build:
+  number: 0
+  noarch: python
+  # --no-build-isolation lets pip use the uv build backend that is already
+  # present in the host environment instead of downloading it from PyPI.
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+
+requirements:
+  host:
+    - python >=3.12
+    - pip
+    - uv
+  run:
+    - python >=3.12
+    - numpy >=2.1
+    - py-opencv >=4.10
+
+test:
+  imports:
+    - image_processor
+  commands:
+    - image-processor --help
+
+about:
+  home: https://github.com/ValentinTwin1206/modern-python-devops-egineering
+  summary: OpenCV image-processing showcase distributed as a Conda package.
+  license: MIT
