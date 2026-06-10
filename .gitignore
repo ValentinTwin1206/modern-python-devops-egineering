@@ -23,6 +23,10 @@ site/
 .eggs/
 pip-wheel-metadata/
 
+# Per-project artifact directory bind-mounted at /build inside containers
+# managed by projects/build.sh
+.build/
+
 # Test and coverage artifacts
 .coverage
 .coverage.*

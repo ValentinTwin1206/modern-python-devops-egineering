@@ -44,6 +44,11 @@ ${BLUE}${BOLD}BUILD OPTIONS${RESET}
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
         ${YELLOW}--${RESET}                    Pass everything after this flag to docker run.
 
+    Each container run also bind-mounts the project's ${CYAN}.build/${RESET} directory at
+    ${CYAN}/build${RESET} inside the container so wheels, compiled binaries, and other build
+    artifacts produced inside the container land back on the host. The directory is
+    created automatically next to the Dockerfile if it does not yet exist.
+
 ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
         ${YELLOW}--regex${RESET} ${CYAN}<REGEX>${RESET}       Extended regex matched against image tags, such as
                               ${CYAN}"projects-.*"${RESET}.
@@ -259,8 +264,8 @@ build_command() {
             mount_source="${build_context}"
             mount_target="/workspaces/${section_name}"
         else
-            mount_source="${build_context}/src"
-            mount_target="/app/src"
+            mount_source="${build_context}"
+            mount_target="/app"
         fi
 
         if [[ -d "${mount_source}" ]]; then
@@ -270,6 +275,13 @@ build_command() {
             warn "expected source path not found: ${mount_source} (running without bind mount)"
         fi
     fi
+
+    # Every run mounts the project's .build/ directory so artifacts produced
+    # inside the container (wheels, compiled binaries, etc.) surface on the host.
+    local build_artifact_dir="${build_context}/.build"
+    mkdir -p "${build_artifact_dir}"
+    log "Bind-mount:      ${build_artifact_dir} -> /build"
+    run_cmd+=(--volume "${build_artifact_dir}:/build")
 
     run_cmd+=(--publish "${PORT_MAPPING}")
 

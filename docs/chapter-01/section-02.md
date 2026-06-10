@@ -10,7 +10,7 @@ The applied project is a small web service called `Tiny Webserver Project`. It u
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_tiny_webserver/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_tiny_webserver/README.md#project-components) section of the section README.
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_tiny_webserver/README.md).
 
 ## `venv` environment model
 

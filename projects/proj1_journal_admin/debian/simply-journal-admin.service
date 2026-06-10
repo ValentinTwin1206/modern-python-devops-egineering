@@ -1,11 +1,11 @@
 [Unit]
-Description=Journal Admin recent-entries reporter
+Description=simply_journal_admin recent-entries reporter
 Documentation=https://github.com/ValentinTwin1206/modern-python-devops-egineering
 After=systemd-journald.service
 Requires=systemd-journald.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/journal-admin --since-minutes 60 --format json
+ExecStart=/usr/local/bin/simply-journal-admin --since-minutes 60 --format json
 StandardOutput=journal
 StandardError=journal

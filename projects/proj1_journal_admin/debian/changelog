@@ -1,5 +1,5 @@
-journal-admin (1.0.0-1) unstable; urgency=medium
+simply-journal-admin (1.0.0-1) unstable; urgency=medium
 
-  * Initial Debian package for the Journal Admin CLI.
+  * Initial Debian package for the simply_journal_admin CLI.
 
  -- Modern Python Engineering <maintainers@example.invalid>  Mon, 08 Jun 2026 00:00:00 +0000

@@ -2,8 +2,6 @@
 
 This section shows how Python's standard-library `venv` module isolates dependencies inside a project-local directory. It runs the tiny Bottle web server through that environment.
 
-For the folder layout, activation behavior, and tradeoffs, see the [MkDocs page](../../docs/chapter-01/section-02.md).
-
 ## Project Components
 
 The table below lists the main files that support the `venv` example project.

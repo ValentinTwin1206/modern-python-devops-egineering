@@ -1,9 +1,9 @@
-"""Tests for the journal-admin CLI using a fake journal reader."""
+"""Tests for the simply-journal-admin CLI using a fake journal reader."""
 
 import json
 from datetime import datetime, timezone
 
-from journal_admin import cli
+from simply_journal_admin import cli
 
 
 class FakeReader:

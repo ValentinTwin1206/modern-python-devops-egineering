@@ -1,4 +1,4 @@
-"""Command-line entry point for the journal-admin tool.
+"""Command-line entry point for the simply-journal-admin tool.
 
 The tool reads recent systemd journal entries with optional filters and
 prints them as text or JSON. It depends on ``systemd.journal`` from the
@@ -79,7 +79,7 @@ def format_text(entries):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="journal-admin",
+        prog="simply-journal-admin",
         description="Read recent systemd journal entries.",
     )
     parser.add_argument(

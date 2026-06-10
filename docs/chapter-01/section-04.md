@@ -10,7 +10,7 @@ The applied project is a small image-processing CLI called `Pixelpack Project`. 
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_pixelpack/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_pixelpack/README.md#project-components) section of the section README.
+Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_pixelpack/README.md).
 
 ## Dev Containers environment model
 

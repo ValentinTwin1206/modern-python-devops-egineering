@@ -6,11 +6,11 @@ This page explains how Python is installed on common operating systems and where
 
 ### Project Setup
 
-The applied project is a small admin CLI called `journal-admin` that reads recent `systemd` journal entries. It imports [`systemd.journal`](https://www.freedesktop.org/software/systemd/python-systemd/journal.html) from the APT package [`python3-systemd`](https://packages.ubuntu.com/noble/python3-systemd) and declares no PyPI runtime dependencies because the binding comes from the distribution package manager and links against `libsystemd` in `/usr/lib`. This makes it a good fit for the system environment because the runtime dependency is intentionally owned by the operating system package manager instead of a project-local environment.
+The applied project is a small admin CLI called `simply_journal_admin`, exposed as the `simply-journal-admin` command, that reads recent `systemd` journal entries. It imports [`systemd.journal`](https://www.freedesktop.org/software/systemd/python-systemd/journal.html) from the APT package [`python3-systemd`](https://packages.ubuntu.com/noble/python3-systemd) and declares no PyPI runtime dependencies because the binding comes from the distribution package manager and links against `libsystemd` in `/usr/lib`. This makes it a good fit for the system environment because the runtime dependency is intentionally owned by the operating system package manager instead of a project-local environment.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_journal_admin/README.md). The project components are documented in the [Project Components](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_journal_admin/README.md#project-components) section of the section README.
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_journal_admin/README.md).
 
 ## Python System Setup
 
@@ -196,7 +196,7 @@ Python packages can land in [operating-system](#system-target), [administrator](
 
     The system target is owned by APT. Importable Python packages typically land under `/usr/lib/python3/dist-packages/`. This exists because Linux distributions package Python libraries for operating-system tools and stable release updates.
 
-    Use APT for Python libraries that support system services, distribution-managed automation, or operating-system integration. The `journal-admin` project in this section is a concrete example: it imports `systemd.journal`, which is part of the APT package `python3-systemd` and binds to `libsystemd` shipped with the operating system. There is no equivalent wheel on PyPI that works without that system library, so APT is the right install path. Avoid APT for normal project dependencies like `python3-requests`, as APT packages follow the operating-system release cycle and can be older or patched differently than the versions on PyPI.
+    Use APT for Python libraries that support system services, distribution-managed automation, or operating-system integration. The `simply_journal_admin` project in this section is a concrete example: it imports `systemd.journal`, which is part of the APT package `python3-systemd` and binds to `libsystemd` shipped with the operating system. There is no equivalent wheel on PyPI that works without that system library, so APT is the right install path. Avoid APT for normal project dependencies like `python3-requests`, as APT packages follow the operating-system release cycle and can be older or patched differently than the versions on PyPI.
 
     Install the distribution-managed Python binding with the distribution package manager:
 
