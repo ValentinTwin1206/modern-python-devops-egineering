@@ -12,27 +12,13 @@ The table below lists the main files that support the `venv` example project.
 | [Dockerfile](Dockerfile) | This deployment image builds the project wheel and installs it into the same virtual-environment layout. It shows how the `venv` pattern carries from interactive development into container deployment. |
 | [pyproject.toml](pyproject.toml) | This file defines the package metadata and dependencies for the example project. Those dependencies are what get installed into the virtual environment during the workflow shown below. |
 
-## Required Developer Tools
+## System Requirements
 
-- Docker or Podman.
-- Python 3.12 with the standard-library `venv` module (for the on-host path).
-- `pip` and `uv`.
+- Docker or Podman for the container workflow.
+- Python 3.12 with the standard-library `venv` module for the on-host path.
+- `pip` for installing the project package and `uv` for the development workflow.
 
-### With Docker
-
-Build the development image through the projects helper:
-
-```bash
-../build.sh build --path proj2_tiny_webserver/Dockerfile.devEnv --build-only
-```
-
-Open an interactive shell in the development image:
-
-```bash
-../build.sh build --path proj2_tiny_webserver/Dockerfile.devEnv
-```
-
-### On Host
+## Installation
 
 Install Python and the `venv` module on Ubuntu:
 
@@ -95,6 +81,22 @@ docker stop tiny-webserver
 ```
 
 ## Development Guide
+
+The project workflow uses `uv` for development commands. You can run it inside the containerized environment or inside the on-host `venv` created above.
+
+### With Docker
+
+Build the development image through the projects helper:
+
+```bash
+../build.sh build --path proj2_tiny_webserver/Dockerfile.devEnv --build-only
+```
+
+Open an interactive shell in the development image:
+
+```bash
+../build.sh build --path proj2_tiny_webserver/Dockerfile.devEnv
+```
 
 ### Sync Environment
 

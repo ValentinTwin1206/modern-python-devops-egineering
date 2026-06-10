@@ -15,28 +15,14 @@ The table below lists the main files that support the Dev Container example proj
 | [Dockerfile.devEnv](Dockerfile.devEnv) | This standalone development image installs the system libraries Pillow needs, the C toolchain Nuitka requires, and all Python dependencies through `uv sync --group dev`. It opens an interactive shell so you can explore the project and run tools manually without modifying the host machine. |
 | [pyproject.toml](pyproject.toml) | This file defines the project metadata and dependencies that `uv sync --group dev` installs inside the container. It ties the editor setup back to the Python packaging configuration of the project. |
 
-## Required Developer Tools
+## System Requirements
 
-- Docker or Podman.
+- Docker or Podman for the container workflow.
 - VS Code with the Dev Containers extension, or Node.js with the Dev Containers CLI.
 - `uv` for project commands inside the container.
-- `nuitka` for compiling the project into a standalone binary.
+- Nuitka for compiling the project into a standalone binary.
 
-### With Docker
-
-Build the development image through the projects helper:
-
-```bash
-../build.sh build --path proj4_pixelpack/Dockerfile.devEnv --build-only
-```
-
-Open an interactive shell in the development image:
-
-```bash
-../build.sh build --path proj4_pixelpack/Dockerfile.devEnv
-```
-
-### On Host
+## Installation
 
 Open the section in VS Code:
 
@@ -85,6 +71,22 @@ PYTHONPATH=src uv run python -m pixelpack.cli grayscale input.png output.png
 ```
 
 ## Development Guide
+
+The project workflow runs inside a container because Pillow needs image libraries and Nuitka needs a native compiler toolchain.
+
+### With Docker
+
+Build the development image through the projects helper:
+
+```bash
+../build.sh build --path proj4_pixelpack/Dockerfile.devEnv --build-only
+```
+
+Open an interactive shell in the development image:
+
+```bash
+../build.sh build --path proj4_pixelpack/Dockerfile.devEnv
+```
 
 ### Sync Environment
 

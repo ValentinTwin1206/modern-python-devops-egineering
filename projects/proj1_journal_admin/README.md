@@ -4,22 +4,6 @@ This section demonstrates Python's system-level installation on Ubuntu and how p
 
 ## Project Components
 
-The tree below shows the main project layout. The `.build/` directory is created during the build workflow and stores generated artifacts.
-
-```text
-proj1_journal_admin/
-|-- .build/
-|   |-- simply_journal_admin-1.0.0-py3-none-any.whl
-|   `-- simply-journal-admin_1.0.0-1_all.deb
-|-- debian/
-|-- src/
-|-- tests/
-|-- Dockerfile.devEnv
-|-- pyproject.toml
-|-- README.md
-`-- uv.lock
-```
-
 The table below lists the main files that support the system-environment example project.
 
 | Component | Description |
@@ -96,7 +80,7 @@ The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development too
 
 ### Sync Environment
 
-Sync the project environment with `uv`:
+Within the running container, you can sync the project environment with `uv`:
 
 ```bash
 uv sync
@@ -104,7 +88,7 @@ uv sync
 
 ### Run Tests
 
-Run the test suite with Karva:
+Within the running container, you can run the test suite with Karva:
 
 ```bash
 uv run karva test tests/
@@ -112,7 +96,7 @@ uv run karva test tests/
 
 ### Lint
 
-Run Ruff against the source tree:
+Within the running container, you can run Ruff against the source tree:
 
 ```bash
 uv run ruff check .

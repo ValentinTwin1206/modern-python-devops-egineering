@@ -1,6 +1,6 @@
 # Modern Python Engineering
 
-## Introdution
+## Introduction
 
 The practical course ***Modern Python Engineering*** deals with tools,
 standards, and delivery workflows behind modern Python development.

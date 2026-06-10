@@ -18,27 +18,13 @@ The table below lists the main files that support the Conda example project.
 | [recipe/meta.yaml](recipe/meta.yaml) | This file is the Conda recipe consumed by `conda-build`. It is the sole packaging declaration for the project: it copies the `image_processor` package into the env's site-packages, registers the `image-processor` entry point, and pulls OpenCV and NumPy from `conda-forge` at install time. |
 | [ruff.toml](ruff.toml) | This file holds the Ruff lint configuration. It exists as a standalone config because the project does not ship a `pyproject.toml`. |
 
-## Required Developer Tools
+## System Requirements
 
-- Docker or Podman.
-- Miniconda or Anaconda (for the on-host path).
-- `conda-build` (for building the Conda package).
+- Docker or Podman for the container workflow.
+- Miniconda or Anaconda for the on-host path.
+- `conda-build` for building the Conda package.
 
-### With Docker
-
-Build the development image through the projects helper:
-
-```bash
-../build.sh build --path proj3_image_processor/Dockerfile.devEnv --build-only
-```
-
-Open an interactive shell in the development image:
-
-```bash
-../build.sh build --path proj3_image_processor/Dockerfile.devEnv
-```
-
-### On Host
+## Installation
 
 Install Miniconda using the official installer:
 
@@ -91,6 +77,22 @@ conda env export --from-history > environment.yml
 ```
 
 ## Development Guide
+
+The project workflow uses the named Conda environment from [environment.yml](environment.yml). You can work inside the development image or inside the activated on-host environment.
+
+### With Docker
+
+Build the development image through the projects helper:
+
+```bash
+../build.sh build --path proj3_image_processor/Dockerfile.devEnv --build-only
+```
+
+Open an interactive shell in the development image:
+
+```bash
+../build.sh build --path proj3_image_processor/Dockerfile.devEnv
+```
 
 ### Sync Environment
 
