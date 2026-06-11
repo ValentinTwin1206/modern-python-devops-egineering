@@ -1,0 +1,22 @@
+# DEVELOPMENT IMAGE:
+#   - uses python:3.12 and installs uv as the project workflow tool
+#   - syncs the dev dependency group into a project-local .venv
+#   - opens an interactive shell in /app for library development
+# # # # # # # # # # #
+FROM python:3.12
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY README.md ./
+COPY src ./src
+COPY tests ./tests
+
+ENV PATH="/app/.venv/bin:${PATH}"
+
+CMD ["/bin/bash"]

@@ -1,0 +1,24 @@
+{
+    "name": "Python Dev Containers",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "workspaceFolder": "/workspaces/proj5_pixelpack",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+                "python.terminal.activateEnvironment": true,
+                "ruff.nativeServer": "on"
+            }
+        }
+    },
+    "postCreateCommand": "uv sync --group dev",
+    "remoteUser": "vscode"
+}

@@ -1,0 +1,13 @@
+Source: pixelpack
+Section: utils
+Priority: optional
+Maintainer: Modern Python Engineering <maintainer@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+
+Package: pixelpack
+Architecture: amd64
+Description: Pillow-based image-processing CLI
+ Pixelpack is a small command-line tool for common image operations:
+ resizing, format conversion, and grayscale conversion. It is distributed
+ as a standalone binary compiled with Nuitka.

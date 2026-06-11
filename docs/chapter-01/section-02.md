@@ -6,11 +6,11 @@ This page covers Python's standard-library `venv` module.
 
 ### Project Setup
 
-The applied project is a small web service called `Tiny Webserver Project`. It uses [Bottle](https://bottlepy.org/docs/dev/) as the runtime dependency. This makes it a good fit for `venv` because a small PyPI-based service shows clearly how one project-local environment can isolate application dependencies.
+The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_tiny_webserver/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
 
 ## `venv` environment model
 
@@ -165,7 +165,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     include-system-site-packages = false
     version = 3.12.3
     executable = /usr/bin/python3.12
-    command = /usr/bin/python3 -m venv /path/to/projects/proj2_tiny_webserver/.venv
+    command = /usr/bin/python3 -m venv /path/to/projects/proj1_docslug/.venv
     ```
 
 ### Activation and import path
@@ -273,6 +273,6 @@ python3 -c "import sys; print(sys.prefix); print(sys.base_prefix)"
 Show where installed packages live:
 
 ```bash
-python3 -c "import bottle, tiny_webserver; print(bottle.__file__); print(tiny_webserver.__file__)"
+python3 -c "import docslug; print(docslug.__file__)"
 ```
 

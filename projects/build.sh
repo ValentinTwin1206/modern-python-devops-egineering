@@ -38,8 +38,10 @@ ${BLUE}${BOLD}COMMANDS${RESET}
 
 ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
-                              ${DIM}(e.g. proj2_tiny_webserver/Dockerfile.devEnv).${RESET}
+                              ${DIM}(e.g. proj3_tiny_webserver/Dockerfile.devEnv).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
+        ${YELLOW}--privileged${RESET}          Run the container with ${YELLOW}--privileged${RESET} so the
+                              in-container Docker daemon can start (Docker-in-Docker).
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
         ${YELLOW}--${RESET}                    Pass everything after this flag to docker run.
@@ -54,16 +56,16 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
                               ${CYAN}"projects-.*"${RESET}.
 
 ${BLUE}${BOLD}EXAMPLES${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj2_tiny_webserver/Dockerfile.devEnv${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj3_image_processor/Dockerfile${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}-p${RESET} ${CYAN}proj4_pixelpack/.devcontainer/Dockerfile${RESET} ${YELLOW}--rebuild${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj5_historic_calculator/2022/Dockerfile${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj3_tiny_webserver/Dockerfile.devEnv${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_image_processor/Dockerfile${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}-p${RESET} ${CYAN}proj5_pixelpack/.devcontainer/Dockerfile${RESET} ${YELLOW}--rebuild${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}
 
 ${BLUE}${BOLD}DEVCONTAINER CLI${RESET}
     Install Node.js/npm:  ${CYAN}sudo apt-get update && sudo apt-get install -y nodejs npm${RESET}
     Install globally:     ${CYAN}npm install -g @devcontainers/cli${RESET}
-    Or run once with:     ${CYAN}npx @devcontainers/cli build --workspace-folder proj4_pixelpack${RESET}
+    Or run once with:     ${CYAN}npx @devcontainers/cli build --workspace-folder proj5_pixelpack${RESET}
 EOF
 }
 
@@ -149,6 +151,7 @@ parse_build_args() {
     PORT_MAPPING="8080:8080"
     BUILD_ONLY=0
     NO_CACHE=0
+    PRIVILEGED=0
     EXTRA_ARGS=()
 
     while [[ $# -gt 0 ]]; do
@@ -181,6 +184,10 @@ parse_build_args() {
                 ;;
             --rebuild)
                 NO_CACHE=1
+                shift
+                ;;
+            --privileged)
+                PRIVILEGED=1
                 shift
                 ;;
             --)
@@ -284,6 +291,11 @@ build_command() {
     run_cmd+=(--volume "${build_artifact_dir}:/build")
 
     run_cmd+=(--publish "${PORT_MAPPING}")
+
+    if [[ "${PRIVILEGED}" -eq 1 ]]; then
+        log "Privileged:      ${GREEN}enabled${RESET} (Docker-in-Docker)"
+        run_cmd+=(--privileged)
+    fi
 
     if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
         run_cmd+=("${EXTRA_ARGS[@]}")

@@ -10,7 +10,7 @@ The applied project is a small admin CLI called `simply_journal_admin`, exposed 
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_journal_admin/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md).
 
 ## Python System Setup
 
@@ -307,7 +307,7 @@ Python packages can land in [operating-system](#system-target), [administrator](
     The user target keeps packages inside the current user's home directory, usually under `~/.local/lib/python3.x/site-packages/`.
 
     ```bash
-    pip3 install --user karva ruff
+    uv pip install --user karva ruff
     ```
 
 === "Windows"
@@ -315,7 +315,7 @@ Python packages can land in [operating-system](#system-target), [administrator](
     Install user-level tools without administrator permissions:
 
     ```powershell
-    py -3.13 -m pip install --user karva ruff
+    uv pip install --user karva ruff
     ```
 
     User packages usually land under `%AppData%\Python\Python313\site-packages`.
@@ -325,7 +325,7 @@ Python packages can land in [operating-system](#system-target), [administrator](
     Install user-level tools without writing into the interpreter prefix:
 
     ```bash
-    python3.13 -m pip install --user karva ruff
+    uv pip install --user karva ruff
     ```
 
     User packages usually land under `~/Library/Python/3.13/lib/python/site-packages`.

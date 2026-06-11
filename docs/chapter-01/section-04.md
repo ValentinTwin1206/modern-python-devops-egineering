@@ -10,7 +10,7 @@ The applied project is a small image-processing CLI called `Pixelpack Project`. 
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_pixelpack/README.md).
+Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md).
 
 ## Dev Containers environment model
 
@@ -246,7 +246,7 @@ flowchart LR
 Start the environment from a shell with the globally installed CLI:
 
 ```bash
-devcontainer up --workspace-folder projects/proj4_pixelpack
+devcontainer up --workspace-folder projects/proj5_pixelpack
 ```
 
 After the container has started, activate the virtual environment created by `uv`:

@@ -1,0 +1,59 @@
+# DEVELOPMENT IMAGE:
+#   - uses ubuntu:24.04 and the standard-library venv module
+#   - installs the project into /opt/venv
+#   - bundles Docker so the deployment image can be built from inside
+#     this container (Docker-in-Docker, requires --privileged)
+#   - opens an interactive shell with the venv activated
+# # # # # # # # # # #
+FROM ubuntu:24.04
+
+# Install CPython, a minimal source-build toolchain, and Docker.
+# The docker.io package provides both the docker CLI and the dockerd
+# daemon needed to build the deployment image from inside this container.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        build-essential \
+        ca-certificates \
+        docker.io \
+        iptables \
+        python3 \
+        python3-pip \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Create the virtual environment with the stdlib venv module.
+RUN python3 -m venv /opt/venv
+
+# Put the venv first on PATH for later layers and shell sessions.
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy project files and install into the venv.
+COPY pyproject.toml ./
+COPY src ./src
+COPY tests ./tests
+RUN pip install --upgrade pip \
+    && pip install .
+
+# Keep the package importable when /app is bind-mounted from the host.
+ENV PYTHONPATH=/app/src
+
+# Auto-activate the venv for interactive bash shells and start the Docker
+# daemon on first login so the docker CLI can build the deployment image.
+# Starting dockerd requires running the container with --privileged.
+RUN printf '%s\n' \
+    'source /opt/venv/bin/activate' \
+    'cd /app' \
+    'if ! docker info >/dev/null 2>&1; then' \
+    '    echo "Starting Docker daemon for Docker-in-Docker..."' \
+    '    dockerd >/var/log/dockerd.log 2>&1 &' \
+    '    for _ in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done' \
+    '    docker info >/dev/null 2>&1 || echo "warning: Docker daemon unavailable. Re-run the container with --privileged."' \
+    'fi' \
+    >> /root/.bashrc
+
+# Default to an interactive development shell.
+CMD ["/bin/bash"]

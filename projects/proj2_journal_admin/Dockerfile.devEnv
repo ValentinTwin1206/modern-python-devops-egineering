@@ -1,0 +1,39 @@
+# DEVELOPMENT IMAGE:
+#   - uses ubuntu:24.04 and its APT-managed Python 3.12
+#   - installs the Debian build toolchain used for the local .deb workflow
+#   - installs the APT-managed `python3-systemd` binding used by simply_journal_admin
+#   - opens an interactive shell for inspection and packaging work
+# # # # # # # # # # #
+FROM ubuntu:24.04
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/root/.local/bin:$PATH"
+ENV PYTHONPATH=/app/src
+
+WORKDIR /app
+
+# Install Ubuntu's Python packages, Debian packaging tools, and small
+# inspection helpers.
+# `python3-systemd` is the APT-only binding that simply_journal_admin imports.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        debhelper \
+        devscripts \
+        python3 \
+        python3-pip \
+        python3-systemd \
+        tree \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# Install one developer tool into the local administrator target and one into
+# the user target so the image demonstrates both installation levels.
+RUN uv pip install --system --break-system-packages ruff \
+    && uv pip install --user karva
+
+# Project files are expected to be bind-mounted into /app at runtime.
+ENTRYPOINT ["/bin/bash"]

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "docslug"
+version = "1.0.0"
+description = "Pure-Python helpers for stable documentation and filename slugs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+
+[dependency-groups]
+dev = [
+    "karva>=0.0.1a5",
+    "ruff>=0.15.12",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
