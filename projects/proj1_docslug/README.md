@@ -97,12 +97,18 @@ Within the running container, you can sync the project environment with `uv`:
 uv sync --all-groups
 ```
 
+Then source the virtual environment so the installed tools are on `PATH`:
+
+```bash
+source .venv/bin/activate
+```
+
 ### Run Tests
 
 Within the active virtual environment, you can run the test suite with Karva:
 
 ```bash
-uv run karva test tests/
+karva test tests/
 ```
 
 ### Lint
@@ -110,7 +116,7 @@ uv run karva test tests/
 Within the active virtual environment, you can run Ruff against the source tree:
 
 ```bash
-uv run ruff check .
+ruff check .
 ```
 
 ### Build Guide

@@ -62,21 +62,15 @@ journalctl -u simply-journal-admin.service --since "1 hour ago"
 
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools and demonstrates multiple installation targets in one image. `python3-systemd` comes from APT as the system-managed runtime dependency, `ruff` is installed into the local administrator target with `uv pip install --system --break-system-packages`, and `karva` is installed into the root user's user target with `uv pip install --user`. Build artifacts are stored on the host in `.build/`. Open an interactive shell in the development image through the projects helper:
+The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. It combines multiple Python installation targets in one image while using `uv` as a fast, pip-compatible layer for traditional `pip install` workflows. Build artifacts are stored on the host in `.build/`. Open an interactive shell in the development image through the projects helper:
 
 ```bash
 ../build.sh build --path proj2_journal_admin/Dockerfile.devEnv
 ```
 
-### Installation Levels
+### Sync Environment
 
-No project-local sync step is required for this example project. The development image already exposes the runtime and developer tools from different installation levels, while the project source is bind-mounted into `/app` and added to `PYTHONPATH` through the image configuration.
-
-Inspect the active Python installation targets inside the container:
-
-```bash
-python3 -m site
-```
+The development image installs the Python tools into the system interpreter, so they are already available on `PATH` when the shell starts. No additional environment activation or profile sourcing is required.
 
 ### Run Tests
 

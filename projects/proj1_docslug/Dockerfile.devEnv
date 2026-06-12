@@ -1,14 +1,25 @@
 # DEVELOPMENT IMAGE:
-#   - uses python:3.12 and installs uv as the project workflow tool
+#   - uses ubuntu:24.04 with its APT-managed Python 3.12 and installs uv as the project workflow tool
 #   - syncs the dev dependency group into a project-local .venv
 #   - opens an interactive shell in /app for library development
 # # # # # # # # # # #
-FROM python:3.12
+FROM ubuntu:24.04
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        python3 \
+        python3-venv \
+        sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --groups sudo snake \
+    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
+    && chmod 0440 /etc/sudoers.d/snake
 
 WORKDIR /app
 
@@ -17,6 +28,10 @@ COPY README.md ./
 COPY src ./src
 COPY tests ./tests
 
+RUN chown -R snake:snake /app
+
 ENV PATH="/app/.venv/bin:${PATH}"
+
+USER snake
 
 CMD ["/bin/bash"]

@@ -16,11 +16,11 @@ to current Python packaging practices.
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Chapter | Summary |
-|---------|-------- |
-| [Section 01](./section-01.md) | Python 1.6 |
-| [Section 02](./section-02.md) | Python 2.3 |
-| [Section 03](./section-03.md) | Python 2.4 |
-| [Section 04](./section-04.md) | Python 2.7 |
-| [Section 05](./section-05.md) | Python 3.5 |
-| [Section 06](./section-06.md) | Python 3.11 |
+| Section | Summary | Project |
+|---------|---------|---------|
+| [Section 01](./section-01.md) | Python 1.6 | Historic Calculator v.1.0.0 |
+| [Section 02](./section-02.md) | Python 2.3 | Historic Calculator v.2.0.0 |
+| [Section 03](./section-03.md) | Python 2.4 | Historic Calculator v.3.0.0 |
+| [Section 04](./section-04.md) | Python 2.7 | Historic Calculator v.4.0.0 |
+| [Section 05](./section-05.md) | Python 3.5 | Historic Calculator v.5.0.0 |
+| [Section 06](./section-06.md) | Python 3.11 | Historic Calculator v.6.0.0 |

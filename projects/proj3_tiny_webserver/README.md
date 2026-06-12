@@ -64,13 +64,15 @@ docker stop tiny-webserver
 
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) uses *Docker inside Docker (DinD)* so you can build the deployment image from inside the development container. It contains all required development tools, and build artifacts are stored on the host in `.build/`:
+The [Dockerfile.devEnv](Dockerfile.devEnv) uses *Docker outside of Docker (DooD)* so you can build the deployment image from inside the development container through the host Docker daemon. It contains all required development tools, and build artifacts are stored on the host in `.build/`:
 
 ```bash
-../build.sh build --path proj3_tiny_webserver/Dockerfile.devEnv --privileged
+./build.sh build --path proj3_tiny_webserver/Dockerfile.devEnv -- \
+	--group-add "$(stat -c '%g' /var/run/docker.sock)" \
+	--volume /var/run/docker.sock:/var/run/docker.sock
 ```
 
-> The `--privileged` flag is required for *DinD*
+This mounts the host Docker socket into the container and adds the socket's group ID so the Docker CLI inside the container can talk to the host daemon without `--privileged`.
 
 ### Sync Environment
 
@@ -80,12 +82,18 @@ Within the running container, you can sync the project environment with `uv`:
 uv sync --all-groups
 ```
 
+Then source the virtual environment so the installed tools are on `PATH`:
+
+```bash
+source .venv/bin/activate
+```
+
 ### Run Tests
 
 Within the running container, you can run the test suite with Karva:
 
 ```bash
-uv run karva test tests/
+karva test tests/
 ```
 
 ### Lint
@@ -93,12 +101,12 @@ uv run karva test tests/
 Within the running container, you can run Ruff against the source tree:
 
 ```bash
-uv run ruff check .
+ruff check .
 ```
 
 ### Build Guide
 
-The deployment image in [Dockerfile](Dockerfile) is a two-stage build: it produces the project wheel with `uv build --wheel`, installs it into a virtual environment at `/opt/venv`, and starts the `tiny-webserver` console script on port 8080. Run the commands below from the project directory, on the host or inside the privileged development container from the [With Docker](#with-docker) section.
+The deployment image in [Dockerfile](Dockerfile) is a two-stage build: it produces the project wheel with `uv build --wheel`, installs it into a virtual environment at `/opt/venv`, and starts the `tiny-webserver` console script on port 8080. Run the commands below from the project directory, on the host or from inside the [development image](#setup-environment) .
 
 #### Build the Wheel
 

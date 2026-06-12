@@ -12,6 +12,15 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app
 
+# Setup the sudo user "snake" and group so the image can be used for development 
+# without root privileges.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --groups sudo snake \
+    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
+    && chmod 0440 /etc/sudoers.d/snake
+
 # Accept Anaconda channel terms so the image can build non-interactively.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
@@ -34,9 +43,12 @@ COPY tests ./tests
 ENV PYTHONPATH=/app/src
 
 # Auto-activate the env for interactive bash shells.
-RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc \
-    && echo 'conda activate image-processor' >> /root/.bashrc \
-    && echo 'cd /app' >> /root/.bashrc
+RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/snake/.bashrc \
+    && echo 'conda activate image-processor' >> /home/snake/.bashrc \
+    && echo 'cd /app' >> /home/snake/.bashrc \
+    && chown -R snake:snake /app /home/snake /opt/conda
+
+USER snake
 
 # Default to an interactive development shell.
 CMD ["/bin/bash"]

@@ -8,7 +8,7 @@ FROM ubuntu:24.04
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="/home/snake/.local/bin:$PATH"
 ENV PYTHONPATH=/app/src
 
 WORKDIR /app
@@ -25,15 +25,25 @@ RUN apt-get update \
         python3 \
         python3-pip \
         python3-systemd \
+        sudo \
         tree \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --groups sudo snake \
+    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
+    && chmod 0440 /etc/sudoers.d/snake
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install one developer tool into the local administrator target and one into
-# the user target so the image demonstrates both installation levels.
+# Install one developer tool into the local administrator target and keep the
+# project runtime dependency managed by the system package manager.
 RUN uv pip install --system --break-system-packages ruff \
-    && uv pip install --user karva
+    && chown -R snake:snake /app /home/snake
+
+USER snake
+
+# Install one developer tool into the user's site-packages so the image
+# demonstrates both installation levels while running as the non-root user.
+RUN uv pip install --user karva
 
 # Project files are expected to be bind-mounted into /app at runtime.
 ENTRYPOINT ["/bin/bash"]
