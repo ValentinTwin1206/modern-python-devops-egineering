@@ -1,91 +1,217 @@
-# Python 1.6
+# Python Wheels
 
-This section introduces Python 1.6 packaging with `distutils` and uses a
-small command-line project to show how early Python packages were described,
-built, and installed.
+Python wheels are the standard built package format for Python projects. They let installers such as `pip` copy ready-to-install files instead of rebuilding the project every time.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is Historic Calculator, release 1.0.0. This snapshot is set in 2000, the release year of Python 1.6, and contains the `historic_calculator` package plus the `hist_calc` command-line script.
+The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
 
 ### Run the Project
 
-Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj6_historic_calculator/2000/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
 
-## Background
-
-This project belongs to the Python 1.6 era in 2000, when `distutils` graduated from a separately installable package into the Python standard library. It was Python's first standard packaging toolkit and gave Python projects a common `setup.py` interface for:
-
-- Declaring package metadata
-- Listing source files
-- Building source distributions
-- Installing packages into a Python environment
-
-The `setup.py` file records the shipped package and script directly:
-
-```python
-setup(
-	name="historic_calculator",
-	version="1.0.0",
-	package_dir={"": "src"},
-	packages=["historic_calculator"],
-	scripts=["bin/hist_calc"],
-)
-```
-
-- `name` gives the distribution its package name.
-- `version` records the release number that build and install commands use.
-- `package_dir` maps packages to the `src` directory instead of the project root.
-- `packages` lists the Python package included in the distribution.
-- `scripts` installs the `bin/hist_calc` launcher as an executable script.
-
-## Dependency Management
+## Distribution Fundamentals
 
 ### Overview
 
-`distutils` was an important step toward standardized packaging, but the model still had important limits:
+A Python wheel is a built distribution format defined by PEP 427. It lets tools such as `pip` and `uv` install pre-built code instead of rebuilding from source.
 
-- ⚠️ It did not resolve or install runtime dependencies.
-- ⚠️ Tools such as wheels, build isolation, lock files, and modern dependency resolvers did not exist yet.
-- ⚠️ Users still had to prepare much of the environment by hand.
+- ✅ Python libraries
+- ✅ CLI applications
+- ✅ internal tools, SDKs and frameworks 
 
-### Runtime and build dependencies
+### Python Packaging Ecosystem
 
-Use `Dockerfile.devEnv` for the Python 1.6 development environment. It keeps the historical interpreter and build tooling isolated from the host machine.
+Modern Python packaging separates the command-line frontend from the backend that creates distribution artifacts. The frontend reads `pyproject.toml` to choose the backend, which keeps packaging tools interchangeable.
 
-Numerical 15.3 is the runtime component that provides array-style calculations for this project. It is the predecessor of NumPy, but it is not declared in a way that `distutils` can install automatically. A user must install Numerical before installing Historic Calculator, which shows the manual dependency workflow of the time.
+The build backend is configured in the `build-system` section of the `pyproject.toml` file:
 
-Fetch and unpack Numerical 15.3:
-
-```bash
-wget -O Numerical-15.3.tgz "https://sourceforge.net/projects/numpy/files/OldFiles/Numerical-15.3.tgz/download"
-tar -xzf Numerical-15.3.tgz
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 ```
 
-Build and install Numerical from its own `setup.py`:
+Common frontend and backend tools include:
 
-```bash
-cd Numerical-15.3 && python setup.py install
+| Type | Tool | Description |
+|--------|--------|--------|
+| Frontend | `uv build` | Build command from the uv ecosystem |
+| Frontend | `python -m build` | PyPA's reference build frontend |
+| Backend | `hatchling` | Lightweight backend |
+| Backend | `setuptools` | Widely used backend |
+| Backend | `uv_build` | Backend used by uv-based projects |
+
+### Package Layout
+
+A wheel is built from the project files, source code, and packaging metadata already in the repository.
+
+```text
+{project_root}/
+├── src/
+│   └── docslug/
+│       ├── __init__.py
+│       └── core.py
+├── tests/
+├── README.md
+├── LICENSE
+└── pyproject.toml
 ```
 
-The install copies Numeric and its compiled extensions into the Python 1.6 prefix, typically `/usr/local/lib/python1.6/site-packages/`. That target existed, but automatic dependency discovery and installation did not.
+- `src/`: Contains the importable package code. This widely used `src` layout keeps the project root separate from Python modules, which helps prevent accidental local imports and makes development behavior match the installed package.
+- `pyproject.toml`: The **central configuration file** for modern Python packaging. It stores the package metadata, dependency list, build backend settings, and CLI entry points in one place.
+- `README.md`: Project description displayed on package repositories such as PyPI.
+- `LICENSE`: Defines the legal terms under which the package can be used and distributed.
 
-### Build the package
+### Distribution Artifacts
 
-Build the source distribution:
+The build process usually creates two artifacts:
 
-```bash
-python setup.py sdist
+| Artifact | Purpose | Example |
+|----------|---------|---------|
+| `*.whl` | Built distribution used for installation | `docslug-1.0.0-py3-none-any.whl` |
+| `*.tar.gz` | Source distribution used for rebuilding | `docslug-1.0.0.tar.gz` |
+
+A wheel filename follows this general structure:
+
+```text
+{NAME}-{VERSION}-{PYTHON_TAG}-{ABI_TAG}-{PLATFORM_TAG}.whl
 ```
 
-### Install the package
+The individual identifiers have the following meaning:
 
-Install the package and the `hist_calc` launcher system wide:
+- `{NAME}`: Package name taken from `project.name` in `pyproject.toml`.
+- `{VERSION}`: Package version taken from `project.version` in `pyproject.toml`.
+- `{PYTHON_TAG}`: Python tag describing the supported Python interpreter version.
+    - `py3` → Any Python 3 version
+    - `py310` → Python 3.10
+    - `py311` → Python 3.11
+    - ...
+- `{ABI_TAG}`: The *Application Binary Interface (ABI)* tag describing binary compatibility.
+    - `none` → No compiled extensions
+    - `cp310` → CPython 3.10 ABI
+    - `cp311` → CPython 3.11 ABI
+    - ...
+- `{PLATFORM_TAG}`: Platform tag describing the target operating system and architecture.
+    - `any` → Platform independent
+    - `win_amd64` → Windows 64-bit
+    - `manylinux_x86_64` → Linux 64-bit
+    - `manylinux_aarch64` → Linux ARM64
+    - `macosx_11_0_arm64` → macOS Apple Silicon
+    - `macosx_10_9_x86_64` → macOS Intel
+
+!!! info "Wheel filename examples"
+    Pure Python projects usually produce platform-independent wheels ending in `docslug-1.0.0-py3-none-any.whl`
+
+## Packaging Workflow
+
+### Create The Package
+
+Build the project with either `uv build` or `python -m build`; both create a wheel (`.whl`) and a source distribution (`.tar.gz`) in `dist/`.
+
+=== "`uv`"
+
+    Run following command to build the package:
+
+    ```bash
+    uv build
+    ```
+
+=== "`build`"
+
+    Install `build`:
+
+    ```bash
+    python -m pip install build
+    ```
+
+    Run following command to build the package:
+
+    ```bash
+    python -m build
+    ```
+
+> This will generate `dists/docslug-1.2.0-py3-none-any.whl`
+
+### Validate The Package
+
+To validate the generated artifacts, you can use `twine`. Run following command to install `twine`:
+
+=== "`uv`"
+    
+    ```bash
+    uv tool install twine
+    ```
+
+=== "`pip`"
+
+    ```bash
+    python3 -m pip install twine
+    ```
+
+Validate the artifacts with `twine check dist/*`.
 
 ```bash
-python setup.py install
+twine check dist/*
 ```
 
-> This command registers `hist_calc` through `scripts=`. If Numerical is missing, running `hist_calc` fails with `ImportError`.
+### Publish The Package
+
+Once a package has been validated, it can be uploaded to a package repository.
+
+| Repository | Type | Purpose |
+|------------|------|---------|
+| [PyPI](https://pypi.org) | Public | Official Python package repository |
+| [TestPyPI](https://test.pypi.org) | Public | Test environment for package publishing workflows |
+| Artifactory | Private | Repository manager for internal software distribution |
+| Nexus Repository | Private | Repository manager for internal package hosting |
+
+=== "uv"
+
+    Publish the package to PyPI with `uv`.
+
+    ```bash
+    uv publish
+    ```
+
+    Publish the package to TestPyPI with `uv`.
+
+    ```bash
+    uv publish --publish-url https://test.pypi.org/legacy/
+    ```
+
+=== "twine"
+
+    Publish the package to PyPI with `twine`.
+
+    ```bash
+    twine upload dist/*
+    ```
+
+    Publish the package to TestPyPI with `twine`.
+
+    ```bash
+    twine upload --repository testpypi dist/*
+    ```
+
+### Install The Package
+
+After publication, users can install the package directly from a repository.
+
+=== "uv"
+
+    Install the package with `uv`.
+
+    ```bash
+    uv tool install docslug
+    ```
+
+=== "pip"
+
+    Install the package with `pip`.
+
+    ```bash
+    pip install docslug
+    ```

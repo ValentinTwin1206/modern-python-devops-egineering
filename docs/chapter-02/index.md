@@ -1,16 +1,13 @@
-# Python Project Configuration
+# Python Project Distributions
 
 ## Introduction
 
-Chapter 02 follows one small package through the evolution of Python
-packaging, showing how project configuration moved from early
-`distutils` layouts to the modern `pyproject.toml` standard. The chapter
-starts with Python 1.6 and `distutils`, then reviews metadata-only
-dependency hints, early `setuptools`, pinned requirements files,
-`setup.cfg`, and finally a modern `pyproject.toml` workflow. Across the
-sections, the chapter explains not only how each configuration style
-works, but also why the ecosystem changed and what each step contributed
-to current Python packaging practices.
+Chapter 02 introduces the main ways to distribute Python projects after they
+are built. It begins with Python wheels for standard package installation,
+then moves to operating system packages, container images, Conda packages,
+and standalone binaries. Together, these sections show how distribution
+formats shape installation workflows, runtime environments, and deployment
+choices in modern Python engineering.
 
 ## Overview
 
@@ -18,9 +15,8 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Section | Summary | Project |
 |---------|---------|---------|
-| [Section 01](./section-01.md) | Python 1.6 | Historic Calculator v.1.0.0 |
-| [Section 02](./section-02.md) | Python 2.3 | Historic Calculator v.2.0.0 |
-| [Section 03](./section-03.md) | Python 2.4 | Historic Calculator v.3.0.0 |
-| [Section 04](./section-04.md) | Python 2.7 | Historic Calculator v.4.0.0 |
-| [Section 05](./section-05.md) | Python 3.5 | Historic Calculator v.5.0.0 |
-| [Section 06](./section-06.md) | Python 3.11 | Historic Calculator v.6.0.0 |
+| [Section 01](./section-01.md) | Python wheels           | [Docslug](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md) |
+| [Section 02](./section-02.md) | OS packages             | [Simply Journal Admin](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md) |
+| [Section 03](./section-03.md) | Python containers       | [Tiny Webserver](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_tiny_webserver/README.md) |
+| [Section 04](./section-04.md) | Conda packages          | [Image Processor](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_image_processor/README.md)  |
+| [Section 05](./section-05.md) | Standalone binaries     | [Pixelpack](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md) |

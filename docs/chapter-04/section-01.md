@@ -1,191 +1,163 @@
-# Project Overview
+# Common Dependency Management
+## Dependency Management
+### Dependency Hell
 
-## Overview
+Modern Python applications are built on top of third-party packages that are not shipped with Python itself. Managing these external libraries across different developers, machines, and deployment environments is called **dependency management**.
 
-Python project setup used to be spread across files such as `setup.py`, `setup.cfg`, `requirements.txt`, and tool-specific configuration. `pyproject.toml` changed that by standardizing how projects define metadata, build backends, dependencies, and tool settings in one place. 
-
-The *Depsight* project is built around this modern standard: project configuration lives in `pyproject.toml`, while `uv` manages environment creation, dependency synchronization, and publishing workflows.
-
----
-
-## Project Configuration
-
-The project is configured through a single `pyproject.toml` file:
+As covered in [Chapter 03](../chapter-03/index.md), today's standard for declaring project metadata and dependencies is the `pyproject.toml`. A minimal project looks like this:
 
 ```toml
 [project]
-name = "depsight"
-version = "1.3.0"
-description = "A modular dependency analysis framework"
-readme = "README.md"
-license = "MIT"
-requires-python = ">=3.12"
-authors = [
-    { name = "Depsight Contributors" },
-]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Build Tools",
-]
+name = "myapp"
+version = "1.0.0"
+requires-python = ">=3.11"
 dependencies = [
-    "click>=8.1.7",
-    "rich>=13.7.0",
-    "rich-click>=1.7.0",
-    "textual>=1.0.0",
+    "requests>=2.0",
+    "old-sdk>=1.0",
+]
+```
+
+On the surface the declarations look fine — until you look at what each library itself pulls in:
+
+```
+myapp
+├── requests 2.28.0
+│   └── urllib3 >=1.21.1, <2
+└── old-sdk 1.0.0
+    └── urllib3 >=2.0        ← conflict!
+```
+
+Both `requests` and `old-sdk` depend on `urllib3`, but require incompatible versions. They cannot be installed together, and `pip` will fail with:
+
+```
+ERROR: Cannot install requests and old-sdk because these package versions have conflicting dependencies.
+```
+
+This is **dependency hell** — conflicting version constraints between transitive dependencies that make it impossible to assemble a working environment.
+
+The `requires-python` field has the same fundamental weakness. It sets a lower bound on the interpreter, but does not pin or manage it. On one developer's machine the project runs on Python 3.11, on another 3.13, and in the CI container something else entirely — each with different standard library behaviour and package compatibility.
+
+Even without an outright conflict, the environment is still fragile. Version ranges like `requests>=2.0` resolve to whatever is newest at install time, meaning two developers a week apart may end up with different packages, on different interpreters, in different `site-packages` directories.
+
+All three dimensions — package versions, interpreter version, and environment isolation — need to be controlled to guarantee a reproducible build.
+
+### Lockfiles and Environment Isolation
+
+A **lockfile** solves this by recording the exact resolved versions of every package — direct and transitive — along with a cryptographic hash for each. Anyone installing from that lockfile gets an identical environment, regardless of when they do it:
+
+```
+# lockfile (abstract)
+requests              2.28.0    sha256:58cd2187...
+urllib3               2.0.0     sha256:34b174d6...
+charset-normalizer    3.3.2     sha256:def67890...
+```
+
+There is also the problem of **environment isolation**. Without it, all Python projects on a machine share the same `site-packages` directory. Upgrading `requests` for one project can silently break another that relies on an older version. Virtual environments solve this by giving each project its own independent package directory:
+
+```
+project-a/
+└── .venv/    ← requests 2.28.0, urllib3 2.0.0
+project-b/
+└── .venv/    ← requests 2.25.0, urllib3 1.26.14  (independent)
+```
+
+`pyproject.toml` alone provides none of this — no lockfile generation, no guaranteed resolution across time, no environment or interpreter management. That is where dependency managers come in.
+
+### Dependency Management Tools
+
+Each manager builds on `pyproject.toml` and adds the missing pieces — but not all of them to the same degree.
+
+#### pip
+
+Released in **2008**, `pip` became the standard way to install Python packages and remains bundled with every Python installation today. It covers the basics but provides no lockfile generation, no virtual environment management, and no interpreter pinning. Reproducibility depends entirely on developer discipline.
+
+To get reproducible installs, developers manually maintained a `requirements.txt` file with pinned versions:
+
+```text
+# requirements.txt
+requests==2.28.0
+urllib3==2.0.0
+```
+
+These two versions are already inconsistent: `requests 2.28.0` requires `urllib3<1.27`, but `urllib3==2.0.0` is pinned — `pip` will not catch this until installation. This file is hand-maintained: there is no tooling to generate or verify it automatically, and it captures only what the developer explicitly pins — not the full transitive graph.
+
+In **2019**, `pip` introduced `pip check`, which validates that all installed packages have their dependencies satisfied in the current environment:
+
+```bash
+$ pip check
+requests 2.28.0 has requirement urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0.
+```
+
+However, `pip check` only detects inconsistencies after the fact — it does not prevent them. Existing environments in an inconsistent state are not repaired automatically.
+
+With **pip 20.3** (released **2020**), `pip` gained a backtracking resolver that warns about conflicts at install time. However, it still installs the conflicting package and leaves the environment broken:
+
+```bash
+$ pip install "urllib3==2.0.0"
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
+requests 2.28.0 requires urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0 which is incompatible.
+Successfully installed urllib3-2.0.0
+```
+
+#### pipenv
+
+Released in **2017**, `pipenv` was the first tool to unify package management and virtual environment handling. It introduced two dedicated files: `Pipfile` for human-readable declarations and `Pipfile.lock` as an automatically generated lockfile covering the full transitive dependency graph with cryptographic hashes.
+
+Running `pipenv install` creates a project-scoped virtual environment automatically and writes the resolved graph to `Pipfile.lock`:
+
+```json
+{
+    "default": {
+        "requests": {
+            "version": "==2.28.0",
+            "hashes": ["sha256:58cd2187..."]
+        },
+        "urllib3": {
+            "version": "==2.0.0",
+            "hashes": ["sha256:34b174d6..."]
+        }
+    }
+}
+```
+
+In contrast, when the same conflicting packages are specified, `pipenv` refuses to lock rather than creating a broken environment:
+
+```bash
+$ pipenv install -r requirements.txt
+✘ Locking Failed!
+The conflict is caused by:
+    The user requested urllib3==2.0.0
+    requests 2.28.0 depends on urllib3<1.27 and >=1.21.1
+ERROR: ResolutionImpossible
+```
+
+`pipenv` solved the reproducibility and isolation problems that `pip` left open, but introduced its own limitations: its dependency resolver was notoriously slow on larger projects, and the workflow stops at dependency management — building and publishing packages are out of scope. These gaps drove adoption towards `poetry`, which aimed to cover the full project lifecycle in a single tool.
+
+#### poetry
+
+Released in **2018**, `poetry` unified the entire Python project workflow — dependency resolution, virtual environment management, building, and publishing — in a single tool backed by `pyproject.toml`. Its resolver is significantly faster than `pipenv`'s and generates a `poetry.lock` file in a structured TOML format that captures the full dependency graph with per-file hashes:
+
+```toml
+[[package]]
+name = "requests"
+version = "2.28.0"
+description = "Python HTTP for Humans."
+files = [
+    {file = "requests-2.28.0-py3-none-any.whl", hash = "sha256:58cd2187..."},
 ]
 
-[dependency-groups]
-dev = [
-    "build>=1.4.2",  # actually not needed since we use uv_build, but its listed for traiting purposes
-    "mypy>=1.10",
-    "pytest>=8.0",
-    "ruff>=0.4",
+[package.dependencies]
+urllib3 = ">=1.21.1,<3"
+certifi = ">=2017.4.17"
+
+[[package]]
+name = "urllib3"
+version = "2.0.0"
+files = [
+    {file = "urllib3-2.0.0-py3-none-any.whl", hash = "sha256:34b174d6..."},
 ]
-docs = [
-    "mkdocs>=1.6",
-    "mkdocs-material>=9.5",
-    "mkdocs-mermaid2-plugin>=1.1",
-]
-
-[project.scripts]
-depsight = "depsight.cli:main"
-
-[project.urls]
-Homepage = "https://valentintwin1206.github.io/depsight-dependency-manager/"
-Repository = "https://github.com/ValentinTwin1206/depsight-dependency-manager"
-Issues = "https://github.com/ValentinTwin1206/depsight-dependency-manager/issues"
-
-# Plugin support
-[project.entry-points."depsight.plugins"]
-uv = "depsight.core.plugins.uv.uv:UVPlugin"
-vsce = "depsight.core.plugins.vsce.vsce:VSCEPlugin"
-
-[build-system]
-requires = ["uv_build>=0.11.1,<0.12"]
-build-backend = "uv_build"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
 ```
 
-- `project`: Declares the package metadata, supported Python version, and runtime dependencies. This is the core identity and installation contract of the project.
-- `dependency-groups`: Defines optional dependency sets for development and documentation work. These groups let `uv` install task-specific tooling without mixing it into runtime requirements.
-- `project.scripts`: Registers the `depsight` CLI entry point. Installing the project exposes a runnable command that calls `depsight.cli:main`.
-- `project.urls`: Publishes the main project links. These URLs point users and package tooling to the homepage, source repository, and issue tracker.
-- `project.entry-points."depsight.plugins"`: Registers built-in plugins through Python entry points. This allows the application to discover and load plugin implementations by name.
-- `build-system`: Defines the PEP 517 build configuration. Tools such as `uv build` act as the frontend, while `uv_build` is the backend that assembles the package artifacts and is declared in this table.
-- `tool.pytest.ini_options`: Stores pytest configuration inside the shared project file. It tells pytest where tests live and ensures `src` is available on the import path during test runs.
+`poetry` builds a complete dependency graph before installing, resolving the full transitive tree and detecting conflicts upfront — not just for direct dependencies.
 
----
-
-## Dependency Management
-
-### Synchronizing Dependencies
-
-The `uv sync` command installs all **direct dependencies** declared in `pyproject.toml` at once, along with their full **transitive dependency graph**. On a clean checkout, uv generates a `uv.lock` lockfile if one does not yet exist and provisions a virtual environment at `.venv/`. Any packages that have been downloaded before are served from uv's global cache rather than fetched from the network again, which makes repeated installs significantly faster. On subsequent runs, it detects any drift between `pyproject.toml` and the lockfile and reconciles them. The virtual environment is always kept in sync automatically, so developers can immediately work with the correct set of packages without any manual intervention.
-
-The `uv sync` command provides a set of flags that must be chosen carefully according to the target environment and use case. They significantly change its behaviour — from a permissive local install that re-resolves freely, to a strict CI check that fails on any lockfile drift, to a fully frozen production deployment that never touches `pyproject.toml` at all:
-
-=== "Local Development"
-
-    ```bash
-    # Install all dependencies and the project itself in editable mode
-    uv sync
-
-    # Also include an optional dependency-group (e.g. docs or lint)
-    uv sync --group docs
-    ```
-
-=== "CI/CD (Verification)"
-
-    ```bash
-    # Install all groups and abort if uv.lock is out of sync with pyproject.toml
-    # Ensures the lockfile was updated whenever dependencies changed
-    uv sync --all-groups --locked
-    ```
-
-=== "CI/CD (Production deployment)"
-
-    ```bash
-    # Install from uv.lock as-is, skip dev dependencies, never check pyproject.toml
-    # Fastest and most reproducible option for containerised deployments
-    uv sync --frozen --no-dev
-    ```
-
-### Updating Dependencies
-
-Consider the *Depsight* project changed `click==8.1.7` to `click>=8.1.7` in `pyproject.toml` while `uv.lock` still pins `8.1.7`. Because the locked version still satisfies the loosened constraint, `uv sync` keeps installing `8.1.7`. To pull in a newer release explicitly, run `uv lock --upgrade-package click` followed by `uv sync`.
-
-```mermaid
-flowchart TD
-    A["Project initialized with click==8.1.7"]
-    A -->|uv sync| B["click v8.1.7 gets installed and locked"]
-    B -.->C["Constraint click==8.1.7 changes to click>=8.1.7"]
-    C -->|uv sync| D["Constraint satisfied<br>uv.lock keeps 8.1.7"]
-    C -->|uv sync --locked| E["Mismatch detected<br>Aborts with error"]
-    C -->|uv sync --frozen| F["Reads uv.lock as-is<br>Installs 8.1.7"]
-    C -->|uv lock --upgrade| G["Latest version of click gets pinned in uv.lock"]
-    G -->|uv sync| H["Upgrades click in .venv to latest version"]
-```
-
----
-
-### Testing
-
-Testing is the practice of executing code in a controlled way to verify that it behaves as intended and to catch regressions when the codebase changes. In Python, tests are usually written as regular Python functions that assert on expected behavior, which keeps the feedback loop simple and accessible. The ecosystem is centered around tools such as `pytest`, which handle discovery, fixtures, parametrization, and failure reporting.
-
-Automated tests verify that the code behaves as expected and catch regressions before they reach other developers or production. Without a test runner, verifying correctness means manually re-running the application after every change — which does not scale and is error-prone. Depsight uses [pytest](https://docs.pytest.org/). A basic test looks like this:
-
-Running `python -m pytest tests/` discovers and executes all `test_*` functions automatically.
-
----
-
-### Code Quality Tools
-
-#### Linter and Formatter
-
-Linters and formatters improve source code quality before the program is ever run. In Python, this is especially valuable because the language emphasizes readability and has many style and correctness conventions that benefit from automatic enforcement. Modern Python tooling often combines import sorting, formatting, and static rule checking into a small number of fast commands that can run locally and in CI.
-
-Depsight uses [Ruff](https://docs.astral.sh/ruff/) as its linter and formatter. Ruff is implemented in Rust and represents a modern consolidation of the Python tooling ecosystem. It is a full replacement of `flake8`, `isort`, and `black` in a single binary while being significantly faster than any of them. Rather than maintaining separate configuration files like `.flake8` or `tox.ini`, Ruff reads all its settings from `pyproject.toml` under `[tool.ruff]`, keeping the entire project configuration in one place. Running `ruff check` on the following code
-
-```python
-import os  # unused import
-import sys
-
-x=1+2      # missing whitespace around operator
-print(x)
-```
-
-produces:
-
-```
-error[F401]: `os` imported but unused
-error[E225]: missing whitespace around operator
-```
-
-> Both issues are caught before the code is ever run or reviewed.
-
-#### Type Checker
-
-Type checking verifies that values are used consistently with their declared types, such as ensuring that a function expecting a `str` is not given an `int`. Python remains dynamically typed at runtime, but its type hint system has grown into a major part of modern development because it allows tools to analyze code statically before execution. In practice, Python type checkers improve refactoring safety, editor support, and API clarity, especially in larger projects and plugin-based architectures.
-
-Depsight uses [mypy](https://mypy.readthedocs.io/) as its static type checker. Python is dynamically typed by default, which means type errors only surface at runtime. mypy analyses the code without running it and catches type mismatches, missing attributes, and incorrect function signatures before they can become runtime failures. It replaces the need for a standalone `mypy.ini` configuration file by reading its settings from `pyproject.toml` under `[tool.mypy]`. For a project like Depsight that exposes a plugin API, type annotations enforced by mypy also serve as living documentatio. Callers know exactly what a function expects and returns without having to read the implementation. Running `mypy` on the following code:
-
-```python
-def greet(name: str) -> str:
-    return "Hello, " + name
-
-result: int = greet("world")  # assigned to int, but greet returns str
-print(result.upper())         # int has no upper() — runtime crash waiting to happen
-```
-
-produces:
-
-```
-error: Incompatible types in assignment (expression has type "str", variable has type "int")
-```
+**Drawbacks:** `poetry` still relies on an external tool (e.g. `pyenv`) to manage the Python interpreter itself, and its resolver — while better than `pipenv`'s — is written in Python and becomes a bottleneck on large dependency trees. These gaps motivated `uv`.

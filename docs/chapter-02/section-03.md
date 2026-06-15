@@ -1,108 +1,110 @@
-# Python 2.4
+# Python Containers
 
-This section introduces early `setuptools` on Python 2.4 and uses a small
-command-line project to show how dependency declarations started to become
-active during installation.
+Python containers package an application together with the runtime files it needs to run. They help teams deploy the same application image across local machines, CI pipelines, and production platforms.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is Historic Calculator, release 3.0.0. This snapshot is set in 2004, the release year of Python 2.4, and contains the `historic_calculator` package plus the `hist_calc` command-line script.
+The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
 
 ### Run the Project
 
-Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj6_historic_calculator/2004/README.md).
+Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
 
-## Background
-
-This project belongs to the early `setuptools` period around Python 2.4, released in 2004. `setuptools` changed packaging from passive metadata into active installation behavior and gave Python projects a richer `setup.py` interface for:
-
-- Declaring enforceable runtime dependencies
-- Generating console-script launchers
-- Building source distributions and eggs
-- Checking installed distribution metadata during installation
-
-The `setup.py` file records the enforceable dependency and generated console script directly:
-
-```python
-setup(
-    name="historic_calculator",
-    version="3.0.0",
-    description="A tiny vector calculator using Numeric and setuptools.",
-    package_dir={"": "src"},
-    packages=["historic_calculator"],
-    install_requires=[
-        "Numeric",
-    ],
-    entry_points={
-        "console_scripts": [
-            "hist_calc = historic_calculator.main:main_cli",
-        ],
-    },
-)
-```
-
-- `name` gives the distribution its package name.
-- `version` records the release number that build and install commands use.
-- `description` adds a short human-readable project summary to the package metadata.
-- `package_dir` maps packages to the `src` directory instead of the project root.
-- `packages` lists the Python package included in the distribution.
-- `install_requires` asks `setuptools` to check for the Numeric runtime dependency during installation.
-- `entry_points` registers the `hist_calc` command through the `console_scripts` mechanism.
-
-## Dependency Management
+## Distribution Fundamentals
 
 ### Overview
 
-`setuptools` was an important step toward dependency-aware installation, but the early model still had important limits:
+A Python container distribution packages an application and its full runtime environment into a portable *Open Container Initiative (OCI)* image. Instead of distributing only source code or binaries, it bundles the Python interpreter, application code, system dependencies (such as Linux libraries), required Python packages, and runtime configuration into a **single self-contained unit** that can run on any OCI-compliant runtime without relying on the host system’s Python or environment setup.
 
-- ⚠️ It checked installed distribution metadata, not just importable modules.
-- ⚠️ Numeric had to be installed with setuptools metadata before `install_requires` could recognize it.
-- ⚠️ Tools such as wheels, build isolation, lock files, and modern dependency resolvers did not exist yet.
+- ✅ Backend APIs (FastAPI, Django, Flask)
+- ✅ Microservices
+- ✅ Data pipelines
+- ✅ Cloud-based production deployments
 
-### Runtime and build dependencies
+### Container Ecosystem
 
-Use `Dockerfile.devEnv` for the Python 2.4 development environment. It keeps the historical interpreter, setuptools 0.6c11, and build tooling isolated from the host machine.
+Due to the Open Container Initiative (OCI) standard, container images are portable and can be built, run, and managed interchangeably across different tools in the ecosystem. While Docker is the most widely used container manager, there are many other compatible solutions that serve different roles in building, running, and operating containers.
 
-Numeric 24.0b2 is the runtime component that provides array-style calculations for this project. `setuptools` expects Numeric to be registered as an installed distribution, so this section patches Numeric to install with setuptools metadata before installing Historic Calculator.
+|    Tool    | Description |
+|------------|-------------|
+| *Buildah*    | Specialized tool for building OCI container images without requiring a full container runtime |
+| *Docker*     | Most widely used container engine and CLI tool |
+| *Kubernetes* | Container orchestration system for deploying, scaling, and managing containers in production |
+| *Podman*     | Daemonless, rootless OCI-compatible container engine (Docker alternative) |
+| *Skopeo*     | Tool for inspecting, copying, and managing container images across registries without running containers |
 
-Fetch and install setuptools 0.6c11:
+### Container Layout
 
-```bash
-wget https://files.pythonhosted.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz
-tar -xzf setuptools-0.6c11.tar.gz
-cd setuptools-0.6c11 && python setup.py install
+A typical Python container project is structured to separate application code, build configuration, and container-specific instructions:
+
+```text
+{project_root}/
+├── src/
+├── Dockerfile
+├── .dockerignore
+├── LICENSE
+├── pyproject.toml
+└── README.md
 ```
 
-Fetch Numeric 24.0b2:
+- `src/`: Contains the application source code.
+- `Dockerfile`: The **central build recipe** that defines how the container image is constructed. It describes the full build and deployment pipeline inside the image itself, including dependencies, build steps, and runtime configuration. It can also implement multi-stage builds, where the application is first built (e.g., as a Python wheel) and then packaged into a minimal runtime image that only contains the installed artifact.
+- `.dockerignore`: Defines files and directories excluded from the build context to reduce image size and improve build speed.
+- `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build system configuration.
+
+### Distribution Artifacts
+
+The result of a container build is an OCI-compliant container image. This image is an immutable artifact managed by a container runtime such as Docker or Podman and can be published to a container registry. On the local machine, the runtime stores the image internally in its own operating-system-level storage area, usually as multiple cached filesystem layers and metadata rather than as one regular project file. Together, these layers encapsulate the full application environment, including the installed Python wheel, runtime dependencies, and execution entry point.
+
+### Packaging Workflow
+
+#### Create the Container
+
+The container image is built using a `Dockerfile`-based build process, which produces a tagged image:
 
 ```bash
-wget -O Numeric-24.0b2.tar.gz "https://sourceforge.net/projects/numpy/files/OldFiles/Numeric-24.0b2.tar.gz/download"
-tar -xzf Numeric-24.0b2.tar.gz
+docker build -t tiny-webserver:1.0.0 .
 ```
 
-Patch Numeric to use setuptools, then install it:
+List local container images to confirm that the build produced the tagged image:
 
 ```bash
-sed -i 's/from distutils.core import setup/from setuptools import setup/' Numeric-24.0b2/setup.py
-cd Numeric-24.0b2 && python setup.py install
+docker image ls
 ```
 
-### Build the package
+#### Publish the Container
 
-Build the source distribution:
+To publish the image, you first authenticate with a container registry such as [Docker Hub](https://hub.docker.com):
 
 ```bash
-python setup.py sdist
+docker login
 ```
 
-### Install the package
-
-Install the package and let setuptools verify dependencies:
+Then push the tagged image:
 
 ```bash
-python setup.py install
+docker push tiny-webserver:1.0.0
 ```
 
-The install registers `hist_calc` on `PATH` through `console_scripts`, the entry point mechanism that arrived with setuptools.
+For production use, images are typically tagged with a registry namespace:
+
+```bash
+docker tag tiny-webserver:1.0.0 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+docker push {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+```
+
+#### Install the Container
+
+Once published, the image can be downloaded from Docker Hub:
+
+```bash
+docker pull {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+```
+
+To run the packaged web server, you can leverage the `run` command:
+
+```bash
+docker run -p 8080:8080 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+```
