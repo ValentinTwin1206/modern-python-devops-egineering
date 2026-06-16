@@ -35,7 +35,7 @@ Due to the Open Container Initiative (OCI) standard, container images are portab
 | *Podman*     | Daemonless, rootless OCI-compatible container engine (Docker alternative) |
 | *Skopeo*     | Tool for inspecting, copying, and managing container images across registries without running containers |
 
-### Container Layout
+### Project Layout
 
 A typical Python container project is structured to separate application code, build configuration, and container-specific instructions:
 
@@ -50,17 +50,30 @@ A typical Python container project is structured to separate application code, b
 ```
 
 - `src/`: Contains the application source code.
-- `Dockerfile`: The **central build recipe** that defines how the container image is constructed. It describes the full build and deployment pipeline inside the image itself, including dependencies, build steps, and runtime configuration. It can also implement multi-stage builds, where the application is first built (e.g., as a Python wheel) and then packaged into a minimal runtime image that only contains the installed artifact.
+- `Dockerfile`: The **central build recipe** that defines how the container image is constructed. It describes the full build and deployment pipeline inside the image itself, including dependencies, build steps, and runtime configuration. It can also implement multi-stage builds, where the application is first built (for example as a Python wheel) and then packaged into a minimal runtime image that contains only the installed artifact and its runtime dependencies.
 - `.dockerignore`: Defines files and directories excluded from the build context to reduce image size and improve build speed.
 - `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build system configuration.
 
-### Distribution Artifacts
+### Package Layout
 
-The result of a container build is an OCI-compliant container image. This image is an immutable artifact managed by a container runtime such as Docker or Podman and can be published to a container registry. On the local machine, the runtime stores the image internally in its own operating-system-level storage area, usually as multiple cached filesystem layers and metadata rather than as one regular project file. Together, these layers encapsulate the full application environment, including the installed Python wheel, runtime dependencies, and execution entry point.
+The result of a container build is an ***OCI-compliant*** container image. Unlike wheels or source distributions, a container image is not typically represented as a single file inside the project directory. Instead, it is stored internally by the container runtime as a collection of immutable filesystem layers and associated metadata.
 
-### Packaging Workflow
+These layers together encapsulate the complete application environment, including the installed Python package or wheel, runtime dependencies, operating-system libraries, configuration, and execution entry point.
 
-#### Create the Container
+Container images are identified by a repository name and tag:
+
+```text
+tiny-webserver:1.0.0
+```
+
+- `tiny-webserver`: Image name or repository.
+- `1.0.0`: Image tag, typically representing a version.
+
+Container images can be published to container registries such as Docker Hub, GitHub Container Registry (GHCR), Amazon ECR, or other OCI-compatible registries, where they can be downloaded and executed on any compatible container runtime.
+
+## Packaging Workflow
+
+### Create the Container
 
 The container image is built using a `Dockerfile`-based build process, which produces a tagged image:
 
@@ -74,7 +87,7 @@ List local container images to confirm that the build produced the tagged image:
 docker image ls
 ```
 
-#### Publish the Container
+### Publish the Container
 
 To publish the image, you first authenticate with a container registry such as [Docker Hub](https://hub.docker.com):
 
@@ -95,7 +108,9 @@ docker tag tiny-webserver:1.0.0 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
 docker push {DOCKER_HUB_USER}/tiny-webserver:1.0.0
 ```
 
-#### Install the Container
+> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.
+
+### Install the Container
 
 Once published, the image can be downloaded from Docker Hub:
 
@@ -103,8 +118,12 @@ Once published, the image can be downloaded from Docker Hub:
 docker pull {DOCKER_HUB_USER}/tiny-webserver:1.0.0
 ```
 
+> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.
+
 To run the packaged web server, you can leverage the `run` command:
 
 ```bash
 docker run -p 8080:8080 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
 ```
+
+> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.

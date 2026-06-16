@@ -44,7 +44,7 @@ Common frontend and backend tools include:
 | Backend | `setuptools` | Widely used backend |
 | Backend | `uv_build` | Backend used by uv-based projects |
 
-### Package Layout
+### Project Layout
 
 A wheel is built from the project files, source code, and packaging metadata already in the repository.
 
@@ -65,16 +65,9 @@ A wheel is built from the project files, source code, and packaging metadata alr
 - `README.md`: Project description displayed on package repositories such as PyPI.
 - `LICENSE`: Defines the legal terms under which the package can be used and distributed.
 
-### Distribution Artifacts
+### Package Layout
 
-The build process usually creates two artifacts:
-
-| Artifact | Purpose | Example |
-|----------|---------|---------|
-| `*.whl` | Built distribution used for installation | `docslug-1.0.0-py3-none-any.whl` |
-| `*.tar.gz` | Source distribution used for rebuilding | `docslug-1.0.0.tar.gz` |
-
-A wheel filename follows this general structure:
+A Python wheel is represented by a `*.whl` file. Its filename follows this general structure:
 
 ```text
 {NAME}-{VERSION}-{PYTHON_TAG}-{ABI_TAG}-{PLATFORM_TAG}.whl
@@ -102,8 +95,23 @@ The individual identifiers have the following meaning:
     - `macosx_11_0_arm64` → macOS Apple Silicon
     - `macosx_10_9_x86_64` → macOS Intel
 
-!!! info "Wheel filename examples"
-    Pure Python projects usually produce platform-independent wheels ending in `docslug-1.0.0-py3-none-any.whl`
+Typical wheel contents look like this:
+
+```text
+docslug-1.0.0-py3-none-any.whl
+├── docslug/
+│   ├── __init__.py
+│   └── core.py
+└── docslug-1.0.0.dist-info/
+    ├── METADATA
+    ├── RECORD
+    └── WHEEL
+```
+
+The distinct package artifacts are:
+
+- `docslug/`: The importable package code that ships inside the wheel, including the Python modules that make up the application.
+- `*.dist-info/`: The metadata directory that records the package name, version, dependencies, and installation records.
 
 ## Packaging Workflow
 
@@ -133,7 +141,7 @@ Build the project with either `uv build` or `python -m build`; both create a whe
     python -m build
     ```
 
-> This will generate `dists/docslug-1.2.0-py3-none-any.whl`
+> In addition to the `*.whl` file, the build also creates a `*.tar.gz` source distribution.
 
 ### Validate The Package
 

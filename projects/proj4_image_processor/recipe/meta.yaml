@@ -1,9 +1,6 @@
-{% set name = "image-processor" %}
-{% set version = "1.0.0" %}
-
 package:
-  name: {{ name }}
-  version: {{ version }}
+  name: image-processor
+  version: 1.0.0
 
 source:
   # Build from the project root next to this recipe directory.
@@ -15,8 +12,7 @@ build:
   # conda-build generates the console-script wrapper for this entry point.
   entry_points:
     - image-processor = image_processor.main:main
-  # Pure-Python project without a setup.py or pyproject.toml. Copy the
-  # package straight into the env's site-packages directory.
+  # Copy the package straight into the env's site-packages directory.
   script: |
     mkdir -p ${SP_DIR}/image_processor
     cp -r src/image_processor/. ${SP_DIR}/image_processor/
