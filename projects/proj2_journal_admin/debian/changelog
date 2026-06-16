@@ -1,3 +1,16 @@
+simply-journal-admin (2.0.0-1) unstable; urgency=medium
+
+  * Install into a dedicated virtual environment under
+    /opt/simply-journal-admin/venv instead of the system Python interpreter;
+    drop the --break-system-packages workflow.
+  * Ship the wheel under /opt/simply-journal-admin/wheel and add a
+    /usr/bin/simply-journal-admin wrapper that invokes the venv entry point.
+  * Run the systemd service from the venv in --follow mode with Restart=on-failure
+    and additional sandboxing options.
+  * Drop the python3-pip dependency; add python3-venv.
+
+ -- Modern Python Engineering <maintainers@example.invalid>  Tue, 16 Jun 2026 00:00:00 +0000
+
 simply-journal-admin (1.0.0-1) unstable; urgency=medium
 
   * Initial Debian package for the simply_journal_admin CLI.

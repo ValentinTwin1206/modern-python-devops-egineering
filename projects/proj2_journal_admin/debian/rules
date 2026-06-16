@@ -3,10 +3,11 @@
 # Minimal rules file.
 #
 # The project wheel is built upstream with `uv build --wheel` and shipped
-# under /opt/simply_journal_admin via debian/simply-journal-admin.install. There is no
-# in-package Python build step, so the dh_auto_* hooks are intentional
-# no-ops. dh_installsystemd picks up debian/simply-journal-admin.service
-# automatically and dh_installdeb installs the postinst/prerm scripts.
+# under /opt/simply-journal-admin/wheel via debian/simply-journal-admin.install.
+# There is no in-package Python build step, so the dh_auto_* hooks are
+# intentional no-ops. The venv is created at install time by the postinst
+# script. dh_installsystemd picks up debian/simply-journal-admin.service
+# automatically and dh_installdeb installs the maintainer scripts.
 
 %:
 	dh $@

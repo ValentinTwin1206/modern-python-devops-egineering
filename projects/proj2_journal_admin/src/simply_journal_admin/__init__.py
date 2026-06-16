@@ -1,1 +1,1 @@
-"""Small admin CLI that reads systemd journal entries via python3-systemd."""
+"""Cross-platform admin CLI for the systemd journal (Linux) and Windows Event Log."""

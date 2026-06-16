@@ -1,12 +1,51 @@
 [project]
 name = "simply_journal_admin"
-version = "1.0.0"
-description = "Small admin CLI that reads systemd journal entries using python3-systemd"
+version = "2.0.0"
+description = "Cross-platform admin CLI that reads the systemd journal (Linux) or the Windows Event Log (Windows)"
+readme = "README.md"
 requires-python = ">=3.11"
-# Intentionally no runtime dependencies on PyPI.
-# The only runtime dependency is `systemd.journal` from the APT package
-# `python3-systemd`, which is installed through the system package manager.
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Modern Python Engineering", email = "maintainers@example.invalid" },
+]
+keywords = [
+    "systemd",
+    "journal",
+    "windows-event-log",
+    "logging",
+    "administration",
+    "cli",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Logging",
+    "Topic :: System :: Systems Administration",
+]
+# No mandatory PyPI runtime dependencies.
+# * On Linux the only runtime requirement is ``systemd.journal`` from the APT
+#   package ``python3-systemd``, installed through the system package manager.
+# * On Windows the optional ``windows`` extra pulls in ``pywin32``; without it
+#   the CLI falls back to the built-in ``wevtutil`` command-line tool.
 dependencies = []
+
+[project.optional-dependencies]
+windows = [
+    "pywin32>=306",
+]
+
+[project.urls]
+Homepage = "https://github.com/ValentinTwin1206/modern-python-devops-egineering"
+Repository = "https://github.com/ValentinTwin1206/modern-python-devops-egineering"
 
 [project.scripts]
 simply-journal-admin = "simply_journal_admin.cli:main"
@@ -19,8 +58,24 @@ build-backend = "uv_build"
 dev = [
     "karva>=0.0.1a5",
     "ruff>=0.15.12",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.coverage.run]
+branch = true
+source = ["simply_journal_admin"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
 
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+

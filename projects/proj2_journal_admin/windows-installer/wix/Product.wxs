@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX v3 product definition for the Simply Journal Admin MSI.
+
+  The installer:
+    1. Lays down the prebuilt wheel under C:\Program Files\SimplyJournalAdmin\wheel.
+    2. Lays down the venv / service helper scripts.
+    3. Creates a virtual environment under ...\venv and pip-installs the wheel
+       (plus pywin32) into it through a deferred custom action.
+    4. Drops a simply-journal-admin.cmd launcher in the install root and adds the
+       install root to the machine PATH.
+    5. Registers standard Add/Remove Programs (uninstall) metadata.
+    6. Removes the venv and launcher on uninstall.
+
+  Build-time preprocessor variables (passed via candle.exe -d...):
+    WheelSource     - absolute path to the built wheel
+    WheelName       - file name of the wheel
+    ProductVersion  - MSI ProductVersion (e.g. 2.0.0)
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <Product Id="*"
+           Name="Simply Journal Admin"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="Modern Python Engineering"
+           UpgradeCode="6B6F2C2E-2C2A-4E2E-9D0E-7A2C9B5D1A20">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="Simply Journal Admin $(var.ProductVersion) installer"
+             Manufacturer="Modern Python Engineering" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Add/Remove Programs metadata. -->
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ValentinTwin1206/modern-python-devops-egineering" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+
+    <Feature Id="MainFeature" Title="Simply Journal Admin" Level="1">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentRef Id="LauncherAndPath" />
+    </Feature>
+
+    <!-- Directory layout under C:\Program Files\SimplyJournalAdmin. -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="SimplyJournalAdmin">
+          <Directory Id="WheelFolder" Name="wheel" />
+          <Directory Id="ScriptsFolder" Name="scripts" />
+          <Directory Id="ServiceFolder" Name="service" />
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <ComponentGroup Id="AppComponents">
+      <!-- The prebuilt wheel. -->
+      <Component Id="WheelFile" Directory="WheelFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0001">
+        <File Id="WheelFileId"
+              Source="$(var.WheelSource)"
+              Name="$(var.WheelName)"
+              KeyPath="yes" />
+      </Component>
+
+      <!-- venv lifecycle scripts. -->
+      <Component Id="InstallVenvScript" Directory="ScriptsFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0002">
+        <File Id="InstallVenvPs1" Source="windows-installer\scripts\install-venv.ps1" KeyPath="yes" />
+      </Component>
+      <Component Id="UninstallVenvScript" Directory="ScriptsFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0003">
+        <File Id="UninstallVenvPs1" Source="windows-installer\scripts\uninstall-venv.ps1" KeyPath="yes" />
+      </Component>
+
+      <!-- Optional Windows service helpers. -->
+      <Component Id="ServiceFiles" Directory="ServiceFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0004">
+        <File Id="ServiceInstallPs1" Source="windows-installer\service\install-service.ps1" KeyPath="yes" />
+        <File Id="ServiceWrapperPy" Source="windows-installer\service\simply_journal_admin_service.py" />
+        <File Id="ServiceUninstallPs1" Source="windows-installer\service\uninstall-service.ps1" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Launcher + PATH entry so `simply-journal-admin` works from any shell. -->
+    <Component Id="LauncherAndPath" Directory="INSTALLFOLDER" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0005">
+      <CreateFolder />
+      <Environment Id="UpdatePath"
+                   Name="PATH"
+                   Value="[INSTALLFOLDER]"
+                   Permanent="no"
+                   Part="last"
+                   Action="set"
+                   System="yes" />
+    </Component>
+
+    <!-- ===================== Custom actions ===================== -->
+    <!-- Create the venv and install the wheel after files are laid down. -->
+    <CustomAction Id="SetCreateVenv"
+                  Property="CreateVenv"
+                  Value="&quot;powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]scripts\install-venv.ps1&quot; -InstallRoot &quot;[INSTALLFOLDER]&quot;" />
+    <CustomAction Id="CreateVenv"
+                  BinaryKey="WixCA"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="check"
+                  Impersonate="no" />
+
+    <!-- Remove the venv and launcher on uninstall. -->
+    <CustomAction Id="SetRemoveVenv"
+                  Property="RemoveVenv"
+                  Value="&quot;powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]scripts\uninstall-venv.ps1&quot; -InstallRoot &quot;[INSTALLFOLDER]&quot;" />
+    <CustomAction Id="RemoveVenv"
+                  BinaryKey="WixCA"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <Custom Action="SetCreateVenv" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="CreateVenv" After="SetCreateVenv">NOT Installed</Custom>
+      <Custom Action="SetRemoveVenv" Before="RemoveFiles">REMOVE="ALL"</Custom>
+      <Custom Action="RemoveVenv" After="SetRemoveVenv">REMOVE="ALL"</Custom>
+    </InstallExecuteSequence>
+  </Product>
+</Wix>

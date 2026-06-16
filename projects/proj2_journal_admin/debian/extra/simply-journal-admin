@@ -1,0 +1,7 @@
+#!/bin/sh
+# Thin launcher installed at /usr/bin/simply-journal-admin.
+#
+# It forwards all arguments to the console-script entry point inside the
+# dedicated virtual environment created by the postinst script, so the system
+# Python interpreter is never used or modified.
+exec /opt/simply-journal-admin/venv/bin/simply-journal-admin "$@"

@@ -1,1 +1,2 @@
-.build/simply_journal_admin-*.whl opt/simply_journal_admin/
+.build/simply_journal_admin-*.whl opt/simply-journal-admin/wheel/
+debian/extra/simply-journal-admin usr/bin/

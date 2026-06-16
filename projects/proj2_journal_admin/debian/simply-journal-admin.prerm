@@ -1,22 +1,16 @@
 #!/bin/sh
 # prerm script for simply-journal-admin
 #
-# Before the package is removed, uninstall the wheel that postinst
-# installed into the system Python interpreter so no stray files are
-# left in /usr/local/lib/python3*/dist-packages.
+# The virtual environment under /opt/simply-journal-admin/venv is created by
+# postinst and is therefore not tracked by dpkg. The matching cleanup happens
+# in postrm; this script intentionally does no pip work because nothing is
+# installed into the system interpreter anymore. dh_installsystemd stops and
+# disables the service automatically through the #DEBHELPER# block.
 
 set -e
 
 case "$1" in
-    remove|upgrade|deconfigure)
-        if python3 -m pip show simply-journal-admin >/dev/null 2>&1; then
-            python3 -m pip uninstall \
-                --break-system-packages \
-                --yes \
-            simply-journal-admin || true
-        fi
-        ;;
-    failed-upgrade)
+    remove|upgrade|deconfigure|failed-upgrade)
         ;;
 esac
 

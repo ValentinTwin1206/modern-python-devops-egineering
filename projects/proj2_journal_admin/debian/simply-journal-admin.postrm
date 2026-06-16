@@ -1,0 +1,25 @@
+#!/bin/sh
+# postrm script for simply-journal-admin
+#
+# The virtual environment under /opt/simply-journal-admin/venv is created
+# dynamically by postinst, so dpkg does not track it. Remove it (and the now
+# empty install root) on remove/purge so no stray files are left behind. The
+# shipped wheel and wrapper are tracked by dpkg and removed automatically.
+
+set -e
+
+INSTALL_ROOT="/opt/simply-journal-admin"
+
+case "$1" in
+    remove|purge)
+        rm -rf "${INSTALL_ROOT}/venv"
+        # Remove the install root only if it is now empty.
+        rmdir "${INSTALL_ROOT}" 2>/dev/null || true
+        ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
