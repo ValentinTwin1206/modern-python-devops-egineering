@@ -11,4 +11,4 @@ COPY pyproject.toml ./
 COPY src/historic_calculator ./src/historic_calculator
 COPY tests ./tests
 
-CMD ["python", "-V"]
+CMD ["python", "-h"]

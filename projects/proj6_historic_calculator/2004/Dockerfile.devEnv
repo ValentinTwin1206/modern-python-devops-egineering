@@ -62,4 +62,4 @@ WORKDIR /opt/historic_calculator
 COPY setup.py ./
 COPY src/historic_calculator ./src/historic_calculator
 
-CMD ["python", "-V"]
+CMD ["python", "-h"]

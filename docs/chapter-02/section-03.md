@@ -23,16 +23,16 @@ A Python container distribution packages an application and its full runtime env
 - ✅ Data pipelines
 - ✅ Cloud-based production deployments
 
-### Container Ecosystem
+### Container Packaging Ecosystem
 
-Due to the Open Container Initiative (OCI) standard, container images are portable and can be built, run, and managed interchangeably across different tools in the ecosystem. While Docker is the most widely used container manager, there are many other compatible solutions that serve different roles in building, running, and operating containers.
+Due to the *OCI* standard, container images are portable and can be built, run, and managed interchangeably across different tools in the ecosystem. While Docker is the most widely used container manager, there are many other compatible solutions that serve different roles in building, running, and operating containers.
 
 |    Tool    | Description |
 |------------|-------------|
-| *Buildah*    | Specialized tool for building OCI container images without requiring a full container runtime |
+| *Buildah*    | Specialized tool for building *OCI* container images without requiring a full container runtime |
 | *Docker*     | Most widely used container engine and CLI tool |
 | *Kubernetes* | Container orchestration system for deploying, scaling, and managing containers in production |
-| *Podman*     | Daemonless, rootless OCI-compatible container engine (Docker alternative) |
+| *Podman*     | Daemonless, rootless *OCI*-compatible container engine (Docker alternative) |
 | *Skopeo*     | Tool for inspecting, copying, and managing container images across registries without running containers |
 
 ### Project Layout

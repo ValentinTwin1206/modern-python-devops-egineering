@@ -12,4 +12,4 @@ COPY setup.py setup.cfg requirements.txt requirements-dev.txt ./
 COPY src/historic_calculator ./src/historic_calculator
 COPY tests ./tests
 
-CMD ["python", "-V"]
+CMD ["python", "-h"]
