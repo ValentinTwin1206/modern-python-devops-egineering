@@ -13,4 +13,4 @@ WORKDIR /opt/historic_calculator
 COPY setup.py requirements.txt ./
 COPY src/historic_calculator ./src/historic_calculator
 
-CMD ["python", "-V"]
+CMD ["python", "-h"]
