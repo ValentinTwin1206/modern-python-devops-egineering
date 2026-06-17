@@ -64,7 +64,7 @@ docker stop tiny-webserver
 
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) uses *Docker outside of Docker (DooD)* so you can build the deployment image from inside the development container through the host Docker daemon. It contains all required development tools, and build artifacts are stored on the host in `.build/`:
+The [Dockerfile.devEnv](Dockerfile.devEnv) uses *Docker outside of Docker (DooD)* so you can build the deployment image from inside the development container through the host Docker daemon. It contains all required development tools, and build artifacts are stored on the host in `.build/`. Run following command from the `/projects` directory to build the development image: 
 
 ```bash
 ./build.sh build --path proj3_tiny_webserver/Dockerfile.devEnv -- \

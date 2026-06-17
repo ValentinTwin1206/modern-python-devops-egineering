@@ -56,7 +56,7 @@ Write-Host "Building MSI $msi from wheel $($wheel.Name)"
     -dProductVersion="$Version" `
     -ext WixUtilExtension `
     -out $wixObj `
-    "windows-installer\wix\Product.wxs"
+    "msi\wix\Product.wxs"
 if ($LASTEXITCODE -ne 0) { throw "candle.exe failed with exit code $LASTEXITCODE" }
 
 & light.exe `

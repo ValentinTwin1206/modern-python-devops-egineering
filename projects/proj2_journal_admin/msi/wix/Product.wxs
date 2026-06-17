@@ -67,17 +67,17 @@
 
       <!-- venv lifecycle scripts. -->
       <Component Id="InstallVenvScript" Directory="ScriptsFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0002">
-        <File Id="InstallVenvPs1" Source="windows-installer\scripts\install-venv.ps1" KeyPath="yes" />
+        <File Id="InstallVenvPs1" Source="msi\scripts\install-venv.ps1" KeyPath="yes" />
       </Component>
       <Component Id="UninstallVenvScript" Directory="ScriptsFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0003">
-        <File Id="UninstallVenvPs1" Source="windows-installer\scripts\uninstall-venv.ps1" KeyPath="yes" />
+        <File Id="UninstallVenvPs1" Source="msi\scripts\uninstall-venv.ps1" KeyPath="yes" />
       </Component>
 
       <!-- Optional Windows service helpers. -->
       <Component Id="ServiceFiles" Directory="ServiceFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0004">
-        <File Id="ServiceInstallPs1" Source="windows-installer\service\install-service.ps1" KeyPath="yes" />
-        <File Id="ServiceWrapperPy" Source="windows-installer\service\simply_journal_admin_service.py" />
-        <File Id="ServiceUninstallPs1" Source="windows-installer\service\uninstall-service.ps1" />
+        <File Id="ServiceInstallPs1" Source="msi\service\install-service.ps1" KeyPath="yes" />
+        <File Id="ServiceWrapperPy" Source="msi\service\simply_journal_admin_service.py" />
+        <File Id="ServiceUninstallPs1" Source="msi\service\uninstall-service.ps1" />
       </Component>
     </ComponentGroup>
 

@@ -7,18 +7,12 @@
 # build agent).
 #
 # Installed tooling:
-#   * Python 3.12         - interpreter used to build the wheel and venv
-#   * uv                  - fast build front-end (uv build --wheel)
-#   * WiX Toolset v3      - candle.exe / light.exe used to compile the .msi
-#   * NSSM                - service helper shipped for the optional Windows service
-#   * Git                 - convenience for source checkouts / versioning
-#   * Visual C++ Build    - native build prerequisites for any C extensions
-#
-# Build:
-#   docker build -f Dockerfile.windows -t sja-msi-builder .
-# Extract the artifact:
-#   docker run --rm -v ${PWD}\out:C:\out sja-msi-builder `
-#       powershell -Command "Copy-Item C:\build\*.msi C:\out"
+#   * Python 3.12          - interpreter used to build the wheel and venv
+#   * uv                   - fast build front-end (uv build --wheel)
+#   * WiX Toolset v3       - candle.exe / light.exe used to compile the .msi
+#   * NSSM                 - service helper shipped for the optional Windows service
+#   * Git                  - convenience for source checkouts / versioning
+#   * Visual C++ Build     - native build prerequisites for any C extensions
 # # # # # # # # # # #
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
@@ -30,9 +24,6 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
 # --- Build toolchain --------------------------------------------------------
-# Python, the WiX Toolset (MSI compiler), NSSM (service helper), Git, and the
-# Visual C++ build tools required to compile native dependencies such as
-# pywin32 wheels when no binary wheel is available.
 RUN choco install -y python --version=3.12.6 --no-progress; `
     choco install -y wixtoolset --no-progress; `
     choco install -y nssm --no-progress; `
@@ -46,19 +37,10 @@ RUN Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
 # Put the toolchain on PATH for subsequent layers and at runtime.
 RUN $wixBin = (Get-ChildItem 'C:\Program Files (x86)\WiX Toolset*' -Directory | Select-Object -First 1).FullName + '\bin'; `
     $uvBin = Join-Path $env:USERPROFILE '.local\bin'; `
-    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); `
-    [Environment]::SetEnvironmentVariable('Path', "$machinePath;C:\Python312;C:\Python312\Scripts;$wixBin;$uvBin", 'Machine')
+    $oldPath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); `
+    $newPath = '{0};C:\Python312;C:\Python312\Scripts;{1};{2}' -f $oldPath, $wixBin, $uvBin; `
+    [Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
 
-WORKDIR C:\src
+WORKDIR C:\workspace
 
-# Copy the project source into the image.
-COPY . C:\src
-
-# Build the wheel, then compile the MSI from the WiX sources.
-RUN uv build --wheel --out-dir C:\build\wheel; `
-    powershell -NoProfile -ExecutionPolicy Bypass `
-        -File windows-installer\scripts\build-msi.ps1 `
-        -WheelDir C:\build\wheel -OutDir C:\build
-
-# The finished installer lands in C:\build\simply-journal-admin-<version>.msi.
-CMD ["powershell", "-NoProfile", "-Command", "Get-ChildItem C:\\build\\*.msi"]
+ENTRYPOINT ["powershell.exe", "-NoLogo", "-NoProfile"]

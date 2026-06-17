@@ -62,10 +62,10 @@ image-processor --input path/to/image.png --output edges.png
 
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. Build artifacts are stored on the host in `.build/`. Run the following command on the host to open an interactive shell in the development image through the projects helper:
+The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. Build artifacts are stored on the host in `.build/`. Run the following command from the `/projects` directory to open an interactive shell in the development image through the projects helper:
 
 ```bash
-../build.sh build --path proj4_image_processor/Dockerfile.devEnv
+./build.sh build --path proj4_image_processor/Dockerfile.devEnv
 ```
 
 ### Sync Environment

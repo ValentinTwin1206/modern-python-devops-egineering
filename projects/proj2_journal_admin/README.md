@@ -1,333 +1,227 @@
 # Simply Journal Admin
 
 *Simply Journal Admin* is a cross-platform administration CLI that reads recent
-log entries from the host's native logging system and prints them as text or
-JSON. A single code base supports two platforms with an identical command-line
-experience:
+log entries from the host operating system and presents them through a unified
+command-line interface. The project is distributed as native Debian (`.deb`) and
+Windows (`.msi`) packages that install into isolated Python virtual
+environments.
 
-- **Linux** reads the systemd journal through the APT package `python3-systemd`.
-- **Windows** reads the Windows Event Log through `pywin32`, falling back to the
-  built-in `wevtutil` tool when `pywin32` is not installed.
+## Project Components
 
-The same command works on both platforms:
+The table below lists the main files and directories that make up the project.
+
+| Component | Description |
+| --------- | ----------- |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | Linux development image containing `uv`, `python3-systemd`, Debian packaging tools, and the project's development dependencies. |
+| [Dockerfile.windows](Dockerfile.windows) | Windows build image containing Python, `uv`, WiX Toolset, NSSM, Git, and Visual C++ build tools required for MSI generation. |
+| [pyproject.toml](pyproject.toml) | Defines package metadata, dependencies, console entry points, and build configuration. |
+| [src/simply_journal_admin/](src/simply_journal_admin/) | Cross-platform journal administration CLI implementation. |
+| [tests/](tests/) | Automated test suite covering CLI behavior and platform abstractions. |
+| [debian/](debian/) | Debian packaging metadata, maintainer scripts, and the optional systemd service definition. |
+| [msi/](msi/) | WiX sources, PowerShell build scripts, MSI custom actions, and Windows service integration files. |
+
+## End-User Guide
+
+This section shows how an end user installs and operates *Simply Journal Admin*
+through the supported operating-system packages.
+
+### Requirements
+
+#### Linux
+
+- Debian-based Linux distribution.
+- Python 3.12 or newer.
+- `python3-systemd`.
+
+#### Windows
+
+- Windows 10 or newer.
+- Python 3.12 or newer.
+- Permission to read the Windows Event Log.
+
+### Installation
+
+#### Linux (Debian-based)
+
+Install the generated package:
+
+```bash
+sudo apt install ./simply-journal-admin_<version>_all.deb
+```
+
+#### Windows
+
+Install the generated MSI package:
+
+```powershell
+msiexec /i simply-journal-admin-<version>.msi
+```
+
+### Usage
+
+Read entries from the last hour:
 
 ```bash
 simply-journal-admin --since-minutes 60
 ```
 
-## Features
-
-- One CLI, two backends, one normalized output schema.
-- Text and JSON output (`--format`, `--pretty`).
-- Filtering by time (`--since-minutes`), severity (`--priority`), and count
-  (`--limit`).
-- Linux unit filtering (`--unit`) and Windows channel selection (`--log-name`).
-- Tail/follow mode (`--follow`) on both platforms.
-- Write to a file (`--output-file`).
-- Reproducible packaging: a Debian `.deb` and a Windows `.msi`, both installing
-  into a dedicated virtual environment.
-- Meaningful, consistent exit codes for automation.
-
-### Output schema
-
-Both backends emit the same record shape:
-
-```json
-{
-  "timestamp": "2026-05-24T10:00:00+00:00",
-  "unit": "ssh.service",
-  "priority": 6,
-  "message": "Accepted publickey for admin"
-}
-```
-
-On Windows, `unit` carries the **event provider / source name** (for example
-`Application Error`).
-
-### Priority mapping (Windows → syslog)
-
-Windows event levels are mapped onto syslog-style priorities so that
-`--priority` behaves the same everywhere. Two mappings are used depending on the
-backend.
-
-Classic Event Log API (`win32evtlog` `EventType`):
-
-| EventType | Meaning | syslog priority |
-| --------- | ------- | --------------- |
-| 0 | Success | 6 (info) |
-| 1 | Error | 3 (err) |
-| 2 | Warning | 4 (warning) |
-| 4 | Information | 6 (info) |
-| 8 | Audit success | 5 (notice) |
-| 16 | Audit failure | 4 (warning) |
-
-Modern EVTX `Level` field (`wevtutil` XML):
-
-| Level | Meaning | syslog priority |
-| ----- | ------- | --------------- |
-| 0 | LogAlways | 6 (info) |
-| 1 | Critical | 2 (crit) |
-| 2 | Error | 3 (err) |
-| 3 | Warning | 4 (warning) |
-| 4 | Information | 6 (info) |
-| 5 | Verbose | 7 (debug) |
-
-## Installation
-
-### Linux
-
-**Wheel (any Python 3.11+ environment):**
+Output JSON:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install simply_journal_admin-2.0.0-py3-none-any.whl
+simply-journal-admin --format json
 ```
 
-Reading the systemd journal also requires the APT binding:
+Filter by severity:
 
 ```bash
-sudo apt install python3-systemd
+simply-journal-admin --priority 4
 ```
 
-**Debian package (recommended):**
+Linux-specific unit filtering:
 
 ```bash
-sudo apt install ./.build/simply-journal-admin_2.0.0-1_all.deb
+simply-journal-admin --unit ssh.service
 ```
 
-The `.deb` creates a dedicated virtual environment at
-`/opt/simply-journal-admin/venv`, installs the bundled wheel into it, and adds a
-`/usr/bin/simply-journal-admin` wrapper. The system Python interpreter is never
-modified.
-
-### Windows
-
-**Wheel (any Python 3.11+ environment):**
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install simply_journal_admin-2.0.0-py3-none-any.whl[windows]
-```
-
-The `[windows]` extra installs `pywin32`. Without it the CLI automatically falls
-back to `wevtutil`.
-
-**MSI (recommended):**
-
-Double-click the installer or run it silently:
-
-```powershell
-msiexec /i simply-journal-admin-2.0.0.msi /qn
-```
-
-The MSI installs into `C:\Program Files\SimplyJournalAdmin\`, creates a venv at
-`...\venv`, installs the bundled wheel plus `pywin32`, drops a launcher, and adds
-the install root to `PATH`.
-
-## Usage
-
-The interface is identical on both platforms; only the platform-specific filters
-differ.
-
-Read the last hour as text:
+Windows-specific channel selection:
 
 ```bash
-simply-journal-admin --since-minutes 60
-```
-
-Read the last 30 minutes as pretty JSON, capped at 50 entries:
-
-```bash
-simply-journal-admin --since-minutes 30 --limit 50 --format json --pretty
-```
-
-Linux — filter by unit and severity:
-
-```bash
-simply-journal-admin --unit ssh.service --priority 4
-```
-
-Windows — choose the channel:
-
-```powershell
-simply-journal-admin --log-name System --priority 3
-simply-journal-admin --log-name Application --format json
-```
-
-Follow (tail) mode:
-
-```bash
-simply-journal-admin --follow
+simply-journal-admin --log-name Application
 ```
 
 Write output to a file:
 
 ```bash
-simply-journal-admin --since-minutes 120 --format json --output-file report.json
+simply-journal-admin \
+    --since-minutes 120 \
+    --format json \
+    --output-file report.json
 ```
 
-### Exit codes
+## Developer Guide
 
-| Code | Meaning |
-| ---- | ------- |
-| 0 | Success |
-| 2 | Bad command-line arguments |
-| 3 | Missing backend dependency (`python3-systemd` / `pywin32`/`wevtutil`) |
-| 4 | Permission denied reading a log |
-| 5 | Invalid or inaccessible log/channel |
-| 6 | Unexpected runtime error |
-| 130 | Interrupted (Ctrl-C) |
+### Linux Development Environment
 
-## Services
+The Linux development environment is provided by
+[Dockerfile.devEnv](Dockerfile.devEnv).
 
-### Linux (systemd)
+#### Setup Environment
 
-The Debian package registers [simply-journal-admin.service](debian/simply-journal-admin.service),
-a hardened, long-running unit that tails the journal as JSON from the venv:
-
-```bash
-sudo systemctl start simply-journal-admin.service
-journalctl -u simply-journal-admin.service --since "1 hour ago"
-```
-
-The unit runs under `DynamicUser=yes` with the `systemd-journal` supplementary
-group and a tightened sandbox (`ProtectSystem=strict`, `NoNewPrivileges`,
-`PrivateTmp`, restricted syscalls), and restarts on failure.
-
-### Windows
-
-A Windows service named `SimplyJournalAdmin` (display name *Simply Journal
-Admin*) can be registered via **NSSM** or a **pywin32** wrapper. See
-[windows-installer/service/README.md](windows-installer/service/README.md) for
-the trade-offs and commands.
-
-## Development
-
-The [Dockerfile.devEnv](Dockerfile.devEnv) provides the Linux development image
-with `python3-systemd`, `uv`, and the Debian packaging tools. Open a shell with
-the projects helper:
+Use the shared helper script from the parent `projects/` directory to build the
+development image and open an interactive shell:
 
 ```bash
 ../build.sh build --path proj2_journal_admin/Dockerfile.devEnv
 ```
 
-### Testing
+The helper automatically:
 
-The suite uses `pytest` with `pytest-cov` and never touches a real journal or a
-real Event Log; both backends are exercised through dependency injection and
-mocking.
+* Builds the container image.
+* Opens an interactive Bash shell.
+* Bind-mounts the project directory into the container.
+* Bind-mounts the project's `.build/` directory to `/build` for build artifacts.
+
+#### Sync Environment
+
+Inside the container, synchronize all dependency groups:
 
 ```bash
-pip install -e ".[windows]" pytest pytest-cov
-pytest
+uv sync --all-groups
 ```
 
-Coverage of `cli.py` is kept above 90%.
-
-### Linting
+Activate the virtual environment:
 
 ```bash
-ruff check .
+source .venv/bin/activate
 ```
 
-### Building the wheel
+#### Run Tests
+
+Run the automated test suite:
 
 ```bash
-uv build --wheel --out-dir .build
+uv run karva test tests/
 ```
 
-## Packaging
+#### Lint
 
-### Debian package
-
-The `.deb` embeds the prebuilt wheel and installs it into a per-package venv at
-install time.
+Run Ruff against the source tree:
 
 ```bash
-# 1. Build the wheel into the mounted artifact directory
-uv build --wheel --out-dir .build
+uv run ruff check .
+```
 
-# 2. Build the binary .deb (picks up the wheel via debian/*.install)
+#### Build Debian Package
+
+The Debian package embeds the generated Python wheel inside a `.deb` package.
+
+Build the wheel artifact:
+
+```bash
+uv build --wheel --out-dir /build
+```
+
+The generated wheel appears on the host inside:
+
+```text
+.build/simply_journal_admin-<version>-py3-none-any.whl
+```
+
+Build the Debian package:
+
+```bash
 dpkg-buildpackage -us -uc -b
 ```
 
-Key packaging files:
+### Windows MSI Build Environment
 
-| File | Purpose |
-| ---- | ------- |
-| [debian/control](debian/control) | Dependencies: `python3`, `python3-venv`, `python3-systemd`. |
-| [debian/simply-journal-admin.install](debian/simply-journal-admin.install) | Ships the wheel under `/opt/simply-journal-admin/wheel` and the wrapper to `/usr/bin`. |
-| [debian/simply-journal-admin.postinst](debian/simply-journal-admin.postinst) | Creates the venv and installs the wheel. |
-| [debian/simply-journal-admin.postrm](debian/simply-journal-admin.postrm) | Removes the venv on uninstall. |
-| [debian/simply-journal-admin.service](debian/simply-journal-admin.service) | Hardened systemd unit. |
+The Windows build environment is provided by
+[Dockerfile.windows](Dockerfile.windows).
 
-### MSI package
+> Requires Docker Desktop [configured for Windows containers](https://docs.docker.com/desktop/setup/install/windows-install/#system-requirements).
 
-The MSI is built inside a Windows container defined by
-[Dockerfile.windows](Dockerfile.windows), which installs Python, uv, the WiX
-Toolset, NSSM, and the Visual C++ build tools.
+#### Setup Environment
+
+Build the Windows build image:
 
 ```powershell
-# Build the image (Windows container host required)
 docker build -f Dockerfile.windows -t sja-msi-builder .
-
-# Copy the artifact out
-docker run --rm -v ${PWD}\out:C:\out sja-msi-builder `
-    powershell -Command "Copy-Item C:\build\*.msi C:\out"
 ```
 
-The WiX sources and helper scripts live under
-[windows-installer/](windows-installer/):
+> **Note:** The initial build may take a long time because several large Windows and development tool dependencies must be downloaded and installed.
 
-| Path | Purpose |
-| ---- | ------- |
-| `windows-installer/wix/Product.wxs` | WiX v3 product definition (files, PATH, custom actions). |
-| `windows-installer/scripts/install-venv.ps1` | Creates the venv and installs the wheel + `pywin32`. |
-| `windows-installer/scripts/uninstall-venv.ps1` | Removes the venv and launcher. |
-| `windows-installer/scripts/build-msi.ps1` | Runs `candle` + `light` to compile the `.msi`. |
-| `windows-installer/service/` | NSSM and pywin32 service definitions. |
+Create the artifact directory if it does not already exist:
 
-## Architecture overview
+```powershell
+New-Item -ItemType Directory -Path .build -Force
+```
+
+Open an interactive PowerShell session:
+
+```powershell
+docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPath)\.build:C:\build" sja-msi-builder
+```
+
+> **Note:** The following command must be run from the Windows filesystem (`C:\`); otherwise, the bind mounts will fail.
+
+#### Build MSI Package
+
+The Windows installer embeds the generated Python wheel inside an `.msi` package.
+
+Build the wheel:
+
+```powershell
+uv build --wheel --out-dir C:\build\wheel
+```
+
+Build the MSI:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\msi\scripts\build-msi.ps1 -WheelDir C:\build\wheel -OutDir C:\build
+```
+
+The generated installer appears on the host inside:
 
 ```text
-                         simply_journal_admin.cli
-                                   │
-                build_parser ──► main ──► read_entries (dispatch)
-                                   │            │
-                         is_windows()? ─────────┤
-                              │                 │
-                  ┌───────────┘                 └───────────┐
-                  ▼                                         ▼
-          read_linux_entries                       read_windows_entries
-                  │                                         │
-          systemd.journal.Reader            win32evtlog ──or──► wevtutil
-                  │                                         │
-                  └──────────► normalized records ◄─────────┘
-                               {timestamp, unit, priority, message}
-                                          │
-                          format_text / json  ──►  stdout / --output-file
+.build\simply-journal-admin-<version>.msi
 ```
-
-All paths, service names, package names, and venv locations are centralized in
-[src/simply_journal_admin/constants.py](src/simply_journal_admin/constants.py)
-so the application, the Debian packaging, and the Windows installer share one
-source of truth.
-
-## Migration notes (1.x → 2.0)
-
-- **Install layout changed.** The Debian package no longer installs the wheel
-  into the system interpreter with `--break-system-packages`. It now creates a
-  dedicated venv at `/opt/simply-journal-admin/venv` and exposes
-  `/usr/bin/simply-journal-admin`. Removing the old 1.x package and installing
-  2.0 is the supported upgrade path.
-- **Service behavior changed.** The systemd unit is now a long-running
-  `--follow` service with `Restart=on-failure` and sandboxing, instead of a
-  one-shot reporter.
-- **CLI is backward compatible.** Existing flags (`--unit`, `--priority`,
-  `--since-minutes`, `--format`) behave as before; `read_entries(..., reader=)`
-  remains supported for embedding/testing. New flags (`--limit`, `--follow`,
-  `--output-file`, `--pretty`, `--log-name`) are additive.
-- **Default JSON is now compact**; pass `--pretty` for indented output.
-

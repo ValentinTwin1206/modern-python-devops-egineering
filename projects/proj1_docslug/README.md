@@ -86,7 +86,7 @@ print(slug_path("Guides", "API Reference"))
 Use the development image in [Dockerfile.devEnv](Dockerfile.devEnv) to open an interactive shell with `uv` and the project environment already prepared. Run the following command from the `projects/` directory through the shared helper:
 
 ```bash
-../build.sh build --path proj1_docslug/Dockerfile.devEnv
+./build.sh build --path proj1_docslug/Dockerfile.devEnv
 ```
 
 ### Sync Environment
