@@ -31,7 +31,7 @@ through the supported operating-system packages.
 #### Linux
 
 - Debian-based Linux distribution.
-- `python3-systemd`.
+- `python3-systemd` is installed automatically as a package dependency.
 
 #### Windows
 
@@ -53,8 +53,10 @@ sudo apt install ./simply-journal-admin_<version>_all.deb
 Install the generated MSI package:
 
 ```powershell
-"$PWD\simply-journal-admin-<version>.msi" /L*v install.log
+msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
 ```
+
+> **Note**: The command will generate a detailed log file
 
 ### Usage
 
@@ -101,13 +103,11 @@ simply-journal-admin \
 
 ### Linux Development Environment
 
-The Linux development environment is provided by
-[Dockerfile.devEnv](Dockerfile.devEnv).
+The Linux development environment is provided by [Dockerfile.devEnv](Dockerfile.devEnv).
 
 #### Setup Environment
 
-Use the shared helper script from the parent `projects/` directory to build the
-development image and open an interactive shell:
+Use the shared helper script from the parent `projects/` directory to build the development image and open an interactive shell:
 
 ```bash
 ../build.sh build --path proj2_journal_admin/Dockerfile.devEnv
@@ -175,10 +175,9 @@ dpkg-buildpackage -us -uc -b
 
 ### Windows MSI Build Environment
 
-The Windows build environment is provided by
-[Dockerfile.windows](Dockerfile.windows).
+The Windows build environment is provided by [Dockerfile.windows](Dockerfile.windows).
 
-> Requires Docker Desktop [configured for Windows containers](https://docs.docker.com/desktop/setup/install/windows-install/#system-requirements).
+> **Note:** Requires Docker Desktop [configured for Windows containers](https://docs.docker.com/desktop/setup/install/windows-install/#system-requirements).
 
 #### Setup Environment
 
@@ -188,7 +187,7 @@ Build the Windows build image:
 docker build -f Dockerfile.windows -t sja-msi-builder .
 ```
 
-> **Note:** The initial build may take a long time because several large Windows and development tool dependencies must be downloaded and installed.
+> **Note:** The initial build may take several minutes due to the huge size (~ 10GB) of the container.
 
 Create the artifact directory if it does not already exist:
 
@@ -206,16 +205,15 @@ docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPa
 
 #### Build MSI Package
 
-The Windows installer embeds a Python runtime plus the generated Python wheel
-inside an `.msi` package.
+The Windows installer embeds a Python runtime plus the generated Python wheel inside an `.msi` package.
 
-Build the wheel:
+Within the running container, build the wheel:
 
 ```powershell
 uv build --wheel --out-dir C:\build\wheel
 ```
 
-Build the MSI:
+Next, you can build the MSI package as follows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\msi\scripts\build-msi.ps1 -WheelDir C:\build\wheel -OutDir C:\build
