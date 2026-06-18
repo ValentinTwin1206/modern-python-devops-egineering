@@ -1,12 +1,9 @@
 #!/usr/bin/make -f
 
-# Minimal rules file.
-#
-# The project wheel is built upstream with `uv build --wheel` and shipped
-# under /opt/simply-journal-admin/wheel via debian/simply-journal-admin.install.
-# There is no in-package Python build step, so the dh_auto_* hooks are
-# intentional no-ops. The venv is created at install time by the postinst
-# script, and dh_installdeb installs the maintainer scripts.
+PACKAGE := simply-journal-admin
+INSTALL_ROOT := debian/$(PACKAGE)/opt/simply-journal-admin
+PYTHON_ROOT := $(INSTALL_ROOT)/python
+SITE_PACKAGES := $(INSTALL_ROOT)/app/site-packages
 
 %:
 	dh $@
@@ -14,4 +11,24 @@
 override_dh_auto_configure:
 override_dh_auto_build:
 override_dh_auto_test:
+
 override_dh_auto_install:
+	set -eu; \
+	WHEEL=$$(ls .build/simply_journal_admin-*.whl 2>/dev/null | sort | tail -n 1); \
+	if [ -z "$$WHEEL" ]; then \
+		echo "No wheel found under .build" >&2; \
+		exit 1; \
+	fi; \
+	PYTHON=$$(python3 -c 'import sys; print(sys.executable)'); \
+	PYTHON_STDLIB=$$(python3 -c 'import sysconfig; print(sysconfig.get_path("stdlib"))'); \
+	PYTHON_VERSION=$$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'); \
+	PYTHON_LIBDIR=$$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR") or "")'); \
+	PYTHON_LDLIBRARY=$$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LDLIBRARY") or "")'); \
+	rm -rf debian/$(PACKAGE)/opt/simply-journal-admin; \
+	install -d "$(PYTHON_ROOT)/bin" "$(PYTHON_ROOT)/lib" "$(SITE_PACKAGES)"; \
+	cp -L "$$PYTHON" "$(PYTHON_ROOT)/bin/python3"; \
+	cp -a "$$PYTHON_STDLIB" "$(PYTHON_ROOT)/lib/python$$PYTHON_VERSION"; \
+	if [ -n "$$PYTHON_LIBDIR" ] && [ -n "$$PYTHON_LDLIBRARY" ] && [ -f "$$PYTHON_LIBDIR/$$PYTHON_LDLIBRARY" ]; then \
+		cp -a "$$PYTHON_LIBDIR/$$PYTHON_LDLIBRARY" "$(PYTHON_ROOT)/lib/"; \
+	fi; \
+	python3 -m zipfile -e "$$WHEEL" "$(SITE_PACKAGES)"

@@ -1,7 +1,20 @@
 #!/bin/sh
 # Thin launcher installed at /usr/bin/simply-journal-admin.
 #
-# It forwards all arguments to the console-script entry point inside the
-# dedicated virtual environment created by the postinst script, so the system
-# Python interpreter is never used or modified.
-exec /opt/simply-journal-admin/venv/bin/simply-journal-admin "$@"
+# The Debian package ships an embedded Python runtime and an unpacked wheel
+# under /opt/simply-journal-admin, so installs stay offline and never mutate
+# the system interpreter.
+
+set -e
+
+INSTALL_ROOT="/opt/simply-journal-admin"
+PYTHON_HOME="${INSTALL_ROOT}/python"
+APP_SITE_PACKAGES="${INSTALL_ROOT}/app/site-packages"
+DIST_PACKAGES="/usr/lib/python3/dist-packages"
+
+export PYTHONHOME="${PYTHON_HOME}"
+export PYTHONPATH="${APP_SITE_PACKAGES}:${DIST_PACKAGES}"
+export PYTHONNOUSERSITE="1"
+export LD_LIBRARY_PATH="${PYTHON_HOME}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+exec "${PYTHON_HOME}/bin/python3" -m simply_journal_admin.cli "$@"

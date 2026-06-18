@@ -8,20 +8,17 @@ Rules-Requires-Root: no
 Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
 
 Package: simply-journal-admin
-Architecture: all
+Architecture: any
 Depends:
  ${misc:Depends},
- python3 (>= 3.11),
- python3-venv,
+ ${shlibs:Depends},
  python3-systemd
 Description: cross-platform admin CLI for reading systemd journal entries
  simply-journal-admin is a command-line tool that reads recent systemd journal
  entries (Linux) through the APT-managed python3-systemd binding. The same code
  base also supports the Windows Event Log when installed from the MSI package.
  .
- The Debian package ships the prebuilt project wheel under
- /opt/simply-journal-admin/wheel and installs it into a dedicated virtual
- environment at /opt/simply-journal-admin/venv during postinst, so it never
- modifies the system Python interpreter. A thin wrapper at
- /usr/bin/simply-journal-admin invokes the venv entry point for interactive CLI
- use.
+ The Debian package ships a fully offline runtime under
+ /opt/simply-journal-admin: an embedded Python interpreter, the unpacked
+ project wheel, and a thin wrapper at /usr/bin/simply-journal-admin. No pip,
+ virtualenv creation, or internet access is needed on the target host.

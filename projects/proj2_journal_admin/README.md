@@ -3,9 +3,9 @@
 *Simply Journal Admin* is a cross-platform administration CLI that reads recent
 log entries from the host operating system and presents them through a unified
 command-line interface. The project is distributed as native Debian (`.deb`) and
-Windows (`.msi`) packages that install into isolated Python virtual
-environments. Both packages install a user-invoked CLI only; neither package
-registers a background service.
+Windows (`.msi`) packages that bundle an embedded Python runtime plus the
+application wheel payload for fully offline installation. Both packages install
+a user-invoked CLI only; neither package registers a background service.
 
 ## Project Components
 
@@ -31,13 +31,11 @@ through the supported operating-system packages.
 #### Linux
 
 - Debian-based Linux distribution.
-- Python 3.12 or newer.
 - `python3-systemd`.
 
 #### Windows
 
 - Windows 10 or newer.
-- Python 3.12 or newer.
 - Permission to read the Windows Event Log.
 
 ### Installation
@@ -154,7 +152,8 @@ uv run ruff check .
 
 #### Build Debian Package
 
-The Debian package embeds the generated Python wheel inside a `.deb` package.
+The Debian package embeds a Python runtime plus the generated Python wheel
+inside the `.deb` package.
 
 Build the wheel artifact:
 
@@ -207,7 +206,8 @@ docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPa
 
 #### Build MSI Package
 
-The Windows installer embeds the generated Python wheel inside an `.msi` package.
+The Windows installer embeds a Python runtime plus the generated Python wheel
+inside an `.msi` package.
 
 Build the wheel:
 

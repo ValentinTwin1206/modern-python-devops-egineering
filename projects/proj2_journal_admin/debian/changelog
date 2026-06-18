@@ -1,13 +1,12 @@
 simply-journal-admin (2.0.0-1) unstable; urgency=medium
 
-  * Install into a dedicated virtual environment under
-    /opt/simply-journal-admin/venv instead of the system Python interpreter;
-    drop the --break-system-packages workflow.
-  * Ship the wheel under /opt/simply-journal-admin/wheel and add a
-    /usr/bin/simply-journal-admin wrapper that invokes the venv entry point.
+  * Bundle an embedded Python runtime under /opt/simply-journal-admin/python
+    instead of depending on the target host's interpreter.
+  * Unpack the project wheel under /opt/simply-journal-admin/app and add a
+    /usr/bin/simply-journal-admin wrapper that invokes the embedded runtime.
   * Keep the package CLI-only; do not register a systemd service during
     installation.
-  * Drop the python3-pip dependency; add python3-venv.
+  * Remove install-time pip, virtualenv creation, and internet access.
 
  -- Modern Python Engineering <maintainers@example.invalid>  Tue, 16 Jun 2026 00:00:00 +0000
 
