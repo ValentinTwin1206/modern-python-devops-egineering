@@ -4,7 +4,7 @@
 
   The installer:
     1. Lays down the prebuilt wheel under C:\Program Files\SimplyJournalAdmin\wheel.
-    2. Lays down the venv / service helper scripts.
+    2. Lays down the venv helper scripts.
     3. Creates a virtual environment under ...\venv and pip-installs the wheel
        (plus pywin32) into it through a deferred custom action.
     4. Drops a simply-journal-admin.cmd launcher in the install root and adds the
@@ -51,7 +51,6 @@
         <Directory Id="INSTALLFOLDER" Name="SimplyJournalAdmin">
           <Directory Id="WheelFolder" Name="wheel" />
           <Directory Id="ScriptsFolder" Name="scripts" />
-          <Directory Id="ServiceFolder" Name="service" />
         </Directory>
       </Directory>
     </Directory>
@@ -71,13 +70,6 @@
       </Component>
       <Component Id="UninstallVenvScript" Directory="ScriptsFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0003">
         <File Id="UninstallVenvPs1" Source="msi\scripts\uninstall-venv.ps1" KeyPath="yes" />
-      </Component>
-
-      <!-- Optional Windows service helpers. -->
-      <Component Id="ServiceFiles" Directory="ServiceFolder" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0004">
-        <File Id="ServiceInstallPs1" Source="msi\service\install-service.ps1" KeyPath="yes" />
-        <File Id="ServiceWrapperPy" Source="msi\service\simply_journal_admin_service.py" />
-        <File Id="ServiceUninstallPs1" Source="msi\service\uninstall-service.ps1" />
       </Component>
     </ComponentGroup>
 

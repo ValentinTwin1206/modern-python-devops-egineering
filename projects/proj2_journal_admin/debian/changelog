@@ -5,8 +5,8 @@ simply-journal-admin (2.0.0-1) unstable; urgency=medium
     drop the --break-system-packages workflow.
   * Ship the wheel under /opt/simply-journal-admin/wheel and add a
     /usr/bin/simply-journal-admin wrapper that invokes the venv entry point.
-  * Run the systemd service from the venv in --follow mode with Restart=on-failure
-    and additional sandboxing options.
+  * Keep the package CLI-only; do not register a systemd service during
+    installation.
   * Drop the python3-pip dependency; add python3-venv.
 
  -- Modern Python Engineering <maintainers@example.invalid>  Tue, 16 Jun 2026 00:00:00 +0000

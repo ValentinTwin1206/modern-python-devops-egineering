@@ -4,8 +4,7 @@
 # The virtual environment under /opt/simply-journal-admin/venv is created by
 # postinst and is therefore not tracked by dpkg. The matching cleanup happens
 # in postrm; this script intentionally does no pip work because nothing is
-# installed into the system interpreter anymore. dh_installsystemd stops and
-# disables the service automatically through the #DEBHELPER# block.
+# installed into the system interpreter anymore.
 
 set -e
 

@@ -1,9 +1,9 @@
 """Central configuration constants for simply-journal-admin.
 
-All paths, service names, package names, and virtual-environment locations
-are defined here so that the application code, the Debian packaging, and the
-Windows installer can share a single source of truth. Keeping these values in
-one module makes the project reproducible and easy to retarget.
+All paths, package names, and virtual-environment locations are defined here so
+that the application code and the native packaging can share a single source of
+truth. Keeping these values in one module makes the project reproducible and
+easy to retarget.
 """
 
 from __future__ import annotations
@@ -21,24 +21,11 @@ MODULE_NAME = "simply_journal_admin"
 #: Console-script / launcher name installed on PATH.
 CONSOLE_SCRIPT = "simply-journal-admin"
 
-#: Human-readable application name (used by the Windows service display name).
+#: Human-readable application name.
 DISPLAY_NAME = "Simply Journal Admin"
 
 #: Project version. Kept in sync with pyproject.toml and debian/changelog.
 VERSION = "2.0.0"
-
-# --------------------------------------------------------------------------- #
-# Service identity (shared between systemd and Windows service)
-# --------------------------------------------------------------------------- #
-
-#: systemd unit name on Linux.
-LINUX_SERVICE_NAME = "simply-journal-admin.service"
-
-#: Windows service short name.
-WINDOWS_SERVICE_NAME = "SimplyJournalAdmin"
-
-#: Windows service display name.
-WINDOWS_SERVICE_DISPLAY_NAME = DISPLAY_NAME
 
 # --------------------------------------------------------------------------- #
 # Linux install layout

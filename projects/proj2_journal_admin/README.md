@@ -4,7 +4,8 @@
 log entries from the host operating system and presents them through a unified
 command-line interface. The project is distributed as native Debian (`.deb`) and
 Windows (`.msi`) packages that install into isolated Python virtual
-environments.
+environments. Both packages install a user-invoked CLI only; neither package
+registers a background service.
 
 ## Project Components
 
@@ -13,12 +14,12 @@ The table below lists the main files and directories that make up the project.
 | Component | Description |
 | --------- | ----------- |
 | [Dockerfile.devEnv](Dockerfile.devEnv) | Linux development image containing `uv`, `python3-systemd`, Debian packaging tools, and the project's development dependencies. |
-| [Dockerfile.windows](Dockerfile.windows) | Windows build image containing Python, `uv`, WiX Toolset, NSSM, Git, and Visual C++ build tools required for MSI generation. |
+| [Dockerfile.windows](Dockerfile.windows) | Windows build image containing Python, `uv`, WiX Toolset, Git, and Visual C++ build tools required for MSI generation. |
 | [pyproject.toml](pyproject.toml) | Defines package metadata, dependencies, console entry points, and build configuration. |
 | [src/simply_journal_admin/](src/simply_journal_admin/) | Cross-platform journal administration CLI implementation. |
 | [tests/](tests/) | Automated test suite covering CLI behavior and platform abstractions. |
-| [debian/](debian/) | Debian packaging metadata, maintainer scripts, and the optional systemd service definition. |
-| [msi/](msi/) | WiX sources, PowerShell build scripts, MSI custom actions, and Windows service integration files. |
+| [debian/](debian/) | Debian packaging metadata and maintainer scripts for the CLI-only Linux package. |
+| [msi/](msi/) | WiX sources, PowerShell build scripts, and MSI custom actions for the CLI-only Windows package. |
 
 ## End-User Guide
 
@@ -54,7 +55,7 @@ sudo apt install ./simply-journal-admin_<version>_all.deb
 Install the generated MSI package:
 
 ```powershell
-msiexec /i simply-journal-admin-<version>.msi
+"$PWD\simply-journal-admin-<version>.msi" /L*v install.log
 ```
 
 ### Usage

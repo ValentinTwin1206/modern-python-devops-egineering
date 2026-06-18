@@ -10,7 +10,6 @@
 #   * Python 3.12          - interpreter used to build the wheel and venv
 #   * uv                   - fast build front-end (uv build --wheel)
 #   * WiX Toolset v3       - candle.exe / light.exe used to compile the .msi
-#   * NSSM                 - service helper shipped for the optional Windows service
 #   * Git                  - convenience for source checkouts / versioning
 #   * Visual C++ Build     - native build prerequisites for any C extensions
 # # # # # # # # # # #
@@ -26,7 +25,6 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
 # --- Build toolchain --------------------------------------------------------
 RUN choco install -y python --version=3.12.6 --no-progress; `
     choco install -y wixtoolset --no-progress; `
-    choco install -y nssm --no-progress; `
     choco install -y git --no-progress; `
     choco install -y visualstudio2022buildtools --no-progress `
         --package-parameters '--add Microsoft.VisualStudio.Workload.VCTools --quiet --norestart'

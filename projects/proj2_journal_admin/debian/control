@@ -23,5 +23,5 @@ Description: cross-platform admin CLI for reading systemd journal entries
  /opt/simply-journal-admin/wheel and installs it into a dedicated virtual
  environment at /opt/simply-journal-admin/venv during postinst, so it never
  modifies the system Python interpreter. A thin wrapper at
- /usr/bin/simply-journal-admin invokes the venv entry point, and a systemd unit
- is registered to tail the journal under journald.
+ /usr/bin/simply-journal-admin invokes the venv entry point for interactive CLI
+ use.

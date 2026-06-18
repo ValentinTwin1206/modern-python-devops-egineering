@@ -6,8 +6,7 @@
 # under /opt/simply-journal-admin/wheel via debian/simply-journal-admin.install.
 # There is no in-package Python build step, so the dh_auto_* hooks are
 # intentional no-ops. The venv is created at install time by the postinst
-# script. dh_installsystemd picks up debian/simply-journal-admin.service
-# automatically and dh_installdeb installs the maintainer scripts.
+# script, and dh_installdeb installs the maintainer scripts.
 
 %:
 	dh $@
