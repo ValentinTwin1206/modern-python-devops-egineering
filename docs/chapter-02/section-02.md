@@ -77,6 +77,106 @@ A typical Python project prepared for OS packaging separates application code fr
 * `Dockerfile.devEnv`: Provides the Linux packaging and test environment.
 * `Dockerfile.windows`: Provides the Windows MSI build environment.
 
+#### Main Configuration Files
+
+=== "`control`"
+
+	The Debian `control` file defines the package identity, build requirements, runtime dependencies, and end-user package description.
+
+	```text
+	Source: simply-journal-admin
+	Section: admin
+	Priority: optional
+	Maintainer: Modern Python Engineering
+	Build-Depends: debhelper-compat (= 13)
+	Standards-Version: 4.7.0
+	Rules-Requires-Root: no
+	Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
+
+	Package: simply-journal-admin
+	Architecture: any
+	Depends:
+	 ${misc:Depends},
+	 ${shlibs:Depends},
+	 python3-systemd
+	Description: cross-platform admin CLI for reading systemd journal entries
+	 simply-journal-admin is a command-line tool that reads recent systemd journal
+	 entries (Linux) through the APT-managed python3-systemd binding. The same code
+	 base also supports the Windows Event Log when installed from the MSI package.
+	 .
+	 The Debian package ships a fully offline runtime under
+	 /opt/simply-journal-admin: an embedded Python interpreter, the unpacked
+	 project wheel, and a thin wrapper at /usr/bin/simply-journal-admin. No pip,
+	 virtualenv creation, or internet access is needed on the target host.
+	```
+
+	* `Source`: Declares the source package name used by Debian packaging tools.
+	* `Build-Depends`: Lists the tools required to build the `.deb` package.
+	* `Package`: Names the binary package that end users install.
+	* `Architecture`: Marks the package as architecture-specific because it ships an embedded runtime.
+	* `Depends`: Pulls in required system packages, especially `python3-systemd`.
+	* `Description`: Explains the installed CLI and its offline runtime layout.
+
+=== "`Product.wxs`"
+
+	The WiX `Product.wxs` file defines the MSI product identity, install location, upgrade behavior, and machine-wide `PATH` integration.
+
+	```xml
+	<?xml version="1.0" encoding="UTF-8"?>
+	<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+	     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+	  <Product Id="*"
+	           Name="Simply Journal Admin"
+	           Language="1033"
+	           Version="$(var.ProductVersion)"
+	           Manufacturer="Modern Python Engineering"
+	           UpgradeCode="6B6F2C2E-2C2A-4E2E-9D0E-7A2C9B5D1A20">
+
+	    <Package InstallerVersion="500"
+	             Compressed="yes"
+	             InstallScope="perMachine"
+	             Description="Simply Journal Admin $(var.ProductVersion) installer"
+	             Manufacturer="Modern Python Engineering" />
+
+	    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+	    <MediaTemplate EmbedCab="yes" />
+
+	    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ValentinTwin1206/modern-python-devops-egineering" />
+	    <Property Id="ARPNOREPAIR" Value="1" />
+
+	    <Feature Id="MainFeature" Title="Simply Journal Admin" Level="1">
+	      <ComponentGroupRef Id="StagedPayload" />
+	      <ComponentRef Id="LauncherAndPath" />
+	    </Feature>
+
+	    <Directory Id="TARGETDIR" Name="SourceDir">
+	      <Directory Id="ProgramFiles64Folder">
+	        <Directory Id="INSTALLFOLDER" Name="SimplyJournalAdmin" />
+	      </Directory>
+	    </Directory>
+
+	    <Component Id="LauncherAndPath" Directory="INSTALLFOLDER" Guid="1B0E7E54-9A2E-4E3B-9B7C-2E6A1D4F0005">
+	      <CreateFolder />
+	      <Environment Id="UpdatePath"
+	                   Name="PATH"
+	                   Value="[INSTALLFOLDER]"
+	                   Permanent="no"
+	                   Part="last"
+	                   Action="set"
+	                   System="yes" />
+	    </Component>
+	  </Product>
+	</Wix>
+	```
+
+	* `Product`: Defines the MSI identity, version, vendor, and upgrade behavior.
+	* `Package`: Sets installer scope, compression, and Windows Installer metadata.
+	* `MajorUpgrade`: Prevents downgrades and manages in-place upgrades.
+	* `Feature`: Groups the staged payload and launcher into the installable feature.
+	* `Directory`: Places the application under `Program Files\SimplyJournalAdmin`.
+	* `Environment`: Appends the install directory to the machine `PATH`.
+
 ### Package Layout
 
 The packaged result includes the Python application payload together with platform-native installation metadata and launcher behavior.
@@ -85,6 +185,8 @@ Examples:
 
 === "Debian"
 
+	The Debian package installs an embedded Python runtime under `/opt/simply-journal-admin`, unpacks the built wheel into `app/site-packages`, and exposes a thin wrapper in `/usr/bin`. The package also declares `python3-systemd` as an OS-level dependency, so APT resolves that dependency during installation.
+	
 	```text
 	/opt/simply-journal-admin/
 	├── app/
@@ -99,9 +201,9 @@ Examples:
 	/usr/bin/simply-journal-admin
 	```
 
-	The Debian package installs an embedded Python runtime under `/opt/simply-journal-admin`, unpacks the built wheel into `app/site-packages`, and exposes a thin wrapper in `/usr/bin`. The package also declares `python3-systemd` as an OS-level dependency, so APT resolves that dependency during installation.
-
 === "MSI"
+
+	The MSI stages an embedded Python runtime under `runtime`, extracts the built wheel into `app\site-packages`, and installs a `simply-journal-admin.cmd` launcher in the install root. The installer also updates the machine `PATH`, which lets the command run from a standard Windows shell after installation.
 
 	```text
 	C:\Program Files\SimplyJournalAdmin\
@@ -115,8 +217,6 @@ Examples:
 	└── simply-journal-admin.cmd
 	```
 
-	The MSI stages an embedded Python runtime under `runtime`, extracts the built wheel into `app\site-packages`, and installs a `simply-journal-admin.cmd` launcher in the install root. The installer also updates the machine `PATH`, which lets the command run from a standard Windows shell after installation.
-
 !!! info
 	The package does not ask end users to run `pip` on the target machine. Instead, it bundles the application payload ahead of time and installs it through the operating system's native package manager.
 
@@ -128,6 +228,8 @@ Build the Python wheel first, then wrap that wheel in the target operating syste
 
 === "Debian package"
 
+	Use the helper script to open the Linux packaging environment.
+
 	```bash
 	../build.sh build --path proj2_journal_admin/Dockerfile.devEnv
 	```
@@ -138,11 +240,14 @@ Build the Python wheel first, then wrap that wheel in the target operating syste
 	uv sync --all-groups
 	```
 
+	Build the wheel artifact into the shared build directory:
+
 	```bash
 	uv build --wheel --out-dir /build
 	```
 
-	Then build the Debian package:
+
+	Run the Debian package build to create the .deb artifact:
 
 	```bash
 	dpkg-buildpackage -us -uc -b
@@ -150,13 +255,19 @@ Build the Python wheel first, then wrap that wheel in the target operating syste
 
 === "MSI package"
 
+	Build the Windows MSI builder image first:
+
 	```powershell
 	docker build -f Dockerfile.windows -t sja-msi-builder .
 	```
 
+	Create the host `.build` output directory:
+
 	```powershell
 	New-Item -ItemType Directory -Path .build -Force
 	```
+
+	Start the Windows build container with the project and build directories mounted:
 
 	```powershell
 	docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPath)\.build:C:\build" sja-msi-builder
@@ -190,6 +301,8 @@ For example:
 
 === "Debian"
 
+	Install the generated Debian package with `apt`:
+
 	```bash
 	sudo apt install ./simply-journal-admin_<version>_all.deb
 	simply-journal-admin --since-minutes 60
@@ -197,6 +310,8 @@ For example:
 	```
 
 === "MSI"
+
+	Install the generated MSI and capture a log file:
 
 	```powershell
 	msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
@@ -206,9 +321,7 @@ For example:
 
 ### Publish the OS Package
 
-Unlike a wheel, an OS package is usually published through a platform-specific distribution channel.
-
-The most common distribution methods are:
+Unlike a wheel, an OS package is usually published through a platform-specific distribution channel. The most common distribution methods are:
 
 | Distribution Method | Purpose |
 | ------------------- | ------- |
@@ -223,11 +336,15 @@ Users typically install the package through the native package-management workfl
 
 === "Linux (.deb)"
 
+	From end-user perspective, install the Debian package directly from the file system:
+
 	```bash
 	sudo apt install ./simply-journal-admin_<version>_all.deb
 	```
 
 === "Windows (.msi)"
+
+	From end-user perspective, install the MSI package and write an installation log:
 
 	```powershell
 	msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
