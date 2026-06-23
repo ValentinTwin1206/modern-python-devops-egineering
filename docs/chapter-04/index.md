@@ -1,11 +1,19 @@
-# Dependency Management with UV
+# Modern Python Workflows with uv
 
-Chapter 04 covers UV's dependency management explaining the basics around installation, caching and its drop in solution with common `pip` based project setups.
+## Introduction
+
+This chapter introduces one of the hottest takeaways in modern Python development: `uv`, a lightweight, high-performance python project manager developed by Astral.
+
+Section 01 starts with the setup of `uv` and then shows how it can be used throughout the whole development lifecycle. The next section goes deeper into dependency management, including lock files, virtual environments, and dependency resolution. After that, the chapter explains `uv`'s caching concept in more detail and why it matters for faster, more reproducible workflows. It concludes with a comparison of `uv` and other tools in the Python ecosystem.
+
+## Overview
 
 Use the navigation on the left to move through the chapter's sections:
 
-- Section 01: Common Dependency Management
-- Section 02: Dependency Management with uv
-- Section 03: Dependency Caching with uv
-- Section 04: Migrating pip-Based Projects to uv
-- Section 05: Practical Project: Troubleshooting & Modernizing a Legacy Python Project
+| Section | Summary |
+|---------|---------|
+| [Extra-Curriculum](./extra.md) | Per-Layer analysis |
+| [Section 01](./section-01.md) | Modern Python Project Mangement with uv|
+| [Section 02](./section-02.md) | Dependency Management with uv |
+| [Section 03](./section-03.md) | Dependency Caching with uv |
+| [Section 04](./section-04.md) | uv in comparison |

@@ -2,150 +2,143 @@
 
 ## Introduction
 
-`uv` is a single self-contained binary written in **Rust**, developed by Astral — the same team behind the `ruff` linter. Because it compiles down to native machine code, it carries no Python runtime dependency of its own and starts in milliseconds.
+Modern Python applications are built on top of dependencies. Managing those dependencies becomes increasingly challenging when developers work on different operating systems, use different Python versions, or require platform-specific tooling. 
 
-It ships as two statically-linked binaries — **`uv`** (main CLI) and **`uvx`** (ephemeral tool runner, equivalent to `pipx run`) — with a total on-disk footprint of ~36 MB. There are no shared libraries, no interpreter bundles, and no background daemons. The global package cache (`~/.cache/uv`) is shared across all projects to avoid redundant downloads (see more about caching in [Section-03](./section-02.md)).
+## Environment Isolation
 
+`uv` manages a persistent virtual environment in a `.venv` directory next to the `pyproject.toml`. The environment is created and updated automatically by commands such as `uv venv`, `uv add`, `uv sync`, or `uv run`.
+
+Using `uv python install` and `.python-version`, projects can pin an exact Python version which is managed by `uv` as part of the project setup. Developers do not need to manually create environments with a specific Python executable or keep track of interpreter paths. When entering a project, `uv` automatically discovers the required interpreter, creates the virtual environment with that interpreter, and keeps the interpreter and environment aligned
+
+The relationship between the pinned interpreter and the virtual environment is recorded in `.venv/pyvenv.cfg`:
+
+```ini
+home = /root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.11.19
+version_info = 3.10.20
+include-system-site-packages = false
 ```
-/usr/local/bin/
-├── uv       36 MB   ← main CLI binary (statically linked Rust)
-└── uvx     343 KB   ← tool runner (thin wrapper)
+
+This allows developers to work with the exact Python version required by the project while keeping the system Python untouched.
+
+!!! note "Interpreter change"
+    Interpreter changes forces to remove and recreate the `.venv` folder against the new interpreter. Dependency versions still follow `uv.lock`; package artifacts are usually reused from `~/.cache/uv` and hard-linked into the new environment, and are only downloaded again when they are missing or incompatible with the new Python version/platform.
+
+## Locking
+
+Dependency locking ensures that every installation uses the exact same dependency versions, making builds reproducible and preventing unexpected breakages caused by newly released package versions.
+
+Traditional Python package managers such as `pip` only provide limited support for dependency locking. While developers often use `pip freeze` to generate a `requirements.txt` file, this approach merely captures the current state of a local environment and may produce inconsistent results across different platforms and Python versions.
+
+`uv` addresses this problem out of the box through its built-in lockfile mechanism. Whenever dependencies are added, removed, or updated, `uv` resolves the complete dependency graph and stores the result in the `uv.lock` file.
+
+!!! note "uv.lock file"
+    The `uv.lock` file serves as the single source of truth for your project's dependencies.It contains the fully resolved dependency graph, including all direct and transitive dependencies, along with the exact versions that should be installed. Because uv uses a universal resolution strategy, the lockfile remains portable across operating systems and Python environments.
+
+The uv.lock file remains unchanged until it is explicitly updated. This ensures that dependency versions stay consistent across development, CI, and production environments.
+
+Validate that the lockfile is in sync with the project's dependency definitions:
+
+```shell
+uv lock --check
 ```
 
-!!! note "`pip install uv`"
-    When installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
+Update all locked dependencies to the latest compatible versions and regenerate the lockfile:
 
-## uv in comparison
+```shell
+uv lock --upgrade
+```
 
-### Footprint
+Update a single dependency while leaving the rest of the lockfile unchanged:
 
-Python's ecosystem already has well-established answers to dependency management — `poetry` and `pip` (+ `virtualenv` and `pyenv`) — so let's look at how `uv` stacks up against them in terms of install footprint, performance, and feature coverage.
+```shell
+uv lock --upgrade-package fastapi
+```
 
-The official Poetry [installer](https://python-poetry.org/docs/#installation) bootstraps a full Python virtualenv with 15+ transitive dependencies. On `python:3.12-slim` that single install layer costs **104 MB** — more than the base image itself. The biggest offenders: `cryptography` (15 MB), a bundled `pip` (13 MB), and `rapidfuzz` (12 MB). Poetry itself is only 5.9 MB of that total.
+By requiring explicit updates to uv.lock, dependency changes become predictable, reviewable, and fully reproducible.
 
-The classic alternative — `pip` + `virtualenv` + `pyenv` — comes in at **39 MB**, but that number is misleading: it unpacks into **2,889 files** across three separate tool trees, with no shared cache, no lockfile, and no unified CLI.
+## Resolution
 
-| Tool | Install size |
-|------|-------------|
-| `uv` | ~36 MB|
-| `poetry` (official installer) | ~104 MB |
-| `pip` + `virtualenv` + `pyenv` | ~39 MB |
+Before a lockfile can be created, the package manager must first resolve a valid dependency graph - this process is called **resolution**. 
 
-### Performance
+`uv` performs dependency resolution automatically whenever dependencies are added, updated, or synchronized.
 
-The benchmark ran five representative dependency sets — a web stack (Flask), a data science stack (NumPy/pandas), an API stack (FastAPI), a CLI tooling set, and a dev-tools set (pytest/mypy/ruff) — each installed from scratch inside a `python:3.12-slim` container.
+### Strategies
 
-![Installation time comparison](../assets/images/chapter-04/install_time_comparison.png)
+By default, `uv` prefers the latest compatible version of each dependency. This keeps projects up to date while still respecting version constraints defined in `pyproject.toml`.
 
-`uv` is consistently the fastest across all sets. The gap is most pronounced on the heavy data-science stack: `pip` takes **34.2 s**, `pipenv` **47.7 s**, `poetry` **28.0 s** — `uv` finishes in **20.8 s**. On lighter sets (FastAPI, CLI tools) `uv` is **2–3× faster** than `pip` alone.
+When developing libraries, however, testing only against the latest versions is often insufficient. A dependency declaration such as `fastapi>=0.100.0` the following claims compatibility with every version starting from `0.100.0`, not just the latest release.
 
-![Storage footprint comparison](../assets/images/chapter-04/storage_footprint_comparison.png)
+To validate these compatibility guarantees, `uv` supports alternative resolution strategies:
 
-The storage picture tells a similar story. `uv`'s installed layer is consistently smaller than `pip` and significantly smaller than `pipenv`. On the data-science stack the difference is most visible: `uv` installs **347.7 MB** vs `pip`'s **423.4 MB** and `pipenv`'s **536.2 MB**. The savings come from `uv`'s global deduplication cache — packages downloaded once are hard-linked into each environment rather than copied.
+```shell
+uv sync --resolution lowest
+```
 
-### Dependency Management
+Installs the lowest compatible version for all direct and transitive dependencies.
 
-`uv` covers all three roles in a single ~36 MB binary — and adds a lockfile on top.
+```shell
+uv sync --resolution lowest-direct
+```
 
-| Tool | Install size | Lockfile | Interpreter mgmt |
-|------|-------------|:--------:|:----------------:|
-| `uv` | ~36 MB (two binaries, zero Python deps) | ✓ | ✓ |
-| `poetry` (official installer) | ~104 MB (Python venv + 15+ deps) | ✓ | ✗ |
-| `pip` + `virtualenv` + `pyenv` | ~39 MB (three separate tools) | ✗ | ✓ |
+Installs the lowest compatible versions for direct dependencies while keeping transitive dependencies at their latest compatible versions.
 
-| Tool | Introduced | Lockfile | Env Isolation | Interpreter Mgmt | Full Lifecycle |
-|------|------------|:--------:|:-------------:|:----------------:|:--------------:|
-| `pip` | 2008 | ✗ | ✗ | ✗ | ✗ |
-| `poetry` | 2018 | ✓ | ✓ | ✗ | ✓ |
-| `uv` | 2024 | ✓ | ✓ | ✓ | ✓ |
+These strategies are particularly useful in CI pipelines to verify that declared version bounds are accurate and that a project does not accidentally depend on newer package releases.
 
+### Dependency Groups
 
-## Modern Python Project Setuop
-- explaining the different kind of files
+Not all dependencies are required in every environment. Development tools, test frameworks, and documentation generators are typically only needed during development.
 
-## UV workflow
+Dependency groups allow related dependencies to be separated from production requirements:
 
-`uv` manages the full project lifecycle through a small set of files and commands.
-
-**Key files:**
-
-| Filename | Description |
-|----------|-------------|
-| `pyproject.toml` | Project metadata and dependency declarations |
-| `uv.lock` | Fully resolved dependency versions and hashes for reproducible installs |
-| `.venv` | Virtual environment created and managed by `uv` |
-
-Dependencies are declared in the standard `[project]` table of `pyproject.toml`:
-
-```toml
-[project]
-name = "myapp"
-version = "1.0.0"
-requires-python = ">=3.11"
-dependencies = [
-    "requests>=2.28.0",
-]
-
+```yaml
 [dependency-groups]
 dev = [
-    "pytest>=7.4.0",
+    "pytest",
+    "ruff",
 ]
 ```
 
-`uv.lock` records every resolved package with its source and hash for fully reproducible installs:
+Dependencies can then be installed selectively:
 
-```toml
-[[package]]
-name = "requests"
-version = "2.28.0"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/.../requests-2.28.0-py3-none-any.whl", hash = "sha256:58cd2187..." },
+```shell
+uv sync --group dev
+```
+
+Grouping dependencies keeps production environments lean while ensuring that development tooling remains easy to install and manage.
+
+### Dependency Markers
+
+Some dependencies are only valid on specific platforms or Python versions. Without additional information, the resolver assumes that every dependency must be installed in every environment.
+
+Consider a project that uses Windows Authentication through `pywin32`:
+
+```yaml
+dependencies = [
+    "fastapi",
+    "sqlalchemy",
+    "pywin32"
 ]
 ```
 
-<!-- ---
+While the project perfectly bootstraps on Windows, the same setup on WSL crashes with the following hint
 
-## Topics
+```bash
+error: Distribution `pywin32==312 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform
+```
 
-### Modern project setup
-- Example project structure:
-  - `pyproject.toml`
-  - `.venv`
-  - `uv.lock`
+Dependency markers allow such constraints to be expressed directly:
 
-### Dependency management with uv
-- Runtime dependencies
-- Development dependencies
-- Dependency groups
-- Optional dependencies / extras
+```yaml
+dependencies = [
+    "fastapi",
+    "sqlalchemy",
+    "pywin32; sys_platform == 'win32'"
+]
+```
 
-### Working with dependencies (uv commands)
-- `uv add`
-- `uv remove`
-- `uv sync`
-- `uv lock`
-- `uv tree`
+The resolver now includes `pywin32` only on Windows systems, producing a valid dependency graph across different environments.
 
-### Dependency definitions in `pyproject.toml`
-- Version constraints
-- Dependency groups
-- Tool configurations
-- Project structure best practices
-
-### Reproducible builds
-- Role of `uv.lock`
-- Deterministic environments
-- Team workflows
-- CI/CD relevance
-
-Hands-on:
-- Recreate environments
-- Update lockfiles
-- Perform dependency upgrades
-
-### Best practices
-- Minimal runtime dependencies
-- Separation of dev/runtime dependencies
-- Clean dependency structures
-- Lockfile strategy -->
+!!! note
+    Dependency markers are defined by the `PEP 508` standard and can be looked up from the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. In practice, operating system and Python version markers are by far the most common use cases, especially when supporting mixed environments such as Windows, Linux, WSL, CI runners, and production containers.

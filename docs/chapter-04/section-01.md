@@ -1,163 +1,266 @@
-# Common Dependency Management
-## Dependency Management
-### Dependency Hell
+# Modern Python project management with uv
 
-Modern Python applications are built on top of third-party packages that are not shipped with Python itself. Managing these external libraries across different developers, machines, and deployment environments is called **dependency management**.
+## Introduction
 
-As covered in [Chapter 03](../chapter-03/index.md), today's standard for declaring project metadata and dependencies is the `pyproject.toml`. A minimal project looks like this:
+`uv` is a single self-contained binary written in **Rust**, developed by Astral — the same team behind the `ruff` linter. It was designed to unify Python packaging, dependency management, virtual environments, and tool execution under a single command-line interface. Instead of combining multiple tools such as `pip`, `venv`, `pip-tools`, and `pipx`, developers can use `uv` for the entire workflow.
+
+Because it compiles down to native machine code, it carries no Python runtime dependency of its own and starts in milliseconds. Its rapid adoption is driven by exceptional performance and a streamlined developer experience. Written in Rust, uv executes common packaging operations dramatically faster than traditional Python tooling while remaining fully compatible with the Python packaging ecosystem.
+
+=== "macOS and Linux"
+
+    Download the standalone installer and execute the shell script
+
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+
+    It ships as two statically-linked binaries — **`uv`** (main CLI) and **`uvx`** (ephemeral tool runner, equivalent to `pipx run`) — with a total on-disk footprint of ~36 MB. There are no shared libraries, no interpreter bundles, and no background daemons. The global package cache (`~/.cache/uv`) is shared across all projects to avoid redundant downloads (see more about caching in [Section-03](./section-02.md)).
+
+    ```
+    /usr/local/bin/
+    ├── uv       36 MB   ← main CLI binary (statically linked Rust)
+    └── uvx     343 KB   ← tool runner (thin wrapper)
+    ```
+
+=== "Windows"
+
+    Download the standalone installer and execute the powershell script
+
+    ```powershell
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
+
+---
+
+Alternatively, `uv` can also be installed from PyPi using `pip`.
+
+```shell
+pip install uv
+```
+
+This might be more convenient for many developers, however, when installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
+
+## Managing a Python Project
+
+The following commands cover usual tasks during the lifecycle of a Python project.
+
+### Initialize a Project
+
+Create a new project with a default `pyproject.toml`.
+
+```shell
+cd ~ && uv init my-project
+cd my-project
+```
+
+This creates the project structure and initializes Python package metadata.
+
+
+```shell
+/project-folder
+└── app
+    ├── README.md
+    ├── main.py
+    └── pyproject.toml
+```
+
+The command also sets up an initial cache structure under `/home/user/.cache/uv`. 
+
+### Add Dependencies
+
+`uv` simplifies the integration of dependencies to your project.
+
+```shell
+uv add click==1.0.0
+```
+
+After the first dependency is added, the project structure looks similar to:
+
+```shell
+/project-folder
+└── app
+    ├── .venv
+    ├── README.md
+    ├── main.py
+    ├── pyproject.toml
+    └── uv.lock
+```
+
+In a single step, the command resolves dependencies, creates a virtual environment if necessary, installs the packages, adds an entry of the dependency in the `pyproject.toml`, and generates/refreshes the `uv.lock` file (details about `uv.lock` are covered in [uv.lock](./section-02.md/#uvlock)).
+
+
+Dependencies can be added to specific groups, such as development dependencies or to a custom group
+
+```shell
+uv add --dev pytest && uv add --group docs mkdocs
+```
+
+This adds the dependency to the corresponding section in the `pyproject.toml`:
+
+```toml
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+]
+
+docs = [
+    "mkdocs>=1.6.0",
+]
+```
+
+Dependencies can also be installed directly from Git repositories:
+
+```shell
+uv add "httpx @ git+https://github.com/encode/httpx"
+```
+
+The dependency is added to project.dependencies, while the source information is stored separately:
 
 ```toml
 [project]
-name = "myapp"
-version = "1.0.0"
-requires-python = ">=3.11"
 dependencies = [
-    "requests>=2.0",
-    "old-sdk>=1.0",
+    "httpx",
 ]
+
+[tool.uv.sources]
+httpx = { git = "https://github.com/encode/httpx" }
 ```
 
-On the surface the declarations look fine — until you look at what each library itself pulls in:
+This allows `uv` to install packages directly from version control systems instead of package registries.
 
-```
-myapp
-├── requests 2.28.0
-│   └── urllib3 >=1.21.1, <2
-└── old-sdk 1.0.0
-    └── urllib3 >=2.0        ← conflict!
-```
+### Remove Dependencies
 
-Both `requests` and `old-sdk` depend on `urllib3`, but require incompatible versions. They cannot be installed together, and `pip` will fail with:
+Remove a dependency from the project.
 
-```
-ERROR: Cannot install requests and old-sdk because these package versions have conflicting dependencies.
+```shell
+uv remove requests
 ```
 
-This is **dependency hell** — conflicting version constraints between transitive dependencies that make it impossible to assemble a working environment.
+This command removes the package from the `pyproject.toml` and updates `uv.lock` to reflect the change. It does not modify the virtual environment — run `uv sync` afterward to clean up the `.venv`.
 
-The `requires-python` field has the same fundamental weakness. It sets a lower bound on the interpreter, but does not pin or manage it. On one developer's machine the project runs on Python 3.11, on another 3.13, and in the CI container something else entirely — each with different standard library behaviour and package compatibility.
+### Synchronize the Environment
 
-Even without an outright conflict, the environment is still fragile. Version ranges like `requests>=2.0` resolve to whatever is newest at install time, meaning two developers a week apart may end up with different packages, on different interpreters, in different `site-packages` directories.
+When setting up a project the first time or after pulling dependencies, the `uv sync` command can be used to synchronize the project's virtual environment.
 
-All three dimensions — package versions, interpreter version, and environment isolation — need to be controlled to guarantee a reproducible build.
-
-### Lockfiles and Environment Isolation
-
-A **lockfile** solves this by recording the exact resolved versions of every package — direct and transitive — along with a cryptographic hash for each. Anyone installing from that lockfile gets an identical environment, regardless of when they do it:
-
-```
-# lockfile (abstract)
-requests              2.28.0    sha256:58cd2187...
-urllib3               2.0.0     sha256:34b174d6...
-charset-normalizer    3.3.2     sha256:def67890...
+```shell
+uv sync
 ```
 
-There is also the problem of **environment isolation**. Without it, all Python projects on a machine share the same `site-packages` directory. Upgrading `requests` for one project can silently break another that relies on an older version. Virtual environments solve this by giving each project its own independent package directory:
+This command installs all locked dependencies and ensures that the local environment exactly matches the state described in `uv.lock`. If a virtual environment does not exist, `uv` creates it automatically. It ensures full reproducibility of the project environment and generates the exact same project structure as above.
+
+```shell
+/project-folder
+└── app
+    ├── .venv
+    ├── README.md
+    ├── main.py
+    ├── pyproject.toml
+    └── uv.lock
+```
+
+
+### Update the Lock File
+
+Generate or refresh the project's lock file.
+
+```shell
+uv lock
+```
+
+The command resolves all dependencies defined in `pyproject.toml` and writes the result to `uv.lock` without installing packages into the virtual environment.
+
+During resolution, `uv` may download metadata/wheels into `~/.cache/uv` and create temporary lock files, but it does not install packages into `.venv` or `site-packages`.
+
+This is useful when dependencies have changed and you want to refresh the lock file separately from installation.
+
+### Change the Python version
+
+`uv` can manage Python interpreters directly and integrates it smoothly with the current project context. At first the needed Python version is going to be installed
+
+```bash
+uv python install 3.10
+```
+
+This downloads a standalone CPython 3.10 build into uv's shared install directory `~/.local/share/uv/python` without replacing the system Python. Afterwards the Python interpreter can be pinned to the project context
+
+```bash
+uv python pin 3.10
+```
+
+This writes the selected version to a `.python-version` file in the project root. From this point on, every `uv` command run inside the project (`uv sync`, `uv run`, `uv add`, …) will use Python 3.10. The next `uv sync` recreates `.venv` against the pinned interpreter.
+
+
+### Run commands
+
+`uv` can execute Python scripts and tools directly, without manually activating a virtual environment.
+
+```shell
+uv run main.py
+```
+
+Before running the command, `uv` ensures the project is ready: it creates the `.venv` if it does not exist, installs or updates dependencies to match `uv.lock`, and uses the pinned Python interpreter. The script is then executed inside that environment.
+
+
+!!! note "Command invocation"
+    The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
+
+### Build distributions
+
+The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
+
+```shell
+uv build
+```
 
 ```
-project-a/
-└── .venv/    ← requests 2.28.0, urllib3 2.0.0
-project-b/
-└── .venv/    ← requests 2.25.0, urllib3 1.26.14  (independent)
+dist/
+├── my_project-0.1.0.tar.gz              ← source distribution
+└── my_project-0.1.0-py3-none-any.whl   ← wheel
 ```
 
-`pyproject.toml` alone provides none of this — no lockfile generation, no guaranteed resolution across time, no environment or interpreter management. That is where dependency managers come in.
+### Publish packages
 
-### Dependency Management Tools
+The `uv publish` command uploads the distribution files from `dist/` to PyPI using the `--token` for authentication and the `--publish-url` to override the target registry:
 
-Each manager builds on `pyproject.toml` and adds the missing pieces — but not all of them to the same degree.
+```shell
+uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
+```
 
-#### pip
+## Build and Publishing Packages
 
-Released in **2008**, `pip` became the standard way to install Python packages and remains bundled with every Python installation today. It covers the basics but provides no lockfile generation, no virtual environment management, and no interpreter pinning. Reproducibility depends entirely on developer discipline.
+## Handling multiple projects with uv
 
-To get reproducible installs, developers manually maintained a `requirements.txt` file with pinned versions:
+### Introduction into uv workspaces
+
+When multiple related projects must be developed and tested together, a consistent shared environment becomes essential. For scenarios like this, `uv` provides the concept of **[workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/)**. A workspace allows multiple related Python projects to coexist within a single repository while remaining independent packages. All workspace members share a common `uv.lock` file, ensuring a consistent dependency set across the entire workspace. At the same time, each member maintains its own `pyproject.toml`, allowing project-specific configuration and metadata.
+
+### Structure and Members
+
+A workspace consists of a root project that defines the workspace itself and one or more workspace members. In the following example, the plugin is the workspace root and the `depsight-dependency-manager` framework lives as a workspace member beneath it:
 
 ```text
-# requirements.txt
-requests==2.28.0
-urllib3==2.0.0
+depsight-third-party-plugin/
+├── pyproject.toml
+├── uv.lock
+├── src/
+│   └── depsight_third_party_plugin
+│
+└── depsight-dependency-manager/
+    ├── pyproject.toml
+    └── src/
+        └── depsight_dependency_manager
 ```
 
-These two versions are already inconsistent: `requests 2.28.0` requires `urllib3<1.27`, but `urllib3==2.0.0` is pinned — `pip` will not catch this until installation. This file is hand-maintained: there is no tooling to generate or verify it automatically, and it captures only what the developer explicitly pins — not the full transitive graph.
-
-In **2019**, `pip` introduced `pip check`, which validates that all installed packages have their dependencies satisfied in the current environment:
-
-```bash
-$ pip check
-requests 2.28.0 has requirement urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0.
-```
-
-However, `pip check` only detects inconsistencies after the fact — it does not prevent them. Existing environments in an inconsistent state are not repaired automatically.
-
-With **pip 20.3** (released **2020**), `pip` gained a backtracking resolver that warns about conflicts at install time. However, it still installs the conflicting package and leaves the environment broken:
-
-```bash
-$ pip install "urllib3==2.0.0"
-ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
-requests 2.28.0 requires urllib3<1.27,>=1.21.1, but you have urllib3 2.0.0 which is incompatible.
-Successfully installed urllib3-2.0.0
-```
-
-#### pipenv
-
-Released in **2017**, `pipenv` was the first tool to unify package management and virtual environment handling. It introduced two dedicated files: `Pipfile` for human-readable declarations and `Pipfile.lock` as an automatically generated lockfile covering the full transitive dependency graph with cryptographic hashes.
-
-Running `pipenv install` creates a project-scoped virtual environment automatically and writes the resolved graph to `Pipfile.lock`:
-
-```json
-{
-    "default": {
-        "requests": {
-            "version": "==2.28.0",
-            "hashes": ["sha256:58cd2187..."]
-        },
-        "urllib3": {
-            "version": "==2.0.0",
-            "hashes": ["sha256:34b174d6..."]
-        }
-    }
-}
-```
-
-In contrast, when the same conflicting packages are specified, `pipenv` refuses to lock rather than creating a broken environment:
-
-```bash
-$ pipenv install -r requirements.txt
-✘ Locking Failed!
-The conflict is caused by:
-    The user requested urllib3==2.0.0
-    requests 2.28.0 depends on urllib3<1.27 and >=1.21.1
-ERROR: ResolutionImpossible
-```
-
-`pipenv` solved the reproducibility and isolation problems that `pip` left open, but introduced its own limitations: its dependency resolver was notoriously slow on larger projects, and the workflow stops at dependency management — building and publishing packages are out of scope. These gaps drove adoption towards `poetry`, which aimed to cover the full project lifecycle in a single tool.
-
-#### poetry
-
-Released in **2018**, `poetry` unified the entire Python project workflow — dependency resolution, virtual environment management, building, and publishing — in a single tool backed by `pyproject.toml`. Its resolver is significantly faster than `pipenv`'s and generates a `poetry.lock` file in a structured TOML format that captures the full dependency graph with per-file hashes:
+The workspace root (`depsight-third-party-plugin`) owns the shared `uv.lock` and a `pyproject.toml` that both declares the framework as a workspace member and pins it as a local source, so `uv` resolves it from the workspace instead of PyPI.
 
 ```toml
-[[package]]
-name = "requests"
-version = "2.28.0"
-description = "Python HTTP for Humans."
-files = [
-    {file = "requests-2.28.0-py3-none-any.whl", hash = "sha256:58cd2187..."},
+[tool.uv.workspace]
+members = [
+    "depsight-dependency-manager",
 ]
 
-[package.dependencies]
-urllib3 = ">=1.21.1,<3"
-certifi = ">=2017.4.17"
-
-[[package]]
-name = "urllib3"
-version = "2.0.0"
-files = [
-    {file = "urllib3-2.0.0-py3-none-any.whl", hash = "sha256:34b174d6..."},
-]
+[tool.uv.sources]
+depsight-dependency-manager = { workspace = true }
 ```
 
-`poetry` builds a complete dependency graph before installing, resolving the full transitive tree and detecting conflicts upfront — not just for direct dependencies.
-
-**Drawbacks:** `poetry` still relies on an external tool (e.g. `pyenv`) to manage the Python interpreter itself, and its resolver — while better than `pipenv`'s — is written in Python and becomes a bottleneck on large dependency trees. These gaps motivated `uv`.
+To invoke dedicated workspace members such as the `depsight-dependency-manager` framework you can simply use the `uv run --package depsight-dependency-manager` command. 
