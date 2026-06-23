@@ -25,44 +25,13 @@ examines the resulting footprint for three installation routines:
     By default, `uv` stores its cache in `$HOME/.cache/uv`. This can be changed with the
     `--cache-dir` flag or the `tool.uv.cache-dir` setting in `pyproject.toml`.
 
-For the sake of comparison each of the three commands had been executed inside the `python:3.12-slim` 
-container image. The resulting last layer, produced by the install command, was
+For the sake of comparison each of the three commands had been executed inside a `python:3.12-slim` 
+container image. The resulting [last layer](./extra.md), produced by the install command, was
 then exported and inspected to extract file counts, sizes, and artifacts.
-
-The general approach starts by exporting the finished image into a tar archive and
-unpacking it:
-
-```bash
-docker save "$IMAGE" -o image.tar
-tar -xf image.tar -C image/
-```
-
-This produces a directory containing one tar per layer plus a `manifest.json` that
-lists them in order. The last entry in that list corresponds to the install command,
-so it can be read directly:
-
-```bash
-LAST_LAYER=$(jq -r '.[0].Layers[-1]' image/manifest.json)
-```
-
-Extracting that single layer into an empty directory and measuring it gives the
-file count and total size attributable to the install step alone:
-
-```bash
-tar -xf "image/${LAST_LAYER}" -C layers/
-find layers/ -type f | wc -l        # file count
-du -sh layers/                       # total size on disk
-```
-
-Because each Dockerfile instruction creates exactly one layer, this isolates
-the files written by `pip install`, `uv pip install`, or `uv sync` — making
-a direct, apples-to-apples comparison possible.
 
 ### Using pip install
 
-As already mentioned in [Section 04](../chapter-03/section-04.md), `pip` is the traditional Python package 
-manager and is itself a Python package. 
-The installation of `click` is straight forward and the installation command inside ``Dockerfile`` looks like
+`pip` is the traditional Python package manager and is itself a Python package. The installation of `click` is straight forward and the installation command inside ``Dockerfile`` looks like
 the following
 
 ```Dockerfile
@@ -90,10 +59,8 @@ so that repeated installs can serve responses locally. Unlike `uv`, pip does not
 installed packages from this cache — it is purely a download artefact.
 
 `usr/local/lib/python3.12/` contains two categories of new files. First, the stdlib
-`.pyc` bytecode — 158 compiled modules across packages like `http`, `email`, `urllib`,
-`json`, and `re` — totalling ~4.3 MB. Second, `site-packages/` holds both the target package
-`click` (~892 KB) and `pip` itself (~4.8 MB), which ships pre-installed in the image but
-gets modified during the install.
+`.pyc` bytecode which are compiled modules across packages like `http`, `email`, `urllib`,
+`json` etc.. Second, `site-packages/` holds both the target package `click` and `pip` itself , which ships pre-installed in the image but gets modified during the install.
 
 !!! note "`.pyc` files"
     When `pip` runs, the CPython interpreter imports dozens of stdlib modules (http.client, urllib, email, hashlib, zipfile, …) to handle HTTP requests, checksum verification, and wheel unpacking. Each first-time import compiles the module and writes a `.pyc` bytecode file into `__pycache__/`. 
@@ -133,9 +100,8 @@ both paths point to the **same inode** on disk.
 
 ### Using uv sync
 
-The `uv sync` command is a **project-aware** workflow command that reads dependencies from a `pyproject.toml`, resolves
-them into a universal lockfile (`uv.lock`), and installs everything into a project-local
-`.venv`. The `pyproject.toml` used here declares a single dependency:
+The `uv sync` command reads dependencies from the `pyproject.toml`, resolves
+them, and installs everything into a project-local `.venv`. The `pyproject.toml` used here declares a single dependency:
 
 ```toml
 [project]
