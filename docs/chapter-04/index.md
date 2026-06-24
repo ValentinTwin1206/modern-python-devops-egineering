@@ -16,4 +16,3 @@ Use the navigation on the left to move through the chapter's sections:
 | [Section 01](./section-01.md) | Modern Python Project Mangement with uv|
 | [Section 02](./section-02.md) | Dependency Management with uv |
 | [Section 03](./section-03.md) | Dependency Caching with uv |
-| [Section 04](./section-04.md) | uv in comparison |
