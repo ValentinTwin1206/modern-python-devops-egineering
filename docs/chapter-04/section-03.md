@@ -10,6 +10,8 @@ subsequent runs can skip work that has already been done.
 
 ## Cache footprint on Linux
 
+### Introduction
+
 Before exploring the cache layout itself, it is important to understand **what gets written
 to disk** when you install a package. This section gives a brief overview of the artifacts
 and libraries that end up on the system.
@@ -29,129 +31,129 @@ For the sake of comparison each of the three commands had been executed inside a
 container image. The resulting [last layer](./extra.md), produced by the install command, was
 then exported and inspected to extract file counts, sizes, and artifacts.
 
-### Using pip install
+=== "Using pip install"
 
-`pip` is the traditional Python package manager and is itself a Python package. The installation of `click` is straight forward and the installation command inside ``Dockerfile`` looks like
-the following
+    `pip` is the traditional Python package manager and is itself a Python package. The installation of `click` is straight forward and the installation command inside ``Dockerfile`` looks like
+    the following
 
-```Dockerfile
-RUN pip install click
-```
+    ```Dockerfile
+    RUN pip install click
+    ```
 
-The extracted layer reveals two distinct areas that were written to disk:
+    The extracted layer reveals two distinct areas that were written to disk:
 
-```
-└─ root/.cache/pip/                       # pip's own HTTP cache
-    ├── http-v2/                          # cached PyPI responses
-    └── selfcheck/                        # pip version check data
-└─ usr/local/lib/python3.12/
-    ├── __pycache__/                      # top-level stdlib .pyc files
-    ├── collections/, email/, encodings/  # stdlib packages touched at runtime
-    ├── html/, ..., urllib/               # ...
-    └── site-packages/
-        ├── click/                        # target package (~892 KB)
-        ├── click-8.3.3.dist-info/
-        └── pip/                          # pip itself (~4.8 MB)
-```
-
-`root/.cache/pip/` is pip's **HTTP response cache**. Every request to PyPI is stored here
-so that repeated installs can serve responses locally. Unlike `uv`, pip does not hard-link 
-installed packages from this cache — it is purely a download artefact.
-
-`usr/local/lib/python3.12/` contains two categories of new files. First, the stdlib
-`.pyc` bytecode which are compiled modules across packages like `http`, `email`, `urllib`,
-`json` etc.. Second, `site-packages/` holds both the target package `click` and `pip` itself , which ships pre-installed in the image but gets modified during the install.
-
-!!! note "`.pyc` files"
-    When `pip` runs, the CPython interpreter imports dozens of stdlib modules (http.client, urllib, email, hashlib, zipfile, …) to handle HTTP requests, checksum verification, and wheel unpacking. Each first-time import compiles the module and writes a `.pyc` bytecode file into `__pycache__/`. 
-
-### Using uv pip install
-
-`uv` provides a `pip`-compatible interface that installs packages directly into the system
-`site-packages`:
-
-```Dockerfile
-RUN uv pip install --system click  # skips installation inside a venv 
-```
-
-The extracted layer reveals two areas:
-
-```
-└─ root/.cache/uv/                                 # uv structured cache (~584 KB)
-    ├── archive-v0/                                # unpacked wheel archive (~452 KB)
-    │   └── click/    
-    ├── wheels-v1/pypi/click/                      # downloaded wheel + HTTP metadata
-    ├── simple-v12/pypi/                           # cached PyPI Simple API index
-    └── interpreter-v2/                            # interpreter discovery metadata
-└─ usr/local/lib/python3.12/site-packages/
-    ├── click/                                     # target package (~420 KB)
-    └── click-8.3.3.dist-info/
-```
-
-`root/.cache/uv/` is uv's **structured cache** with purpose-specific buckets that will be explored in detail in the [Cache organisation](#cache-organisation) section below.
-
-`usr/local/lib/python3.12/site-packages/` contains **only** the `click` package and its
-dist-info. Because uv is a compiled Rust binary, the Python interpreter is never 
-invoked during the install, so no bytecode compilation takes place.
-
-The click sources appear in both `archive-v0/` (the cache) and `site-packages/` (the
-install target), but uv does not copy the files — it creates **hard-links**, meaning
-both paths point to the **same inode** on disk.
-
-### Using uv sync
-
-The `uv sync` command reads dependencies from the `pyproject.toml`, resolves
-them, and installs everything into a project-local `.venv`. The `pyproject.toml` used here declares a single dependency:
-
-```toml
-[project]
-name = "uv-cache-demo"
-version = "0.1.0"
-requires-python = ">=3.12"
-dependencies = ["click"]
-```
-
-The install command:
-
-```Dockerfile
-RUN uv sync
-```
-
-The extracted layer reveals two areas:
-
-```
-└─ root/.cache/uv/                                 # uv structured cache (~668 KB)
-    ├── archive-v0/                                # unpacked wheel archive (~452 KB)
-    │   └── click/
-    ├── wheels-v1/pypi/                            # downloaded wheels + HTTP metadata
-    │   ├── click/
-    │   └── colorama/                              # resolved for universal lock
-    ├── ...
-└─ app/
-    ├── uv.lock                                    # universal lockfile (~4 KB)
-    └── .venv/                                     # project-local virtual environment
-        ├── ...
-        └── lib/python3.12/site-packages/
-            ├── click/                             # target package (~420 KB)
+    ```
+    └─ root/.cache/pip/                       # pip's own HTTP cache
+        ├── http-v2/                          # cached PyPI responses
+        └── selfcheck/                        # pip version check data
+    └─ usr/local/lib/python3.12/
+        ├── __pycache__/                      # top-level stdlib .pyc files
+        ├── collections/, email/, encodings/  # stdlib packages touched at runtime
+        ├── html/, ..., urllib/               # ...
+        └── site-packages/
+            ├── click/                        # target package (~892 KB)
             ├── click-8.3.3.dist-info/
-            └── _virtualenv.py
-```
+            └── pip/                          # pip itself (~4.8 MB)
+    ```
 
-`root/.cache/uv/` follows the same bucket layout as the previous section. Two differences
-stand out: `simple-v12/` now caches index data for both `click` and `colorama`,
-and `built-wheels-v3/` contains build metadata for the project root itself.
+    `root/.cache/pip/` is pip's **HTTP response cache**. Every request to PyPI is stored here
+    so that repeated installs can serve responses locally. Unlike `uv`, pip does not hard-link 
+    installed packages from this cache — it is purely a download artefact.
 
-`app/` holds the project-level artefacts like the `uv.lock` file that pins the
-full dependency graph across all platforms. The `.venv/` directory is a standard virtual
-environment created by uv containing the `site-packages/` with the installed packages. Also the 
-click files in `.venv/site-packages/` are **hard-linked** from `archive-v0/` in the cache, 
-so no bytes are duplicated on disk.
+    `usr/local/lib/python3.12/` contains two categories of new files. First, the stdlib
+    `.pyc` bytecode which are compiled modules across packages like `http`, `email`, `urllib`,
+    `json` etc.. Second, `site-packages/` holds both the target package `click` and `pip` itself , which ships pre-installed in the image but gets modified during the install.
 
-!!! note "Why is colorama in the cache but not in `.venv`?"
-    The universal lockfile resolves `colorama` because it is a click dependency on Windows.
-    uv downloads and caches the wheel metadata (`wheels-v1/` and `simple-v12/`), but since
-    the install runs on Linux, `colorama` is never actually unpacked into `archive-v0/` or
-    installed into `.venv/site-packages/`.
+    !!! note "`.pyc` files"
+        When `pip` runs, the CPython interpreter imports dozens of stdlib modules (http.client, urllib, email, hashlib, zipfile, …) to handle HTTP requests, checksum verification, and wheel unpacking. Each first-time import compiles the module and writes a `.pyc` bytecode file into `__pycache__/`. 
+
+=== "Using uv pip install"
+
+    `uv` provides a `pip`-compatible interface that installs packages directly into the system
+    `site-packages`:
+
+    ```Dockerfile
+    RUN uv pip install --system click  # skips installation inside a venv 
+    ```
+
+    The extracted layer reveals two areas:
+
+    ```
+    └─ root/.cache/uv/                                 # uv structured cache (~584 KB)
+        ├── archive-v0/                                # unpacked wheel archive (~452 KB)
+        │   └── click/    
+        ├── wheels-v1/pypi/click/                      # downloaded wheel + HTTP metadata
+        ├── simple-v12/pypi/                           # cached PyPI Simple API index
+        └── interpreter-v2/                            # interpreter discovery metadata
+    └─ usr/local/lib/python3.12/site-packages/
+        ├── click/                                     # target package (~420 KB)
+        └── click-8.3.3.dist-info/
+    ```
+
+    `root/.cache/uv/` is uv's **structured cache** with purpose-specific buckets that will be explored in detail in the [Cache organisation](#cache-organisation) section below.
+
+    `usr/local/lib/python3.12/site-packages/` contains **only** the `click` package and its
+    dist-info. Because uv is a compiled Rust binary, the Python interpreter is never 
+    invoked during the install, so no bytecode compilation takes place.
+
+    The click sources appear in both `archive-v0/` (the cache) and `site-packages/` (the
+    install target), but uv does not copy the files — it creates **hard-links**, meaning
+    both paths point to the **same inode** on disk.
+
+=== "Using uv sync"
+
+    The `uv sync` command reads dependencies from the `pyproject.toml`, resolves
+    them, and installs everything into a project-local `.venv`. The `pyproject.toml` used here declares a single dependency:
+
+    ```toml
+    [project]
+    name = "uv-cache-demo"
+    version = "0.1.0"
+    requires-python = ">=3.12"
+    dependencies = ["click"]
+    ```
+
+    The install command:
+
+    ```Dockerfile
+    RUN uv sync
+    ```
+
+    The extracted layer reveals two areas:
+
+    ```
+    └─ root/.cache/uv/                                 # uv structured cache (~668 KB)
+        ├── archive-v0/                                # unpacked wheel archive (~452 KB)
+        │   └── click/
+        ├── wheels-v1/pypi/                            # downloaded wheels + HTTP metadata
+        │   ├── click/
+        │   └── colorama/                              # resolved for universal lock
+        ├── ...
+    └─ app/
+        ├── uv.lock                                    # universal lockfile (~4 KB)
+        └── .venv/                                     # project-local virtual environment
+            ├── ...
+            └── lib/python3.12/site-packages/
+                ├── click/                             # target package (~420 KB)
+                ├── click-8.3.3.dist-info/
+                └── _virtualenv.py
+    ```
+
+    `root/.cache/uv/` follows the same bucket layout as the previous section. Two differences
+    stand out: `simple-v12/` now caches index data for both `click` and `colorama`,
+    and `built-wheels-v3/` contains build metadata for the project root itself.
+
+    `app/` holds the project-level artefacts like the `uv.lock` file that pins the
+    full dependency graph across all platforms. The `.venv/` directory is a standard virtual
+    environment created by uv containing the `site-packages/` with the installed packages. Also the 
+    click files in `.venv/site-packages/` are **hard-linked** from `archive-v0/` in the cache, 
+    so no bytes are duplicated on disk.
+
+    !!! note "Why is colorama in the cache but not in `.venv`?"
+        The universal lockfile resolves `colorama` because it is a click dependency on Windows.
+        uv downloads and caches the wheel metadata (`wheels-v1/` and `simple-v12/`), but since
+        the install runs on Linux, `colorama` is never actually unpacked into `archive-v0/` or
+        installed into `.venv/site-packages/`.
 
 ### Summary
 

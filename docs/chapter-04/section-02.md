@@ -142,3 +142,90 @@ The resolver now includes `pywin32` only on Windows systems, producing a valid d
 
 !!! note
     Dependency markers are defined by the `PEP 508` standard and can be looked up from the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. In practice, operating system and Python version markers are by far the most common use cases, especially when supporting mixed environments such as Windows, Linux, WSL, CI runners, and production containers.
+
+## Comparison
+
+The table below compares `uv`, `poetry`, and `pip` across environment isolation, locking, and resolution—the core components of dependency management.
+
+<table>
+<tbody>
+<tr style="background-color: #f5f5f5;">
+<td style="font-weight: bold;">Environment Isolation</td>
+<td style="text-align: center; font-weight: bold;">uv</td>
+<td style="text-align: center; font-weight: bold;">Poetry</td>
+<td style="text-align: center; font-weight: bold;">pip</td>
+</tr>
+<tr>
+<td>Automatic environment creation</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Automatic environment selection</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Install python version</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Switch python version</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr style="background-color: #f5f5f5;">
+<td colspan="4" style="font-weight: bold;">Locking</td>
+</tr>
+<tr>
+<td>Native lock file</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Stores full dependency graph</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Reproducible installations</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr style="background-color: #f5f5f5;">
+<td colspan="4" style="font-weight: bold;">Resolution</td>
+</tr>
+<tr>
+<td>Full dependency graph resolution</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Lock-file-based resolution</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+</tr>
+<tr>
+<td>Deterministic dependency graph</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+</tr>
+<tr>
+<td>Optimized for resolution speed</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+<td style="text-align: center;">✗</td>
+</tr>
+</tbody>
+</table>
