@@ -1,12 +1,12 @@
 # uv Dependency Resolution Notebook
 
-This project contains a training notebook that demonstrates `uv` dependency management, locking, resolution, and reproducible environment synchronization with one consistent example project: `weather-dashboard`.
+This project contains a training notebook that demonstrates `uv` dependency management, locking, resolution, and reproducible environment synchronization by editing a local `pyproject.toml` beside the notebook.
 
 ## Contents
 
 - `uv_dependency_resolution.ipynb`: The executable teaching notebook.
-- `weather-dashboard/`: A small fictional Python project used throughout the notebook.
-- `weather-dashboard/pyproject.toml`: The project metadata, runtime dependencies, and development dependency group.
+- `pyproject.toml`: A small example project file created and edited by the notebook.
+- `uv.lock`: The lockfile generated during the exercises.
 
 ## Prerequisites
 
@@ -28,13 +28,12 @@ uv --version
 2. Select a Python kernel.
 3. Run the notebook from top to bottom.
 
-The notebook creates and updates the `weather-dashboard` project in this directory. It writes a `uv.lock` file and a `.venv` directory as part of the exercises. These generated files can be deleted and recreated by rerunning the notebook.
+The notebook creates and updates `pyproject.toml` in this directory. It may also write `uv.lock` and `.venv` as part of the exercises. These generated files can be deleted and recreated by rerunning the notebook.
 
 ## What you will learn
 
 - How `uv` creates and manages project environments.
 - How `pyproject.toml`, `uv.lock`, and `.venv` work together.
 - How dependency resolution differs from locking and synchronization.
-- How to update dependencies safely.
+- How to update pinned and ranged dependencies safely.
 - How to use `uv sync --frozen` and `uv lock --check` in CI/CD pipelines.
-- How dependency groups and platform markers affect resolution.
