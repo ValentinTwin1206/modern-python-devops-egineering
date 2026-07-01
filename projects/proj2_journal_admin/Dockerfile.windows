@@ -17,19 +17,25 @@ FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
 SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-# --- Chocolatey package manager --------------------------------------------
+#
+# Download Chocolatey (package manager)
+# # # #
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = 3072; `
     Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-# --- Build toolchain --------------------------------------------------------
+#
+# Install Build tools
+# # # #
 RUN choco install -y python --version=3.12.6 --no-progress; `
     choco install -y wixtoolset --no-progress; `
     choco install -y git --no-progress; `
     choco install -y visualstudio2022buildtools --no-progress `
         --package-parameters '--add Microsoft.VisualStudio.Workload.VCTools --quiet --norestart'
 
-# --- uv (Astral) ------------------------------------------------------------
+#
+# Install uv
+# # # #
 RUN Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
 
 # Put the toolchain on PATH for subsequent layers and at runtime.
