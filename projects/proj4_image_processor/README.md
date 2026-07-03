@@ -29,11 +29,11 @@ Add `image-processor` to your project's `environment.yml` file:
 ```yaml
 name: image-processor-demo
 channels:
-	- {YOUR_CONDA_CHANNEL}
-	- conda-forge
+    - {YOUR_CONDA_CHANNEL}
+    - conda-forge
 dependencies:
-	- python=3.12
-	- image-processor
+    - python=3.12
+    - image-processor
 ```
 
 > Use `{YOUR_CONDA_CHANNEL}` for the public channel that publishes `image-processor`.
