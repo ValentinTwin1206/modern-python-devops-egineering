@@ -29,11 +29,11 @@ Add `image-processor` to your project's `environment.yml` file:
 ```yaml
 name: image-processor-demo
 channels:
-	- https://<tenant>.jfrog.io/artifactory/api/conda/conda-local
-	- conda-forge
+    - {YOUR_CONDA_CHANNEL}
+    - conda-forge
 dependencies:
-	- python=3.12
-	- image-processor
+    - python=3.12
+    - image-processor
 ```
 
 > Use the channel URL and authentication settings from your Artifactory Conda repository. For private repositories, configure credentials in Conda or through your organization's standard secret-management workflow instead of committing tokens to `environment.yml`.
