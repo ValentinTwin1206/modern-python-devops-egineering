@@ -12,4 +12,4 @@ Please read the [docs](https://valentintwin1206.github.io/modern-python-devops-e
 
 ## License
 
-[Apache 2.0](./LICENSE)
+[Modern Python Engineering Course Material License](./LICENSE)
