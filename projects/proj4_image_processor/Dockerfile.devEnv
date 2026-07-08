@@ -1,6 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses continuumio/miniconda3 directly
 #   - creates the image-processor env from environment.yml
+#   - installs the JFrog CLI used to publish Conda package artifacts
 #   - opens an interactive shell with the conda env activated and dev tools ready
 # # # # # # # # # # #
 FROM continuumio/miniconda3
@@ -15,11 +16,17 @@ WORKDIR /app
 # Setup the sudo user "snake" and group so the image can be used for development 
 # without root privileges.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends sudo \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        sudo \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash --groups sudo snake \
     && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
     && chmod 0440 /etc/sudoers.d/snake
+
+# Install the package publication CLI used after conda-build creates the artifact.
+RUN curl -fL https://install-cli.jfrog.io | sh
 
 # Accept Anaconda channel terms so the image can build non-interactively.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \

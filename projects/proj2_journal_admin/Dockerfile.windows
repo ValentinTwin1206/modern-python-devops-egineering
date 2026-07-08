@@ -11,6 +11,9 @@
 #   * uv                   - fast build front-end (uv build --wheel)
 #   * WiX Toolset v3       - candle.exe / light.exe used to compile the .msi
 #   * Git                  - convenience for source checkouts / versioning
+#   * WinGet CLI           - manifest validation (winget validate)
+#   * WingetCreate         - manifest generation and submission helper
+#   * GitHub CLI           - pull request helper for winget-pkgs forks
 #   * Visual C++ Build     - native build prerequisites for any C extensions
 # # # # # # # # # # #
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
@@ -30,6 +33,9 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
 RUN choco install -y python --version=3.12.6 --no-progress; `
     choco install -y wixtoolset --no-progress; `
     choco install -y git --no-progress; `
+    choco install -y winget --no-progress; `
+    choco install -y wingetcreate --no-progress; `
+    choco install -y gh --no-progress; `
     choco install -y visualstudio2022buildtools --no-progress `
         --package-parameters '--add Microsoft.VisualStudio.Workload.VCTools --quiet --norestart'
 

@@ -10,17 +10,17 @@ The table below lists the main files that support the Conda example project.
 | --------- | ----------- |
 | [src/image_processor/main.py](src/image_processor/main.py) | This module generates a synthetic grayscale image, blurs it, runs Canny edge detection, and writes the result to disk. It is intentionally short so the focus stays on the binary dependencies the environment supplies. |
 | [environment.yml](environment.yml) | This file declares the Conda environment for the example project. It pins the interpreter, NumPy, and OpenCV from `conda-forge`, and records extra Python tools installed through `pip`. |
-| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image is based on `continuumio/miniconda3` and creates the named environment with `conda env create`. It provides a reproducible Conda setup with OpenCV, NumPy, and dev tools pre-configured. |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image is based on `continuumio/miniconda3` and creates the named environment with `conda env create`. It provides a reproducible Conda setup with OpenCV, NumPy, JFrog CLI, and dev tools pre-configured. |
 | [recipe/meta.yaml](recipe/meta.yaml) | This file is the Conda recipe consumed by `conda-build`. It is the sole packaging declaration for the project: it copies the `image_processor` package into the env's site-packages, registers the `image-processor` entry point, and pulls OpenCV and NumPy from `conda-forge` at install time. |
 
 ## End-User Guide
 
-This section shows how an end user installs and runs `image-processor` from a published Conda channel.
+This section shows how an end user installs and runs `image-processor` from a proprietary Conda repository hosted on JFrog Artifactory.
 
 ### Requirements
 
 - Miniconda or Anaconda.
-- Access to a public Conda channel that publishes `image-processor`.
+- Access to the proprietary JFrog Artifactory Conda repository that publishes `image-processor`.
 
 ### Installation
 
@@ -29,14 +29,14 @@ Add `image-processor` to your project's `environment.yml` file:
 ```yaml
 name: image-processor-demo
 channels:
-	- {YOUR_CONDA_CHANNEL}
+	- https://<tenant>.jfrog.io/artifactory/api/conda/conda-local
 	- conda-forge
 dependencies:
 	- python=3.12
 	- image-processor
 ```
 
-> Use `{YOUR_CONDA_CHANNEL}` for the public channel that publishes `image-processor`.
+> Use the channel URL and authentication settings from your Artifactory Conda repository. For private repositories, configure credentials in Conda or through your organization's standard secret-management workflow instead of committing tokens to `environment.yml`.
 
 Create and activate the environment from that file:
 
@@ -86,10 +86,10 @@ PYTHONPATH=src karva test tests/
 
 ### Build Guide
 
-Install the required packaging tools into the base environment:
+The development image includes JFrog CLI for publishing package artifacts. Install the required Conda packaging tools into the base environment:
 
 ```bash
-conda install -n base -c conda-forge conda-build anaconda-client
+conda install -n base -c conda-forge conda-build
 ```
 
 Build the package from the project root:
@@ -98,14 +98,20 @@ Build the package from the project root:
 conda build recipe/ --channel conda-forge
 ```
 
-Authenticate with Anaconda.org:
+Configure the JFrog CLI with an access token that can deploy to the Conda repository:
 
 ```bash
-anaconda login
+jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
 ```
 
-Upload the built package to your public channel:
+Upload the built package to the `noarch` subdirectory of the Artifactory Conda repository:
 
 ```bash
-anaconda upload --user {YOUR_CONDA_CHANNEL} "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+jf rt upload "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda" "conda-local/noarch/"
+```
+
+Verify that Artifactory can find the uploaded artifact:
+
+```bash
+jf rt search "conda-local/noarch/image-processor-1.0.0-py_0.conda"
 ```

@@ -42,21 +42,19 @@ through the supported operating-system packages.
 
 #### Linux (Debian-based)
 
-Install the generated package:
+Install the published package from the configured JFrog Artifactory Debian repository:
 
 ```bash
-sudo apt install ./simply-journal-admin_<version>_all.deb
+sudo apt install simply-journal-admin
 ```
 
 #### Windows
 
-Install the generated MSI package:
+Install the published MSI package through Windows Package Manager:
 
 ```powershell
-msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
+winget install --id ModernPythonEngineering.SimplyJournalAdmin --source winget
 ```
-
-> **Note**: The command will generate a detailed log file
 
 ### Usage
 
@@ -155,6 +153,8 @@ uv run ruff check .
 The Debian package embeds a Python runtime plus the generated Python wheel
 inside the `.deb` package.
 
+##### Build the Debian Artifact
+
 Build the wheel artifact:
 
 ```bash
@@ -171,6 +171,28 @@ Build the Debian package:
 
 ```bash
 dpkg-buildpackage -us -uc -b
+```
+
+##### Upload to JFrog Artifactory
+
+This pattern publishes the generated `.deb` to a JFrog Artifactory Debian repository. Replace the server ID, repository, distribution, component, and architecture with the values used by your Artifactory instance.
+
+Configure the JFrog CLI with an existing access token:
+
+```bash
+jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
+```
+
+Upload the Debian package and attach the Debian repository metadata in the same command:
+
+```bash
+jf rt upload "/build/simply-journal-admin_<debian-version>_<architecture>.deb" "debian-local/pool/main/s/simply-journal-admin/" --deb "bookworm/main/amd64"
+```
+
+Verify that Artifactory indexed the uploaded package:
+
+```bash
+jf rt search "debian-local/pool/main/s/simply-journal-admin/"
 ```
 
 ### Windows MSI Build Environment
@@ -207,6 +229,8 @@ docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPa
 
 The Windows installer embeds a Python runtime plus the generated Python wheel inside an `.msi` package.
 
+##### Build the MSI Artifact
+
 Within the running container, build the wheel:
 
 ```powershell
@@ -223,4 +247,49 @@ The generated installer appears on the host inside:
 
 ```text
 .build\simply-journal-admin-<version>.msi
+```
+
+##### Publish with JFrog and Winget
+
+The MSI binary is published to a stable HTTPS URL, such as a JFrog Artifactory generic repository. The Winget manifests reference that URL and the release-specific SHA-256 hash.
+
+| Field | Value |
+| ----- | ----- |
+| Package identifier | `ModernPythonEngineering.SimplyJournalAdmin` |
+| Package name | `Simply Journal Admin` |
+| Publisher | `Modern Python Engineering` |
+| Default locale | `en-US` |
+| License | `MIT` |
+| Command | `simply-journal-admin` |
+| Installer file | `simply-journal-admin-<version>.msi` |
+| Manifest directory | `manifests/m/ModernPythonEngineering/SimplyJournalAdmin/<version>/` |
+
+Upload the MSI to a version-specific location in Artifactory:
+
+```powershell
+jf rt upload ".build\simply-journal-admin-<version>.msi" "generic-local/simply-journal-admin/<version>/"
+```
+
+Calculate the installer hash used by the Winget manifest:
+
+```powershell
+Get-FileHash .\.build\simply-journal-admin-<version>.msi -Algorithm SHA256
+```
+
+Generate the first Winget manifest set from the published installer URL:
+
+```powershell
+wingetcreate new "https://<tenant>.jfrog.io/artifactory/generic-local/simply-journal-admin/<version>/simply-journal-admin-<version>.msi"
+```
+
+For later releases, update the existing package identifier:
+
+```powershell
+wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://<tenant>.jfrog.io/artifactory/generic-local/simply-journal-admin/<version>/simply-journal-admin-<version>.msi" -v "<version>"
+```
+
+Validate the generated manifest directory before opening a pull request against `microsoft/winget-pkgs`:
+
+```powershell
+winget validate --manifest .\manifests\m\ModernPythonEngineering\SimplyJournalAdmin\<version>
 ```

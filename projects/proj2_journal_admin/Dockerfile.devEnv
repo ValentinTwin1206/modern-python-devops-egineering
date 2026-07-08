@@ -2,6 +2,7 @@
 #   - uses ubuntu:24.04 and its APT-managed Python 3.12
 #   - installs the Debian build toolchain used for the local .deb workflow
 #   - installs the APT-managed `python3-systemd` binding used by simply_journal_admin
+#   - installs the JFrog CLI used to publish generated package artifacts
 #   - opens an interactive shell for inspection and packaging work
 # # # # # # # # # # #
 FROM ubuntu:24.04
@@ -14,14 +15,16 @@ ENV PYTHONPATH=/app/src
 WORKDIR /app
 
 # Install Ubuntu's Python packages, Debian packaging tools, and small
-# inspection helpers.
+# inspection and publication helpers.
 # `python3-systemd` is the APT-only binding that simply_journal_admin imports.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
+        curl \
         debhelper \
         devscripts \
+        gnupg \
         python3 \
         python3-pip \
         python3-systemd \
@@ -34,9 +37,13 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
+# Install the package publication CLI used after the OS package artifacts exist.
+RUN curl -fL https://install-cli.jfrog.io | sh
+
 # Install one developer tool into the local administrator target and keep the
 # project runtime dependency managed by the system package manager.
-RUN uv pip install --system --break-system-packages ruff \
+RUN uv pip install --system --break-system-packages \
+    ruff \
     && chown -R snake:snake /app /home/snake
 
 USER snake

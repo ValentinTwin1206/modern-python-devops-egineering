@@ -321,14 +321,113 @@ For example:
 
 ### Publish the OS Package
 
-Unlike a wheel, an OS package is usually published through a platform-specific distribution channel. The most common distribution methods are:
+Publishing starts after the `.deb` or `.msi` artifact already exists. The publication step moves the package from a local build output into the distribution channel that end users consume.
 
-| Distribution Method | Purpose |
-| ------------------- | ------- |
-| APT repository | Standard Debian and Ubuntu distribution channel for Linux packages |
-| Windows software distribution platform | Standard enterprise channel for MSI deployment, such as Intune, Group Policy, or an internal software catalog |
-| GitHub Releases | Simple release distribution for public or internal download |
-| Internal artifact repository | Controlled distribution of build artifacts inside an organization |
+=== "Debian"
+
+	The Debian package is published to a JFrog Artifactory Debian repository. This workflow assumes that you already have an Artifactory instance, a local Debian repository, and an access token with permission to upload packages.
+
+	Configure the JFrog CLI with the existing access token.
+
+	```bash
+	jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
+	```
+
+	Confirm that the CLI can access Artifactory.
+
+	```bash
+	jf rt ping
+	```
+
+	Upload the generated Debian package. The `--deb` value sets the Debian distribution, component, and architecture that APT uses when resolving the package.
+
+	```bash
+	jf rt upload "<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb" "debian-local/pool/main/s/simply-journal-admin/" --deb "bookworm/main/amd64"
+	```
+
+	Verify that Artifactory indexed the uploaded package.
+
+	```bash
+	jf rt search "debian-local/pool/main/s/simply-journal-admin/"
+	```
+
+	Future versions follow the same path: update the Debian version in `debian/changelog`, rebuild the package, upload the new `.deb` with `jf rt upload`, and let configured APT clients install or upgrade from the repository.
+
+=== "MSI"
+
+	The MSI package is published through the Windows Package Manager [community repository](https://github.com/microsoft/winget-pkgs). This workflow assumes that you already have a GitHub account, a fork of `microsoft/winget-pkgs`, and the required Winget tooling installed.
+
+	Upload the generated MSI to the repository's GitHub Release for `v1.0.0`. The release can contain all package artifacts for the repository, but the Winget manifest references only the Windows installer asset.
+
+	```powershell
+	gh release upload v1.0.0 .\.build\simply-journal-admin-1.0.0.msi --clobber
+	```
+
+	The release asset URL becomes the `InstallerUrl` in the Winget manifest.
+
+	```text
+	https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v1.0.0/simply-journal-admin-1.0.0.msi
+	```
+
+	Calculate the installer hash used by the Winget manifest.
+
+	```powershell
+	Get-FileHash .\.build\simply-journal-admin-1.0.0.msi -Algorithm SHA256
+	```
+
+	Generate a new manifest set for the first release. Use the URL of the published MSI, not a local file path.
+
+	```powershell
+	wingetcreate new "https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v1.0.0/simply-journal-admin-1.0.0.msi"
+	```
+
+	For later releases, update the existing package identifier instead of starting from scratch.
+
+	```powershell
+	wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v<version>/simply-journal-admin-<version>.msi" -v "<version>"
+	```
+
+	External contributors submit manifests through a fork of `microsoft/winget-pkgs`. Prepare a local submission branch in your fork with sparse checkout enabled for this publisher folder.
+
+	```powershell
+	git clone --filter=blob:none --no-checkout https://github.com/<github-user>/winget-pkgs.git
+	Set-Location winget-pkgs
+	git sparse-checkout set manifests\m\ModernPythonEngineering
+	git checkout
+	git checkout -b add-simply-journal-admin-1.0.0
+	```
+
+	Place the generated manifest files in the forked repository under the directory derived from the package identifier and version.
+
+	```text
+	manifests/
+	└── m/
+	    └── ModernPythonEngineering/
+	        └── SimplyJournalAdmin/
+	            └── 1.0.0/
+	                ├── ModernPythonEngineering.SimplyJournalAdmin.yaml
+	                ├── ModernPythonEngineering.SimplyJournalAdmin.installer.yaml
+	                └── ModernPythonEngineering.SimplyJournalAdmin.locale.en-US.yaml
+	```
+
+	Validate the manifest directory before opening a pull request. If Windows Sandbox is available, run the sandbox test as part of the same local check.
+
+	```powershell
+	winget validate --manifest .\manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
+	powershell .\Tools\SandboxTest.ps1 manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
+	```
+
+	Commit the manifest files and push the submission branch to your fork.
+
+	```powershell
+	git add .\manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
+	git commit -m "Add ModernPythonEngineering.SimplyJournalAdmin 1.0.0"
+	git push -u origin add-simply-journal-admin-1.0.0
+	```
+
+	Open a pull request from the pushed fork branch against `microsoft/winget-pkgs`.
+
+	Microsoft validation checks the manifest schema, installer URL, hash, metadata, and installation behavior before the pull request is merged. Future versions are published by adding a new GitHub Release asset, creating a new manifest version directory, updating the installer URL and SHA-256 hash, validating the manifest, and submitting one pull request per package version.
 
 ### Install the OS Package
 
@@ -336,16 +435,42 @@ Users typically install the package through the native package-management workfl
 
 === "Linux (.deb)"
 
-	From end-user perspective, install the Debian package directly from the file system:
+	From the end-user perspective, configure the JFrog Artifactory Debian repository first. Use the exact key URL and private-auth snippet from the Artifactory repository setup page when your repository requires authentication.
 
 	```bash
-	sudo apt install ./simply-journal-admin_<version>_all.deb
+	curl -fsSL "<artifactory-public-gpg-key-url>" | sudo gpg --dearmor -o /usr/share/keyrings/jfrog-debian-local.gpg
+	```
+
+	Add the Debian repository to the local APT sources.
+
+	```bash
+	printf 'deb [signed-by=/usr/share/keyrings/jfrog-debian-local.gpg] https://<tenant>.jfrog.io/artifactory/debian-local bookworm main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
+	```
+
+	!!! note
+		For private repositories, use the authentication configuration shown by Artifactory instead of writing tokens or passwords directly into source control, shared shell scripts, or command history.
+
+	Refresh APT metadata on the target machine.
+
+	```bash
+	sudo apt update
+	```
+
+	Install the published package through APT.
+
+	```bash
+	sudo apt install simply-journal-admin
 	```
 
 === "Windows (.msi)"
 
-	From end-user perspective, install the MSI package and write an installation log:
+	From the end-user perspective, install the published MSI through the Windows Package Manager community source:
 
 	```powershell
-	msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
+	winget install --id ModernPythonEngineering.SimplyJournalAdmin --source winget
 	```
+
+## Useful Links
+
+- [Submitting a package to `winget-pkgs`](https://learn.microsoft.com/en-us/windows/package-manager/package/repository)
+- [Winget Releaser GitHub Action](https://github.com/vedantmgoyal9/winget-releaser)

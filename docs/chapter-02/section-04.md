@@ -135,10 +135,10 @@ The distinct package artifacts are:
 
 ### Install Packaging Tools
 
-Install the required Conda packaging tools into the base environment:
+The project development image includes JFrog CLI for publishing package artifacts. Install the required Conda packaging tools into the base environment:
 
 ```bash
-conda install -n base -c conda-forge conda-build anaconda-client
+conda install -n base -c conda-forge conda-build
 ```
 
 ### Create The Package
@@ -153,36 +153,43 @@ conda build recipe/ --channel conda-forge
 
 ### Publish The Package
 
-Once a Conda package passes validation, it can be uploaded to your own Anaconda.org channel so other users can install your variant of the project.
+Once a Conda package passes validation, upload it to the proprietary Conda repository hosted on JFrog Artifactory. A private Artifactory channel is useful when a package should stay inside an organization but still install through normal Conda workflows.
 
 |  Repository  | Type | Purpose |
 |--------------|------|---------|
-| Anaconda.org | Public | Main cloud ecosystem hosting public and private user channels |
 | Conda-Forge  | Public | Dominant community-driven repository for automated packages |
-| Private Server (Quetz/Artifactory) | Private | On-premise repository for secure enterprise Conda package distribution |
+| JFrog Artifactory | Private | Proprietary Conda repository for controlled enterprise package distribution |
+| Quetz | Private | Open-source Conda server for self-hosted package distribution |
 
-Authenticate with Anaconda.org before uploading:
-
-```bash
-anaconda login
-```
-
-Upload the built package to your public channel:
+Configure the JFrog CLI with an access token that can deploy to the Conda repository:
 
 ```bash
-anaconda upload --user {YOUR_CONDA_CHANNEL} "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
 ```
 
-> Replace `{YOUR_CONDA_CHANNEL}` with your Anaconda.org channel name.
+Upload the built package to the `noarch` subdirectory of the Artifactory Conda repository:
+
+```bash
+jf rt upload "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda" "conda-local/noarch/"
+```
+
+Verify that Artifactory can find the uploaded artifact:
+
+```bash
+jf rt search "conda-local/noarch/image-processor-1.0.0-py_0.conda"
+```
+
+!!! note
+    For private repositories, use the channel URL and authentication settings shown by Artifactory. Keep access tokens out of `environment.yml`, shared shell scripts, and command history whenever possible.
 
 ### Install The Package
 
-After publication, users can target your specific channel to install the application.
+After publication, users can target the Artifactory Conda channel to install the application.
 
-Install the package into your current environment from your specified channel:
+Install the package into your current environment from the proprietary channel:
 
 ```bash
-conda install -c {YOUR_CONDA_CHANNEL} image_processor
+conda install -c https://<tenant>.jfrog.io/artifactory/api/conda/conda-local image-processor
 ```
 
-> Replace `{YOUR_CONDA_CHANNEL}` with your Anaconda.org channel name.
+For repeat installs, add the channel to `.condarc` or to an `environment.yml` file, then let Conda resolve `image-processor` together with its `conda-forge` dependencies.
