@@ -289,19 +289,9 @@ The resulting package is written to the build output directory.
 
 ### Validate the OS Package
 
-After building the package, verify that:
-
-* the installer completes successfully on a clean target system
-* the launcher is created in the expected platform-specific location
-* the bundled runtime and application payload are installed in the expected directories
-* the CLI starts successfully and returns log entries
-* package removal cleans up generated state correctly
-
-For example:
+After building the package, run a smoke test to confirm that the installer completes, the CLI starts, and the package can be removed cleanly.
 
 === "Debian"
-
-	Install the generated Debian package with `apt`:
 
 	```bash
 	sudo apt install ./simply-journal-admin_<version>_all.deb
@@ -310,8 +300,6 @@ For example:
 	```
 
 === "MSI"
-
-	Install the generated MSI and capture a log file:
 
 	```powershell
 	msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
@@ -325,25 +313,25 @@ Publishing starts after the `.deb` or `.msi` artifact already exists. The public
 
 === "Debian"
 
-	The Debian package is published to a JFrog Artifactory Debian repository. This workflow assumes that you already have an Artifactory instance, a local Debian repository, and an access token with permission to upload packages.
+	!!! info
+		The Debian package is published to a JFrog Artifactory Debian repository. This workflow assumes that you already have an Artifactory instance, a local Debian repository, and an access token with permission to upload packages.
 
-	Configure the JFrog CLI with the existing access token.
+	Configure the JFrog CLI (`jf`) with the existing access token.
 
 	```bash
 	jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
 	```
 
-	Confirm that the CLI can access Artifactory.
+	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions.
 
 	```bash
-	jf rt ping
+	jf rt upload \
+		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb" \
+		"debian-local/pool/main/s/simply-journal-admin/" \
+		--deb "noble/main/amd64;resolute/main/amd64"
 	```
 
-	Upload the generated Debian package. The `--deb` value sets the Debian distribution, component, and architecture that APT uses when resolving the package.
-
-	```bash
-	jf rt upload "<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb" "debian-local/pool/main/s/simply-journal-admin/" --deb "bookworm/main/amd64"
-	```
+	> `noble` targets Ubuntu 24.04, `resolute` targets Ubuntu 26.04.
 
 	Verify that Artifactory indexed the uploaded package.
 
@@ -351,11 +339,10 @@ Publishing starts after the `.deb` or `.msi` artifact already exists. The public
 	jf rt search "debian-local/pool/main/s/simply-journal-admin/"
 	```
 
-	Future versions follow the same path: update the Debian version in `debian/changelog`, rebuild the package, upload the new `.deb` with `jf rt upload`, and let configured APT clients install or upgrade from the repository.
-
 === "MSI"
 
-	The MSI package is published through the Windows Package Manager [community repository](https://github.com/microsoft/winget-pkgs). This workflow assumes that you already have a GitHub account, a fork of `microsoft/winget-pkgs`, and the required Winget tooling installed.
+	!!! info
+		The MSI package is published through the Windows Package Manager [community repository](https://github.com/microsoft/winget-pkgs). This workflow assumes that you already have a GitHub account, a fork of `microsoft/winget-pkgs`, and the required Winget tooling installed.
 
 	Upload the generated MSI to the repository's GitHub Release for `v1.0.0`. The release can contain all package artifacts for the repository, but the Winget manifest references only the Windows installer asset.
 
