@@ -27,6 +27,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+RUN uv pip install --system --break-system-packages cloudsmith-cli
+
 ENV PATH="/app/.venv/bin:${PATH}"
 
 COPY pyproject.toml ./

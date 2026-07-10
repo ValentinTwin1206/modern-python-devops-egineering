@@ -2,7 +2,7 @@
 #   - uses ubuntu:24.04 and its APT-managed Python 3.12
 #   - installs the Debian build toolchain used for the local .deb workflow
 #   - installs the APT-managed `python3-systemd` binding used by simply_journal_admin
-#   - installs the JFrog CLI used to publish generated package artifacts
+#   - installs the Cloudsmith CLI used to publish generated package artifacts
 #   - opens an interactive shell for inspection and packaging work
 # # # # # # # # # # #
 FROM ubuntu:24.04
@@ -38,7 +38,7 @@ RUN apt-get update \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Install the package publication CLI used after the OS package artifacts exist.
-RUN curl -fL https://install-cli.jfrog.io | sh
+RUN uv pip install --system --break-system-packages cloudsmith-cli
 
 # Install one developer tool into the local administrator target and keep the
 # project runtime dependency managed by the system package manager.

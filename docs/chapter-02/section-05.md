@@ -70,37 +70,28 @@ pixelpack
 
 ## Packaging Workflow
 
+Install the Dev Container CLI on the host first.
+
+```bash
+sudo apt-get update && sudo apt-get install -y nodejs npm
+sudo npm install -g @devcontainers/cli
+```
+
+From the `projects/` directory, start the dedicated development container.
+
+```bash
+devcontainer up --workspace-folder proj5_pixelpack
+```
+
+Open a shell in the running development container.
+
+```bash
+devcontainer exec --workspace-folder proj5_pixelpack bash
+```
+
+The Dev Container image already includes the binary build tooling, including PyInstaller, Nuitka, and the Cloudsmith CLI.
+
 ### Create the Binary
-
-Install a binary packaging tool.
-
-=== "uv"
-
-    Install PyInstaller:
-
-    ```bash
-    uv tool install pyinstaller
-    ```
-
-    Install Nuitka:
-
-    ```bash
-    uv tool install nuitka
-    ```
-
-=== "pip"
-
-    Install PyInstaller:
-
-    ```bash
-    pip install pyinstaller
-    ```
-
-    Install Nuitka:
-
-    ```bash
-    pip install nuitka
-    ```
 
 Build the executable.
 
@@ -138,15 +129,38 @@ For example:
 
 ### Publish the Binary
 
-Unlike wheels, binaries are typically not uploaded to package repositories such as PyPI.
+Once a binary build passes validation, upload it to the proprietary raw repository hosted on Cloudsmith.
 
-The most common distribution methods are:
+!!! info
+    This workflow assumes that a Cloudsmith Raw repository already exists and that you already have a Cloudsmith API key available for the container session.
 
-| Distribution Method                 | Purpose                                                   |
-| ----------------------------------- | --------------------------------------------------------- |
-| GitHub Releases                     | Most common distribution channel for open-source projects |
-| Internal Artifact Repository        | Enterprise distribution                                   |
-| Operating-System Package Repository | Linux package distribution                                |
+For a managed download endpoint, upload the compiled binary to a Cloudsmith Raw repository.
+
+Inside the container, define the publication variables before uploading the binary.
+
+```bash
+export CLOUDSMITH_API_KEY="<your-api-key>"
+export CLOUDSMITH_NAMESPACE=pravi-brothers
+export CLOUDSMITH_REPOSITORY=modern-python
+```
+
+Upload the Linux or Windows binary to the target raw repository and assign a release version.
+
+```bash
+cloudsmith push raw "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" ./dist/pixelpack --name pixelpack --version 1.0.0
+```
+
+```powershell
+cloudsmith push raw pravi-brothers/modern-python .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
+```
+
+After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.
+
+```text
+https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/pixelpack
+```
+
+## Consumer Workflow
 
 ### Install the Binary
 

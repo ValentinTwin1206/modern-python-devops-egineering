@@ -42,7 +42,7 @@ through the supported operating-system packages.
 
 #### Linux (Debian-based)
 
-Install the published package from the configured JFrog Artifactory Debian repository:
+Install the published package from the configured Cloudsmith Debian repository:
 
 ```bash
 sudo apt install simply-journal-admin
@@ -173,26 +173,26 @@ Build the Debian package:
 dpkg-buildpackage -us -uc -b
 ```
 
-##### Upload to JFrog Artifactory
+##### Upload to Cloudsmith
 
-This pattern publishes the generated `.deb` to a JFrog Artifactory Debian repository. Replace the server ID, repository, distribution, component, and architecture with the values used by your Artifactory instance.
+This pattern publishes the generated `.deb` to a Cloudsmith Debian repository in the `pravi-brothers` workspace. It assumes the repository already exists and that you have an API key with upload permission. Cloudsmith hosts both the Debian packages and the APT repository metadata.
 
-Configure the JFrog CLI with an existing access token:
+Authenticate the Cloudsmith CLI with an existing API key:
 
 ```bash
-jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
+export CLOUDSMITH_API_KEY="<your-api-key>"
 ```
 
-Upload the Debian package and attach the Debian repository metadata in the same command:
+Upload the Debian package to the Ubuntu distribution used by the target hosts:
 
 ```bash
-jf rt upload "/build/simply-journal-admin_<debian-version>_<architecture>.deb" "debian-local/pool/main/s/simply-journal-admin/" --deb "bookworm/main/amd64"
+cloudsmith push deb pravi-brothers/modern-python/ubuntu/noble "/build/simply-journal-admin_<debian-version>_<architecture>.deb"
 ```
 
-Verify that Artifactory indexed the uploaded package:
+Verify that Cloudsmith indexed the uploaded package:
 
 ```bash
-jf rt search "debian-local/pool/main/s/simply-journal-admin/"
+cloudsmith list packages pravi-brothers/modern-python -q "simply-journal-admin"
 ```
 
 ### Windows MSI Build Environment
@@ -249,9 +249,9 @@ The generated installer appears on the host inside:
 .build\simply-journal-admin-<version>.msi
 ```
 
-##### Publish with JFrog and Winget
+##### Publish with Cloudsmith and Winget
 
-The MSI binary is published to a stable HTTPS URL, such as a JFrog Artifactory generic repository. The Winget manifests reference that URL and the release-specific SHA-256 hash.
+The MSI binary is published to a stable HTTPS URL in a Cloudsmith Raw repository. The Winget manifests reference that URL and the release-specific SHA-256 hash.
 
 | Field | Value |
 | ----- | ----- |
@@ -264,10 +264,10 @@ The MSI binary is published to a stable HTTPS URL, such as a JFrog Artifactory g
 | Installer file | `simply-journal-admin-<version>.msi` |
 | Manifest directory | `manifests/m/ModernPythonEngineering/SimplyJournalAdmin/<version>/` |
 
-Upload the MSI to a version-specific location in Artifactory:
+Upload the MSI to a version-specific location in the Cloudsmith Raw repository:
 
 ```powershell
-jf rt upload ".build\simply-journal-admin-<version>.msi" "generic-local/simply-journal-admin/<version>/"
+cloudsmith push raw pravi-brothers/modern-python .\.build\simply-journal-admin-<version>.msi --version <version>
 ```
 
 Calculate the installer hash used by the Winget manifest:
@@ -279,13 +279,13 @@ Get-FileHash .\.build\simply-journal-admin-<version>.msi -Algorithm SHA256
 Generate the first Winget manifest set from the published installer URL:
 
 ```powershell
-wingetcreate new "https://<tenant>.jfrog.io/artifactory/generic-local/simply-journal-admin/<version>/simply-journal-admin-<version>.msi"
+wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/<version>/simply-journal-admin-<version>.msi"
 ```
 
 For later releases, update the existing package identifier:
 
 ```powershell
-wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://<tenant>.jfrog.io/artifactory/generic-local/simply-journal-admin/<version>/simply-journal-admin-<version>.msi" -v "<version>"
+wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
 ```
 
 Validate the generated manifest directory before opening a pull request against `microsoft/winget-pkgs`:

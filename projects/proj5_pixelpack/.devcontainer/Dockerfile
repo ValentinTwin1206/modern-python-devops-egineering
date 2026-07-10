@@ -38,8 +38,8 @@ RUN apt-get update \
 # Install user-level tools as the same account VS Code uses.
 USER vscode
 
-# Install Nuitka as a user-level uv tool.
-RUN uv tool install nuitka
+# Install the build and publication tools as user-level uv tools.
+RUN uv tool install nuitka cloudsmith-cli
 
 # Keep the final image user aligned with devcontainer.json.
 USER vscode

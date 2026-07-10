@@ -44,6 +44,11 @@ RUN choco install -y python --version=3.12.6 --no-progress; `
 # # # #
 RUN Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
 
+#
+# Install the Cloudsmith CLI used to publish the built MSI artifact.
+# # # #
+RUN python -m pip install --no-cache-dir cloudsmith-cli
+
 # Put the toolchain on PATH for subsequent layers and at runtime.
 RUN $wixBin = (Get-ChildItem 'C:\Program Files (x86)\WiX Toolset*' -Directory | Select-Object -First 1).FullName + '\bin'; `
     $uvBin = Join-Path $env:USERPROFILE '.local\bin'; `

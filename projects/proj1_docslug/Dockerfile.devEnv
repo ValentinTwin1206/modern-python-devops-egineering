@@ -23,6 +23,8 @@ RUN apt-get update \
 
 WORKDIR /app
 
+RUN uv pip install --system --break-system-packages cloudsmith-cli
+
 COPY pyproject.toml ./
 COPY README.md ./
 COPY src ./src

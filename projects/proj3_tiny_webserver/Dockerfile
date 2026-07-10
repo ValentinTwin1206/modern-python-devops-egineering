@@ -32,6 +32,7 @@ COPY --from=builder /build/dist /tmp/dist
 
 # Install the wheel into the virtual environment.
 RUN pip install --upgrade pip \
+    && pip install --no-cache-dir cloudsmith-cli \
     && pip install --no-cache-dir /tmp/dist/tiny_webserver-*.whl \
     && rm -rf /tmp/dist
 

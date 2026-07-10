@@ -135,7 +135,13 @@ The distinct package artifacts are:
 
 ### Install Packaging Tools
 
-The project development image includes JFrog CLI for publishing package artifacts. Install the required Conda packaging tools into the base environment:
+From the `projects/` directory, open the dedicated Conda packaging container and forward the API key into the container session.
+
+```bash
+../build.sh build --path proj4_image_processor/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+```
+
+The project development image includes the Cloudsmith CLI for publishing package artifacts. Install the required Conda packaging tools into the base environment:
 
 ```bash
 conda install -n base -c conda-forge conda-build
@@ -153,43 +159,43 @@ conda build recipe/ --channel conda-forge
 
 ### Publish The Package
 
-Once a Conda package passes validation, upload it to the proprietary Conda repository hosted on JFrog Artifactory. A private Artifactory channel is useful when a package should stay inside an organization but still install through normal Conda workflows.
+Once a Conda package passes validation, upload it to the proprietary Conda repository hosted on Cloudsmith. A private Cloudsmith channel is useful when a package should stay inside an organization but still install through normal Conda workflows.
 
-|  Repository  | Type | Purpose |
-|--------------|------|---------|
-| Conda-Forge  | Public | Dominant community-driven repository for automated packages |
-| JFrog Artifactory | Private | Proprietary Conda repository for controlled enterprise package distribution |
-| Quetz | Private | Open-source Conda server for self-hosted package distribution |
+!!! info
+    This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already forwarded `CLOUDSMITH_API_KEY` into the running container.
 
-Configure the JFrog CLI with an access token that can deploy to the Conda repository:
+Inside the container, define the repository coordinates once for the session:
 
 ```bash
-jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
+export CLOUDSMITH_NAMESPACE=pravi-brothers
+export CLOUDSMITH_REPOSITORY=modern-python
 ```
 
-Upload the built package to the `noarch` subdirectory of the Artifactory Conda repository:
+Upload the built package to the Cloudsmith Conda repository:
 
 ```bash
-jf rt upload "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda" "conda-local/noarch/"
+cloudsmith push conda "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
 ```
 
-Verify that Artifactory can find the uploaded artifact:
+Verify that Cloudsmith can find the uploaded artifact:
 
 ```bash
-jf rt search "conda-local/noarch/image-processor-1.0.0-py_0.conda"
+cloudsmith list packages "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" -q "image-processor"
 ```
 
 !!! note
-    For private repositories, use the channel URL and authentication settings shown by Artifactory. Keep access tokens out of `environment.yml`, shared shell scripts, and command history whenever possible.
+    For private repositories, use the channel URL and authentication settings shown by Cloudsmith. Keep API keys out of `environment.yml`, shared shell scripts, and command history whenever possible.
+
+## Consumer Workflow
 
 ### Install The Package
 
-After publication, users can target the Artifactory Conda channel to install the application.
+After publication, users can target the Cloudsmith Conda channel to install the application.
 
 Install the package into your current environment from the proprietary channel:
 
 ```bash
-conda install -c https://<tenant>.jfrog.io/artifactory/api/conda/conda-local image-processor
+conda install -c https://conda.cloudsmith.io/pravi-brothers/modern-python/ image-processor
 ```
 
 For repeat installs, add the channel to `.condarc` or to an `environment.yml` file, then let Conda resolve `image-processor` together with its `conda-forge` dependencies.

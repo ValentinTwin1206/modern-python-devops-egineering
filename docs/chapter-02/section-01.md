@@ -115,98 +115,84 @@ The distinct package artifacts are:
 
 ## Packaging Workflow
 
+From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith API key into the container session.
+
+```bash
+../build.sh build --path proj1_docslug/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+```
+
 ### Create The Package
 
-Build the project with either `uv build` or `python -m build`; both create a wheel (`.whl`) and a source distribution (`.tar.gz`) in `dist/`.
+Run following command to build the wheel (`.whl`) package:
 
-=== "`uv`"
-
-    Run following command to build the package:
-
-    ```bash
-    uv build
-    ```
-
-=== "`build`"
-
-    Install `build`:
-
-    ```bash
-    python -m pip install build
-    ```
-
-    Run following command to build the package:
-
-    ```bash
-    python -m build
-    ```
+```bash
+uv build
+```
 
 > In addition to the `*.whl` file, the build also creates a `*.tar.gz` source distribution.
 
 ### Validate The Package
 
-To validate the generated artifacts, you can use `twine`. Run following command to install `twine`:
-
-=== "`uv`"
-    
-    ```bash
-    uv tool install twine
-    ```
-
-=== "`pip`"
-
-    ```bash
-    python3 -m pip install twine
-    ```
-
-Validate the artifacts with `twine check dist/*`.
+To validate the generated artifacts, first list the build output and confirm that the wheel and source distribution exist:
 
 ```bash
-twine check dist/*
+ls dist/
+```
+
+Then run a local smoke test by installing the wheel into the project environment with `uv`:
+
+```bash
+uv pip install dist/docslug-1.0.0-py3-none-any.whl
 ```
 
 ### Publish The Package
 
-Once a package has been validated, it can be uploaded to a package repository.
+Once a wheel package passes validation, upload it to the proprietary Python repository hosted on Cloudsmith.
 
-| Repository | Type | Purpose |
-|------------|------|---------|
-| [PyPI](https://pypi.org) | Public | Official Python package repository |
-| [TestPyPI](https://test.pypi.org) | Public | Test environment for package publishing workflows |
-| Artifactory | Private | Repository manager for internal software distribution |
-| Nexus Repository | Private | Repository manager for internal package hosting |
+!!! info
+    This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
+
+Inside the container, define the repository coordinates once for the session.
+
+```bash
+export CLOUDSMITH_NAMESPACE=pravi-brothers
+export CLOUDSMITH_REPOSITORY=modern-python
+```
+
+Publish the package to the Cloudsmith PyPI repository with `uv`.
+
+```bash
+uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/" --token "$CLOUDSMITH_API_KEY"
+```
+
+## Consumer Workflow
+
+### Configure Package Manager
+
+Before installing packages from a proprietary Python repository, create a user-level configuration file so your package manager consults the dedicated extra package index alongside the default public index.
 
 === "uv"
 
-    Publish the package to PyPI with `uv`.
+    Create a user-level `uv.toml` file at `~/.config/uv/uv.toml` on Linux and macOS, or at `%APPDATA%\uv\uv.toml` on Windows.
 
-    ```bash
-    uv publish
+    ```toml
+    [[index]]
+    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/python/simple/"
+    default = false
     ```
 
-    Publish the package to TestPyPI with `uv`.
+=== "pip"
 
-    ```bash
-    uv publish --publish-url https://test.pypi.org/legacy/
-    ```
+    Create a user-level `pip.conf` file at `~/.config/pip/pip.conf` on Linux, at `$HOME/Library/Application Support/pip/pip.conf` on macOS, or a `pip.ini` file at `%APPDATA%\pip\pip.ini` on Windows.
 
-=== "twine"
-
-    Publish the package to PyPI with `twine`.
-
-    ```bash
-    twine upload dist/*
-    ```
-
-    Publish the package to TestPyPI with `twine`.
-
-    ```bash
-    twine upload --repository testpypi dist/*
+    ```ini
+    [global]
+    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python/python/simple/
     ```
 
 ### Install The Package
 
-After publication, users can install the package directly from a repository.
+After publication, users can install the package directly from the Cloudsmith PyPI repository.
 
 === "uv"
 

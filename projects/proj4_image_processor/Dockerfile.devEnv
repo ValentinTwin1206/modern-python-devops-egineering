@@ -1,7 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses continuumio/miniconda3 directly
 #   - creates the image-processor env from environment.yml
-#   - installs the JFrog CLI used to publish Conda package artifacts
+#   - installs the Cloudsmith CLI used to publish Conda package artifacts
 #   - opens an interactive shell with the conda env activated and dev tools ready
 # # # # # # # # # # #
 FROM continuumio/miniconda3
@@ -26,7 +26,7 @@ RUN apt-get update \
     && chmod 0440 /etc/sudoers.d/snake
 
 # Install the package publication CLI used after conda-build creates the artifact.
-RUN curl -fL https://install-cli.jfrog.io | sh
+RUN pip install --no-cache-dir cloudsmith-cli
 
 # Accept Anaconda channel terms so the image can build non-interactively.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \

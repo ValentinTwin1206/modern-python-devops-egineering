@@ -110,6 +110,8 @@ docker push {DOCKER_HUB_USER}/tiny-webserver:1.0.0
 
 > Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.
 
+## Consumer Workflow
+
 ### Install the Container
 
 Once published, the image can be downloaded from Docker Hub:

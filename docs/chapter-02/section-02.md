@@ -224,8 +224,6 @@ Examples:
 
 ### Create the OS Package
 
-Build the Python wheel first, then wrap that wheel in the target operating system's package format.
-
 === "Debian package"
 
 	Use the helper script to open the Linux packaging environment.
@@ -245,7 +243,6 @@ Build the Python wheel first, then wrap that wheel in the target operating syste
 	```bash
 	uv build --wheel --out-dir /build
 	```
-
 
 	Run the Debian package build to create the .deb artifact:
 
@@ -309,51 +306,113 @@ After building the package, run a smoke test to confirm that the installer compl
 
 ### Publish the OS Package
 
-Publishing starts after the `.deb` or `.msi` artifact already exists. The publication step moves the package from a local build output into the distribution channel that end users consume.
+Once an OS package passes validation, publish it through the distribution channel that end users consume.
 
 === "Debian"
 
 	!!! info
-		The Debian package is published to a JFrog Artifactory Debian repository. This workflow assumes that you already have an Artifactory instance, a local Debian repository, and an access token with permission to upload packages.
+		The Debian package is published to a Cloudsmith Debian repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace. This workflow assumes that the repository already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
 
-	Configure the JFrog CLI (`jf`) with the existing access token.
+	A successful Debian publication depends on a repository endpoint that serves both the uploaded `.deb` artifact and the APT metadata files that clients use for resolution and installation. Cloudsmith hosts both: it stores the Debian packages and generates the repository metadata that APT consumes.
+
+	```mermaid
+	flowchart LR
+		subgraph PublisherWorkflow[Publisher Workflow]
+			direction LR
+			DEV[Developer] -->|Builds| PIPE[Build Pipeline]
+			PIPE --> DEB["Debian Package (.deb)"]
+			DEB -->|Uploads Package| REPO[Cloudsmith APT Repository]
+			REPO --> PKGS[Debian Packages]
+			REPO --> GZ[Packages.gz]
+			REPO --> REL[Release]
+			REPO --> IREL[InRelease]
+		end
+
+		classDef action fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#0f172a;
+		classDef repository fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a;
+		class DEV,PIPE,DEB action;
+		class REPO,PKGS,GZ,REL,IREL repository;
+		style PublisherWorkflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px;
+	```
+
+	From the `projects/` directory, open the dedicated Debian packaging container and forward the API key into the container session.
 
 	```bash
-	jf c add modern-python --url "https://<tenant>.jfrog.io" --access-token "$JFROG_ACCESS_TOKEN" --interactive=false
+	../build.sh build --path proj2_journal_admin/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+	```
+
+	Inside the container, define the repository coordinates once for the session.
+
+	```bash
+	export CLOUDSMITH_NAMESPACE=pravi-brothers
+	export CLOUDSMITH_REPOSITORY=modern-python
+	export CLOUDSMITH_UBUNTU_2404=ubuntu/noble
+	export CLOUDSMITH_UBUNTU_2604=ubuntu/resolute
 	```
 
 	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions.
 
 	```bash
-	jf rt upload \
-		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb" \
-		"debian-local/pool/main/s/simply-journal-admin/" \
-		--deb "noble/main/amd64;resolute/main/amd64"
+	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/${CLOUDSMITH_UBUNTU_2404}" \
+		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb"
+	```
+
+	```bash
+	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/${CLOUDSMITH_UBUNTU_2604}" \
+		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb"
 	```
 
 	> `noble` targets Ubuntu 24.04, `resolute` targets Ubuntu 26.04.
 
-	Verify that Artifactory indexed the uploaded package.
+	Verify that Cloudsmith indexed the uploaded package.
 
 	```bash
-	jf rt search "debian-local/pool/main/s/simply-journal-admin/"
+	cloudsmith list packages "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" -q "simply-journal-admin"
 	```
 
 === "MSI"
 
 	!!! info
-		The MSI package is published through the Windows Package Manager [community repository](https://github.com/microsoft/winget-pkgs). This workflow assumes that you already have a GitHub account, a fork of `microsoft/winget-pkgs`, and the required Winget tooling installed.
+		The Winget Manifest is published to the Windows Package Manager [community repository](https://github.com/microsoft/winget-pkgs). This workflow assumes that you already have a GitHub account, a fork of `microsoft/winget-pkgs`, and the required Winget tooling installed.
 
-	Upload the generated MSI to the repository's GitHub Release for `v1.0.0`. The release can contain all package artifacts for the repository, but the Winget manifest references only the Windows installer asset.
+	A successful WinGet publication depends on two durable inputs: a stable installer URL that keeps the MSI available at the published location, and a validated manifest that is accepted into the `winget-pkgs` repository.
 
-	```powershell
-	gh release upload v1.0.0 .\.build\simply-journal-admin-1.0.0.msi --clobber
+	```mermaid
+	flowchart LR
+		subgraph PublisherWorkflow[Publisher Workflow]
+			direction LR
+			DEV[Developer] -->|Builds| PIPE[Build Pipeline] --> MSI[MSI Package] -->|Uploads MSI| REPO[Cloudsmith Raw Repository]
+			DEV2[Developer] -->|Creates Pull Request| WPKG[winget-pkgs Repository] --> MAN[Manifest]
+			WPKG --> URL[Installer URL]
+			WPKG --> HASH[SHA256]
+			WPKG --> VER[Version]
+		end
+
+		classDef action fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#0f172a;
+		classDef repository fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a;
+		class DEV,DEV2,PIPE,MSI action;
+		class WPKG,REPO,MAN,URL,HASH,VER repository;
+		style PublisherWorkflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px;
 	```
 
-	The release asset URL becomes the `InstallerUrl` in the Winget manifest.
+	The Windows builder image already includes the Cloudsmith CLI. In the running container session, define the publication variables before uploading the MSI.
+
+	```powershell
+	$env:CLOUDSMITH_API_KEY = "<your-api-key>"
+	$cloudsmithNamespace = "pravi-brothers"
+	$cloudsmithRepository = "modern-python"
+	```
+
+	Upload the generated MSI to the Cloudsmith Raw repository in the `pravi-brothers` workspace. The raw repository provides the stable installer URL that the Winget manifest references.
+
+	```powershell
+	cloudsmith push raw "$cloudsmithNamespace/$cloudsmithRepository" .\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
+	```
+
+	The Cloudsmith download URL becomes the `InstallerUrl` in the Winget manifest.
 
 	```text
-	https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v1.0.0/simply-journal-admin-1.0.0.msi
+	https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi
 	```
 
 	Calculate the installer hash used by the Winget manifest.
@@ -365,13 +424,13 @@ Publishing starts after the `.deb` or `.msi` artifact already exists. The public
 	Generate a new manifest set for the first release. Use the URL of the published MSI, not a local file path.
 
 	```powershell
-	wingetcreate new "https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v1.0.0/simply-journal-admin-1.0.0.msi"
+	wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi"
 	```
 
 	For later releases, update the existing package identifier instead of starting from scratch.
 
 	```powershell
-	wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://github.com/ValentinTwin1206/modern-python-devops-egineering/releases/download/v<version>/simply-journal-admin-<version>.msi" -v "<version>"
+	wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
 	```
 
 	External contributors submit manifests through a fork of `microsoft/winget-pkgs`. Prepare a local submission branch in your fork with sparse checkout enabled for this publisher folder.
@@ -414,28 +473,40 @@ Publishing starts after the `.deb` or `.msi` artifact already exists. The public
 
 	Open a pull request from the pushed fork branch against `microsoft/winget-pkgs`.
 
-	Microsoft validation checks the manifest schema, installer URL, hash, metadata, and installation behavior before the pull request is merged. Future versions are published by adding a new GitHub Release asset, creating a new manifest version directory, updating the installer URL and SHA-256 hash, validating the manifest, and submitting one pull request per package version.
+	Microsoft validation checks the manifest schema, installer URL, hash, metadata, and installation behavior before the pull request is merged. Future versions are published by uploading a new MSI version to the Cloudsmith Raw repository, creating a new manifest version directory, updating the installer URL and SHA-256 hash, validating the manifest, and submitting one pull request per package version.
+
+## Consumer Workflow
+
+### Configure Package Manager
+
+Configure the target package manager before installation so it can resolve packages from the proprietary distribution channel.
+
+=== "Debian (.deb)"
+
+	From the end-user perspective, configure the Cloudsmith APT repository from the `pravi-brothers` workspace first. Cloudsmith hosts both the Debian packages and the repository metadata that APT needs for resolution and installation.
+
+	```bash
+	curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/gpg.key" | sudo gpg --dearmor -o /usr/share/keyrings/pravi-brothers-modern-python.gpg
+	```
+
+	Add the Debian repository to the local APT sources.
+
+	```bash
+	printf 'deb [signed-by=/usr/share/keyrings/pravi-brothers-modern-python.gpg] https://dl.cloudsmith.io/public/pravi-brothers/modern-python/deb/ubuntu noble main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
+	```
+
+	!!! note
+		Because this repository is public, the public APT source URL together with the Cloudsmith GPG signing key is sufficient. No authenticated repository URL is required for installation.
+
+=== "MSI (.msi)"
+
+	No local package-manager repository configuration is required when the package manifest is hosted in `winget-pkgs`. WinGet reads the published manifest from the configured WinGet source and uses its installer URL to download the MSI.
 
 ### Install the OS Package
 
 Users typically install the package through the native package-management workflow of the target platform.
 
 === "Linux (.deb)"
-
-	From the end-user perspective, configure the JFrog Artifactory Debian repository first. Use the exact key URL and private-auth snippet from the Artifactory repository setup page when your repository requires authentication.
-
-	```bash
-	curl -fsSL "<artifactory-public-gpg-key-url>" | sudo gpg --dearmor -o /usr/share/keyrings/jfrog-debian-local.gpg
-	```
-
-	Add the Debian repository to the local APT sources.
-
-	```bash
-	printf 'deb [signed-by=/usr/share/keyrings/jfrog-debian-local.gpg] https://<tenant>.jfrog.io/artifactory/debian-local bookworm main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
-	```
-
-	!!! note
-		For private repositories, use the authentication configuration shown by Artifactory instead of writing tokens or passwords directly into source control, shared shell scripts, or command history.
 
 	Refresh APT metadata on the target machine.
 
@@ -449,12 +520,62 @@ Users typically install the package through the native package-management workfl
 	sudo apt install simply-journal-admin
 	```
 
+	The `apt update` and `apt install` commands above invoke the package consumer workflow illustrated in the following simplified diagram.
+
+	```mermaid
+	flowchart LR
+		subgraph ConsumerWorkflow[Package Consumer Workflow]
+			direction LR
+			UPDATE[apt update] --> APT[APT Package Manager]
+			APT -->|Requests Metadata| REPO2[Cloudsmith APT Repository]
+			REPO2 -->|Returns Release + Packages.gz| APT
+			INSTALL[apt install simply-journal-admin] --> APT
+			APT -->|Requests Package| REPO2
+			REPO2 -->|Returns .deb + dependencies| APT
+			APT -->|Installs Package| APP[Installed App]
+		end
+
+		classDef repository fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a;
+		classDef client fill:#dcfce7,stroke:#15803d,stroke-width:1.5px,color:#0f172a;
+		classDef installed fill:#fef3c7,stroke:#b45309,stroke-width:1.5px,color:#0f172a;
+		class REPO2 repository;
+		class UPDATE,INSTALL,APT client;
+		class APP installed;
+		style ConsumerWorkflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px;
+	```
+
 === "Windows (.msi)"
 
-	From the end-user perspective, install the published MSI through the Windows Package Manager community source:
+	From the end-user perspective, following command will install the published MSI using the `winget` command:
 
 	```powershell
 	winget install --id ModernPythonEngineering.SimplyJournalAdmin --source winget
+	```
+
+	The `winget install` command above invokes the package consumer workflow illustrated in the following simplified diagram. The WinGet client downloads the package manifest from the `winget-pkgs` repository, and the manifest references the MSI hosted in Cloudsmith, so the installer itself is downloaded from the Cloudsmith Raw repository.
+
+	```mermaid
+	flowchart LR
+		subgraph ConsumerWorkflow[Package Consumer Workflow]
+			direction LR
+			CMD[winget install] --> WINGET[WinGet Client]
+			WINGET -->|Requests Manifest| WPKG2[winget-pkgs]
+			WPKG2 -->|Returns Manifest + URL| WINGET
+			WINGET -->|Requests MSI| REPO2[Cloudsmith Raw Repository]
+			REPO2 -->|Returns MSI| MSI2[Downloaded MSI]
+			WINGET -->|invokes| WININST[Windows Installer]
+			MSI2 --> WININST -->|installs| APP[Installed App]
+		end
+
+		classDef repository fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a;
+		classDef client fill:#dcfce7,stroke:#15803d,stroke-width:1.5px,color:#0f172a;
+		classDef tool fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#0f172a;
+		classDef installed fill:#fef3c7,stroke:#b45309,stroke-width:1.5px,color:#0f172a;
+		class WPKG2,REPO2 repository;
+		class CMD,WINGET client;
+		class MSI2,WININST tool;
+		class APP installed;
+		style ConsumerWorkflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px;
 	```
 
 ## Useful Links
