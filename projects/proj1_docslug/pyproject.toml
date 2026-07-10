@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Pure-Python helpers for stable documentation and filename slugs"
 readme = "README.md"
 requires-python = ">=3.12"
-license = "MIT"
+license = "Apache-2.0"
 dependencies = []
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -345,7 +345,7 @@ Once an OS package passes validation, publish it through the distribution channe
 
 	```bash
 	export CLOUDSMITH_NAMESPACE=pravi-brothers
-	export CLOUDSMITH_REPOSITORY=modern-python
+	export CLOUDSMITH_REPOSITORY=modern-python-engineering
 	export CLOUDSMITH_UBUNTU_2404=ubuntu/noble
 	export CLOUDSMITH_UBUNTU_2604=ubuntu/resolute
 	```
@@ -400,7 +400,7 @@ Once an OS package passes validation, publish it through the distribution channe
 	```powershell
 	$env:CLOUDSMITH_API_KEY = "<your-api-key>"
 	$cloudsmithNamespace = "pravi-brothers"
-	$cloudsmithRepository = "modern-python"
+	$cloudsmithRepository = "modern-python-engineering"
 	```
 
 	Upload the generated MSI to the Cloudsmith Raw repository in the `pravi-brothers` workspace. The raw repository provides the stable installer URL that the Winget manifest references.
@@ -412,7 +412,7 @@ Once an OS package passes validation, publish it through the distribution channe
 	The Cloudsmith download URL becomes the `InstallerUrl` in the Winget manifest.
 
 	```text
-	https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi
+	https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi
 	```
 
 	Calculate the installer hash used by the Winget manifest.
@@ -424,13 +424,13 @@ Once an OS package passes validation, publish it through the distribution channe
 	Generate a new manifest set for the first release. Use the URL of the published MSI, not a local file path.
 
 	```powershell
-	wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi"
+	wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi"
 	```
 
 	For later releases, update the existing package identifier instead of starting from scratch.
 
 	```powershell
-	wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
+	wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
 	```
 
 	External contributors submit manifests through a fork of `microsoft/winget-pkgs`. Prepare a local submission branch in your fork with sparse checkout enabled for this publisher folder.
@@ -486,13 +486,13 @@ Configure the target package manager before installation so it can resolve packa
 	From the end-user perspective, configure the Cloudsmith APT repository from the `pravi-brothers` workspace first. Cloudsmith hosts both the Debian packages and the repository metadata that APT needs for resolution and installation.
 
 	```bash
-	curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/gpg.key" | sudo gpg --dearmor -o /usr/share/keyrings/pravi-brothers-modern-python.gpg
+	curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/gpg.key" | sudo gpg --dearmor -o /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg
 	```
 
 	Add the Debian repository to the local APT sources.
 
 	```bash
-	printf 'deb [signed-by=/usr/share/keyrings/pravi-brothers-modern-python.gpg] https://dl.cloudsmith.io/public/pravi-brothers/modern-python/deb/ubuntu noble main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
+	printf 'deb [signed-by=/usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg] https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu noble main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
 	```
 
 	!!! note

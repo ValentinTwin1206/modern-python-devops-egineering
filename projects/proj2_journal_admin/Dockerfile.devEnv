@@ -50,7 +50,7 @@ USER snake
 
 # Install one developer tool into the user's site-packages so the image
 # demonstrates both installation levels while running as the non-root user.
-RUN uv pip install --user karva
+RUN uv pip install --user --break-system-packages karva
 
 # Project files are expected to be bind-mounted into /app at runtime.
 ENTRYPOINT ["/bin/bash"]

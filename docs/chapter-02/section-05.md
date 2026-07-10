@@ -141,7 +141,7 @@ Inside the container, define the publication variables before uploading the bina
 ```bash
 export CLOUDSMITH_API_KEY="<your-api-key>"
 export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python
+export CLOUDSMITH_REPOSITORY=modern-python-engineering
 ```
 
 Upload the Linux or Windows binary to the target raw repository and assign a release version.
@@ -151,13 +151,13 @@ cloudsmith push raw "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" ./dist/pi
 ```
 
 ```powershell
-cloudsmith push raw pravi-brothers/modern-python .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
+cloudsmith push raw pravi-brothers/modern-python-engineering .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
 ```
 
 After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.
 
 ```text
-https://dl.cloudsmith.io/public/pravi-brothers/modern-python/raw/versions/1.0.0/pixelpack
+https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/pixelpack
 ```
 
 ## Consumer Workflow

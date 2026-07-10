@@ -18,7 +18,7 @@ name = "depsight"
 version = "1.3.0"
 description = "A modular dependency analysis framework"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.12"
 authors = [
     { name = "Depsight Contributors" },

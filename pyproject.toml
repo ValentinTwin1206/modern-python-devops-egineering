@@ -3,6 +3,7 @@ name = "modern-python-engineering"
 version = "0.1.0"
 description = "Technical course examples for Python packaging and development environments."
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "mkdocs>=1.6.1,<2.0",

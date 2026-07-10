@@ -63,7 +63,7 @@ test:
 about:
   home: https://github.com/ValentinTwin1206/modern-python-devops-egineering
   summary: OpenCV image-processing showcase distributed as a Conda package.
-  license: MIT
+  license: Apache-2.0
 ```
 
 Common frontend and backend tools in the Conda ecosystem include build engines, package managers, and workflow tools:
@@ -168,7 +168,7 @@ Inside the container, define the repository coordinates once for the session:
 
 ```bash
 export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python
+export CLOUDSMITH_REPOSITORY=modern-python-engineering
 ```
 
 Upload the built package to the Cloudsmith Conda repository:
@@ -195,7 +195,7 @@ After publication, users can target the Cloudsmith Conda channel to install the 
 Install the package into your current environment from the proprietary channel:
 
 ```bash
-conda install -c https://conda.cloudsmith.io/pravi-brothers/modern-python/ image-processor
+conda install -c https://conda.cloudsmith.io/pravi-brothers/modern-python-engineering/ image-processor
 ```
 
 For repeat installs, add the channel to `.condarc` or to an `environment.yml` file, then let Conda resolve `image-processor` together with its `conda-forge` dependencies.

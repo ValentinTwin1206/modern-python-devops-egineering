@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Cross-platform admin CLI that reads the systemd journal (Linux) or the Windows Event Log (Windows)"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [
     { name = "Modern Python Engineering", email = "maintainers@example.invalid" },

@@ -107,11 +107,11 @@ export CLOUDSMITH_API_KEY="<your-api-key>"
 Upload the built package to the Cloudsmith Conda repository in the `pravi-brothers` workspace:
 
 ```bash
-cloudsmith push conda pravi-brothers/modern-python "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cloudsmith push conda pravi-brothers/modern-python-engineering "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
 ```
 
 Verify that Cloudsmith can find the uploaded artifact:
 
 ```bash
-cloudsmith list packages pravi-brothers/modern-python -q "image-processor"
+cloudsmith list packages pravi-brothers/modern-python-engineering -q "image-processor"
 ```

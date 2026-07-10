@@ -156,7 +156,7 @@ Inside the container, define the repository coordinates once for the session.
 
 ```bash
 export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python
+export CLOUDSMITH_REPOSITORY=modern-python-engineering
 ```
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
@@ -177,7 +177,7 @@ Before installing packages from a proprietary Python repository, create a user-l
 
     ```toml
     [[index]]
-    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python/python/simple/"
+    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
     default = false
     ```
 
@@ -187,7 +187,7 @@ Before installing packages from a proprietary Python repository, create a user-l
 
     ```ini
     [global]
-    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python/python/simple/
+    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
     ```
 
 ### Install The Package

@@ -34,4 +34,4 @@ test:
 about:
   home: https://github.com/ValentinTwin1206/modern-python-devops-egineering
   summary: OpenCV image-processing showcase distributed as a Conda package.
-  license: MIT
+  license: Apache-2.0
