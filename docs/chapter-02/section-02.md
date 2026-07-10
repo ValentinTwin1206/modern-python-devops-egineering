@@ -341,15 +341,6 @@ Once an OS package passes validation, publish it through the distribution channe
 	../build.sh build --path proj2_journal_admin/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 	```
 
-	Inside the container, define the repository coordinates once for the session.
-
-	```bash
-	export CLOUDSMITH_NAMESPACE=pravi-brothers
-	export CLOUDSMITH_REPOSITORY=modern-python-engineering
-	export CLOUDSMITH_UBUNTU_2404=ubuntu/noble
-	export CLOUDSMITH_UBUNTU_2604=ubuntu/resolute
-	```
-
 	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions.
 
 	```bash
@@ -395,18 +386,16 @@ Once an OS package passes validation, publish it through the distribution channe
 		style PublisherWorkflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px;
 	```
 
-	The Windows builder image already includes the Cloudsmith CLI. In the running container session, define the publication variables before uploading the MSI.
+	The Windows builder image already includes the Cloudsmith CLI. In the running container session, define the API key before uploading the MSI.
 
 	```powershell
 	$env:CLOUDSMITH_API_KEY = "<your-api-key>"
-	$cloudsmithNamespace = "pravi-brothers"
-	$cloudsmithRepository = "modern-python-engineering"
 	```
 
 	Upload the generated MSI to the Cloudsmith Raw repository in the `pravi-brothers` workspace. The raw repository provides the stable installer URL that the Winget manifest references.
 
 	```powershell
-	cloudsmith push raw "$cloudsmithNamespace/$cloudsmithRepository" .\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
+	cloudsmith push raw "$env:CLOUDSMITH_NAMESPACE/$env:CLOUDSMITH_REPOSITORY" .\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
 	```
 
 	The Cloudsmith download URL becomes the `InstallerUrl` in the Winget manifest.

@@ -11,6 +11,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/home/snake/.local/bin:$PATH"
 ENV PYTHONPATH=/app/src
+ENV CLOUDSMITH_NAMESPACE=pravi-brothers
+ENV CLOUDSMITH_REPOSITORY=modern-python-engineering
+ENV CLOUDSMITH_UBUNTU_2404=ubuntu/noble
+ENV CLOUDSMITH_UBUNTU_2604=ubuntu/resolute
 
 WORKDIR /app
 
@@ -37,20 +41,15 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install the package publication CLI used after the OS package artifacts exist.
-RUN uv pip install --system --break-system-packages cloudsmith-cli
-
 # Install one developer tool into the local administrator target and keep the
 # project runtime dependency managed by the system package manager.
-RUN uv pip install --system --break-system-packages \
-    ruff \
+RUN uv pip install --system --break-system-packages cloudsmith-cli ruff \
     && chown -R snake:snake /app /home/snake
 
 USER snake
 
-# Install one developer tool into the user's site-packages so the image
-# demonstrates both installation levels while running as the non-root user.
-RUN uv pip install --user --break-system-packages karva
+# Install one developer CLI tool into an isolated user-level environment.
+RUN uv tool install karva
 
 # Project files are expected to be bind-mounted into /app at runtime.
 ENTRYPOINT ["/bin/bash"]

@@ -136,12 +136,10 @@ Once a binary build passes validation, upload it to the proprietary raw reposito
 
 For a managed download endpoint, upload the compiled binary to a Cloudsmith Raw repository.
 
-Inside the container, define the publication variables before uploading the binary.
+Inside the container, define the API key before uploading the binary.
 
 ```bash
 export CLOUDSMITH_API_KEY="<your-api-key>"
-export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python-engineering
 ```
 
 Upload the Linux or Windows binary to the target raw repository and assign a release version.

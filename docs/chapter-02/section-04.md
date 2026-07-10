@@ -164,13 +164,6 @@ Once a Conda package passes validation, upload it to the proprietary Conda repos
 !!! info
     This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already forwarded `CLOUDSMITH_API_KEY` into the running container.
 
-Inside the container, define the repository coordinates once for the session:
-
-```bash
-export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python-engineering
-```
-
 Upload the built package to the Cloudsmith Conda repository:
 
 ```bash

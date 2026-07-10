@@ -152,13 +152,6 @@ Once a wheel package passes validation, upload it to the proprietary Python repo
 !!! info
     This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
 
-Inside the container, define the repository coordinates once for the session.
-
-```bash
-export CLOUDSMITH_NAMESPACE=pravi-brothers
-export CLOUDSMITH_REPOSITORY=modern-python-engineering
-```
-
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
 ```bash
@@ -199,7 +192,7 @@ After publication, users can install the package directly from the Cloudsmith Py
     Install the package with `uv`.
 
     ```bash
-    uv tool install docslug
+    uv pip install docslug
     ```
 
 === "pip"

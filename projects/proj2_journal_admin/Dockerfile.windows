@@ -18,6 +18,9 @@
 # # # # # # # # # # #
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
+ENV CLOUDSMITH_NAMESPACE=pravi-brothers `
+    CLOUDSMITH_REPOSITORY=modern-python-engineering
+
 SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 #
