@@ -265,6 +265,10 @@ build_command() {
 
     local run_cmd=("${CONTAINER_ENGINE}" run --rm -it --name "${container_name}")
     local container_cmd=("/bin/bash")
+    local host_uid host_gid
+
+    host_uid="$(id -u)"
+    host_gid="$(id -g)"
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
         section_name="$(basename -- "${build_context}")"
@@ -303,10 +307,11 @@ build_command() {
     fi
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
+        run_cmd+=(--user root --env "HOST_UID=${host_uid}" --env "HOST_GID=${host_gid}")
         container_cmd=(
             "/bin/bash"
             "-lc"
-            "if id snake >/dev/null 2>&1; then chmod 0777 /build 2>/dev/null || true; find /build -mindepth 1 -maxdepth 1 -exec chmod -R a+rwX {} + 2>/dev/null || true; exec sudo -E -H -u snake /bin/bash; else exec /bin/bash; fi"
+            "if id snake >/dev/null 2>&1; then desired_uid=\"\${HOST_UID:-}\"; desired_gid=\"\${HOST_GID:-}\"; current_uid=\"\$(id -u snake)\"; current_gid=\"\$(id -g snake)\"; if [[ -n \"\${desired_gid}\" && \"\${current_gid}\" != \"\${desired_gid}\" ]]; then groupmod -o -g \"\${desired_gid}\" snake >/dev/null 2>&1 || true; current_gid=\"\$(id -g snake)\"; fi; if [[ -n \"\${desired_uid}\" && \"\${current_uid}\" != \"\${desired_uid}\" ]]; then usermod -o -u \"\${desired_uid}\" -g \"\${current_gid}\" snake >/dev/null 2>&1 || true; fi; chown -R \"\$(id -u snake):\$(id -g snake)\" /home/snake 2>/dev/null || true; chmod 0777 /build 2>/dev/null || true; find /build -mindepth 1 -maxdepth 1 -exec chmod -R a+rwX {} + 2>/dev/null || true; exec sudo -E -H -u snake /bin/bash; else exec /bin/bash; fi"
         )
     fi
 

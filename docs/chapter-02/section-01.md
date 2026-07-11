@@ -231,32 +231,57 @@ Create a user-level `pip.conf` or `pip.ini` file for your operating system.
 
 ### Install The Package
 
-After publication, users can install the package directly from the Cloudsmith PyPI repository.
+After publication, users can create a small project, declare `docslug` as a dependency, and let `uv` install it from the Cloudsmith PyPI repository during environment sync.
 
 === "uv"
 
-    Install the package with `uv` after you configured the user-level package index.
+    Create a new working directory for a small consumer project.
 
     ```bash
-    uv pip install docslug
+    mkdir docslug-consumer && cd docslug-consumer
     ```
 
-    Or install it directly from Cloudsmith without creating a configuration file first.
+    Add the project files.
+
+    === "pyproject.toml"
+
+        ```toml
+        [project]
+        name = "docslug-consumer"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = [
+	    "docslug",
+        ]
+        ```
+
+    === "hello.py"
+
+        ```python
+        from docslug import slugify
+
+        def main() -> None:
+	    print(slugify("Hello from Docslug"))
+
+
+        if __name__ == "__main__":
+	    main()
+        ```
+
+    Sync the project environment with `uv` after you configured the user-level package index.
 
     ```bash
-    uv pip install --index "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" docslug
+    uv sync
     ```
 
-=== "pip"
-
-    Install the package with `pip` after you configured the user-level package index.
+    Or sync directly from Cloudsmith without creating a configuration file first.
 
     ```bash
-    pip install docslug
+    uv sync --index "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
     ```
 
-    Or install it directly from Cloudsmith without creating a configuration file first.
+    Run the script with the Python interpreter from the created virtual environment.
 
     ```bash
-    pip install --extra-index-url "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" docslug
+    .venv/bin/python hello.py
     ```

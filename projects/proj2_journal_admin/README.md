@@ -150,8 +150,7 @@ uv run ruff check .
 
 #### Build Debian Package
 
-The Debian package embeds a Python runtime plus the generated Python wheel
-inside the `.deb` package.
+The Debian package embeds a Python runtime plus the generated Python wheel inside the `.deb` package.
 
 ##### Build the Debian Artifact
 
@@ -170,8 +169,10 @@ The generated wheel appears on the host inside:
 Build the Debian package:
 
 ```bash
-dpkg-buildpackage -us -uc -b
+./scripts/build-deb.sh
 ```
+
+> The helper copies the project into a temporary build directory inside the container, runs `dpkg-buildpackage` there, and copies only the finished `.deb` artifact back to `/build` on the host.
 
 ##### Upload to Cloudsmith
 

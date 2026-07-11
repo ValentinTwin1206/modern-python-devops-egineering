@@ -247,8 +247,10 @@ Examples:
 	Run the Debian package build to create the .deb artifact:
 
 	```bash
-	dpkg-buildpackage -us -uc -b
+	./scripts/build-deb.sh
 	```
+
+	The helper script builds from a temporary copy inside the container and copies only the final `.deb` file back to `/build`, so the host `debian/` directory stays free of `debhelper` build outputs.
 
 === "MSI package"
 
