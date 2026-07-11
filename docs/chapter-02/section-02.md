@@ -244,13 +244,13 @@ Examples:
 	uv build --wheel --out-dir /build
 	```
 
-	Run the Debian package build to create the .deb artifact:
+	Run the Debian package build to create the `.deb` artifact:
 
 	```bash
 	./scripts/build-deb.sh
 	```
 
-	The helper script builds from a temporary copy inside the container and copies only the final `.deb` file back to `/build`, so the host `debian/` directory stays free of `debhelper` build outputs.
+	> The helper script builds from a temporary copy inside the container and copies only the final `.deb` file back to `/build`, so the host `debian/` directory stays free of `debhelper` build outputs.
 
 === "MSI package"
 
