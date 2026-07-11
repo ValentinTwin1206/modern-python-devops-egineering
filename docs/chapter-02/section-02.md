@@ -480,10 +480,20 @@ Configure the target package manager before installation so it can resolve packa
 	curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/gpg.key" | sudo gpg --dearmor -o /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg
 	```
 
-	Add the Debian repository to the local APT sources.
+	Add the Debian repository to the local APT sources by creating a deb822 source file.
 
 	```bash
-	printf 'deb [signed-by=/usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg] https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu noble main\n' | sudo tee /etc/apt/sources.list.d/simply-journal-admin.list
+	printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg\n' | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
+	```
+
+	The dedicated source file contains the repository metadata in stanza form.
+
+	```text
+	Types: deb
+	URIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu
+	Suites: noble
+	Components: main
+	Signed-By: /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg
 	```
 
 	!!! note
