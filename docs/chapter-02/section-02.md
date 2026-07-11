@@ -346,16 +346,16 @@ Once an OS package passes validation, publish it through the distribution channe
 	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions.
 
 	```bash
-	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/${CLOUDSMITH_UBUNTU_2404}" \
-		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb"
+	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/ubuntu/noble" .build/simply-journal-admin_2.0.0-1_amd64.deb
 	```
+	
+	> `noble` targets Ubuntu 24.04, 
 
 	```bash
-	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/${CLOUDSMITH_UBUNTU_2604}" \
-		"<path-to-package>/simply-journal-admin_<debian-version>_<architecture>.deb"
+	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/ubuntu/resolute" .build/simply-journal-admin_2.0.0-1_amd64.deb
 	```
 
-	> `noble` targets Ubuntu 24.04, `resolute` targets Ubuntu 26.04.
+	> `resolute` targets Ubuntu 26.04.
 
 	Verify that Cloudsmith indexed the uploaded package.
 

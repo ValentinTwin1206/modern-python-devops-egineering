@@ -13,8 +13,6 @@ ENV PATH="/home/snake/.local/bin:$PATH"
 ENV PYTHONPATH=/app/src
 ENV CLOUDSMITH_NAMESPACE=pravi-brothers
 ENV CLOUDSMITH_REPOSITORY=modern-python-engineering
-ENV CLOUDSMITH_UBUNTU_2404=ubuntu/noble
-ENV CLOUDSMITH_UBUNTU_2604=ubuntu/resolute
 
 WORKDIR /app
 
