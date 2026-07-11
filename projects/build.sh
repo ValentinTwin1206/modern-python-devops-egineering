@@ -263,7 +263,8 @@ build_command() {
         exit 0
     fi
 
-    local run_cmd=("${CONTAINER_ENGINE}" run --rm -it --name "${container_name}" --entrypoint /bin/bash)
+    local run_cmd=("${CONTAINER_ENGINE}" run --rm -it --name "${container_name}")
+    local container_cmd=("/bin/bash")
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
         section_name="$(basename -- "${build_context}")"
@@ -301,7 +302,15 @@ build_command() {
         run_cmd+=("${EXTRA_ARGS[@]}")
     fi
 
-    run_cmd+=("${image_tag}")
+    if [[ "${is_dev_image}" -eq 1 ]]; then
+        container_cmd=(
+            "/bin/bash"
+            "-lc"
+            "if id snake >/dev/null 2>&1; then chmod 0777 /build 2>/dev/null || true; find /build -mindepth 1 -maxdepth 1 -exec chmod -R a+rwX {} + 2>/dev/null || true; exec sudo -E -H -u snake /bin/bash; else exec /bin/bash; fi"
+        )
+    fi
+
+    run_cmd+=("${image_tag}" "${container_cmd[@]}")
 
     log "Opening interactive Bash shell..."
     printf '%s    %s%s\n' "${DIM}" "${run_cmd[*]}" "${RESET}"

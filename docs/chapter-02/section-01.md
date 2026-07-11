@@ -164,9 +164,13 @@ uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_NAMESPACE}/$
 
 Before installing packages from a proprietary Python repository, create a user-level configuration file so your package manager consults the dedicated extra package index alongside the default public index.
 
-=== "uv"
+#### `uv`
 
-    Create a user-level `uv.toml` file at `~/.config/uv/uv.toml` on Linux and macOS, or at `%APPDATA%\uv\uv.toml` on Windows.
+Create a user-level `uv.toml` file for your operating system.
+
+=== "Linux"
+
+    Store the file at `~/.config/uv/uv.toml`.
 
     ```toml
     [[index]]
@@ -174,9 +178,51 @@ Before installing packages from a proprietary Python repository, create a user-l
     default = false
     ```
 
-=== "pip"
+=== "macOS"
 
-    Create a user-level `pip.conf` file at `~/.config/pip/pip.conf` on Linux, at `$HOME/Library/Application Support/pip/pip.conf` on macOS, or a `pip.ini` file at `%APPDATA%\pip\pip.ini` on Windows.
+    Store the file at `~/.config/uv/uv.toml`.
+
+    ```toml
+    [[index]]
+    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
+    default = false
+    ```
+
+=== "Windows"
+
+    Store the file at `%APPDATA%\uv\uv.toml`.
+
+    ```toml
+    [[index]]
+    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
+    default = false
+    ```
+
+#### `pip`
+
+Create a user-level `pip.conf` or `pip.ini` file for your operating system.
+
+=== "Linux"
+
+    Store the file at `~/.config/pip/pip.conf`.
+
+    ```ini
+    [global]
+    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
+    ```
+
+=== "macOS"
+
+    Store the file at `$HOME/Library/Application Support/pip/pip.conf`.
+
+    ```ini
+    [global]
+    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
+    ```
+
+=== "Windows"
+
+    Store the file at `%APPDATA%\pip\pip.ini`.
 
     ```ini
     [global]
@@ -189,16 +235,28 @@ After publication, users can install the package directly from the Cloudsmith Py
 
 === "uv"
 
-    Install the package with `uv`.
+    Install the package with `uv` after you configured the user-level package index.
 
     ```bash
     uv pip install docslug
     ```
 
+    Or install it directly from Cloudsmith without creating a configuration file first.
+
+    ```bash
+    uv pip install --index "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" docslug
+    ```
+
 === "pip"
 
-    Install the package with `pip`.
+    Install the package with `pip` after you configured the user-level package index.
 
     ```bash
     pip install docslug
+    ```
+
+    Or install it directly from Cloudsmith without creating a configuration file first.
+
+    ```bash
+    pip install --extra-index-url "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" docslug
     ```
