@@ -9,8 +9,7 @@ FROM continuumio/miniconda3
 ENV CONDA_DIR=/opt/conda \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    CLOUDSMITH_NAMESPACE=pravi-brothers \
-    CLOUDSMITH_REPOSITORY=modern-python-engineering
+    CLOUDSMITH_REPOSITORY=pravi-brothers/modern-python-engineering
 ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app

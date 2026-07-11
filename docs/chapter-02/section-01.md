@@ -155,7 +155,7 @@ Once a wheel package passes validation, upload it to the proprietary Python repo
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
 ```bash
-uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/" --token "$CLOUDSMITH_API_KEY"
+uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/" --token "$CLOUDSMITH_API_KEY"
 ```
 
 ## Consumer Workflow
@@ -231,42 +231,44 @@ Create a user-level `pip.conf` or `pip.ini` file for your operating system.
 
 ### Install The Package
 
-After publication, users can create a small project, declare `docslug` as a dependency, and let `uv` install it from the Cloudsmith PyPI repository during environment sync.
+After publication, users can create a small project, install `docslug` from the Cloudsmith PyPI repository, and run a short script against the created environment.
 
-=== "uv"
+Create a new working directory for a small consumer project.
 
-    Create a new working directory for a small consumer project.
+```bash
+mkdir docslug-consumer && cd docslug-consumer
+```
 
-    ```bash
-    mkdir docslug-consumer && cd docslug-consumer
+Add the project files.
+
+=== "pyproject.toml"
+
+    ```toml
+    [project]
+    name = "docslug-consumer"
+    version = "0.1.0"
+    requires-python = ">=3.12"
+    dependencies = [
+	"docslug",
+    ]
     ```
 
-    Add the project files.
+=== "hello.py"
 
-    === "pyproject.toml"
+    ```python
+    from docslug import slugify
 
-        ```toml
-        [project]
-        name = "docslug-consumer"
-        version = "0.1.0"
-        requires-python = ">=3.12"
-        dependencies = [
-	    "docslug",
-        ]
-        ```
-
-    === "hello.py"
-
-        ```python
-        from docslug import slugify
-
-        def main() -> None:
-	    print(slugify("Hello from Docslug"))
+    def main() -> None:
+	print(slugify("Hello from Docslug"))
 
 
-        if __name__ == "__main__":
-	    main()
-        ```
+    if __name__ == "__main__":
+	main()
+    ```
+
+Install the dependency and run the script.
+
+=== "uv"
 
     Sync the project environment with `uv` after you configured the user-level package index.
 
@@ -274,14 +276,18 @@ After publication, users can create a small project, declare `docslug` as a depe
     uv sync
     ```
 
-    Or sync directly from Cloudsmith without creating a configuration file first.
+
+=== "pip"
+
+    Create a virtual environment and install `docslug` in one command after you configured the user-level package index.
 
     ```bash
-    uv sync --index "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
+    python -m venv .venv && . .venv/bin/activate && python -m pip install docslug
     ```
 
-    Run the script with the Python interpreter from the created virtual environment.
+    
+Run the script from the same virtual environment.
 
-    ```bash
-    .venv/bin/python hello.py
-    ```
+```bash
+.venv/bin/python hello.py
+```

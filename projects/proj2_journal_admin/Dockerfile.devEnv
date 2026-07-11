@@ -4,6 +4,16 @@
 #   - installs the APT-managed `python3-systemd` binding used by simply_journal_admin
 #   - installs the Cloudsmith CLI used to publish generated package artifacts
 #   - opens an interactive shell for inspection and packaging work
+#
+# DISCLAIMER:
+#   This image intentionally mixes Python package installation levels: some
+#   tools are installed through APT, some through system-level `pip`, and some
+#   through a user-level `pip --user` install. That is a weak environment
+#   design for real projects, and it is used here only to demonstrate that the
+#   required tools can all be made available in one container for project
+#   management tasks. For production-quality development workflows, prefer a
+#   dedicated virtual environment so Python dependencies remain isolated and
+#   predictable.
 # # # # # # # # # # #
 FROM ubuntu:24.04
 
@@ -11,8 +21,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/home/snake/.local/bin:$PATH"
 ENV PYTHONPATH=/app/src
-ENV CLOUDSMITH_NAMESPACE=pravi-brothers
-ENV CLOUDSMITH_REPOSITORY=modern-python-engineering
+ENV CLOUDSMITH_REPOSITORY=pravi-brothers/modern-python-engineering
 
 WORKDIR /app
 
@@ -39,15 +48,15 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Install one developer tool into the local administrator target and keep the
+# Install some developer tools into the local "administrator" target and keep the
 # project runtime dependency managed by the system package manager.
 RUN uv pip install --system --break-system-packages cloudsmith-cli ruff \
     && chown -R snake:snake /app /home/snake
 
 USER snake
 
-# Install one developer CLI tool into an isolated user-level environment.
-RUN uv tool install karva
+# Install one developer CLI tool into the local "user" target 
+RUN python3 -m pip install karva --user --break-system-packages
 
 # Project files are expected to be bind-mounted into /app at runtime.
 ENTRYPOINT ["/bin/bash"]

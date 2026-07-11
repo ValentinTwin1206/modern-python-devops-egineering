@@ -27,8 +27,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-ENV CLOUDSMITH_NAMESPACE=pravi-brothers \
-    CLOUDSMITH_REPOSITORY=modern-python-engineering
+ENV CLOUDSMITH_REPOSITORY=pravi-brothers/modern-python-engineering
 
 RUN uv pip install --system --break-system-packages cloudsmith-cli
 

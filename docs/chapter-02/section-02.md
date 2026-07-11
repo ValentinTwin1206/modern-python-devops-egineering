@@ -346,13 +346,13 @@ Once an OS package passes validation, publish it through the distribution channe
 	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions.
 
 	```bash
-	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/ubuntu/noble" .build/simply-journal-admin_2.0.0-1_amd64.deb
+	cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/noble" .build/simply-journal-admin_2.0.0-1_amd64.deb
 	```
 	
 	> `noble` targets Ubuntu 24.04, 
 
 	```bash
-	cloudsmith push deb "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}/ubuntu/resolute" .build/simply-journal-admin_2.0.0-1_amd64.deb
+	cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/resolute" .build/simply-journal-admin_2.0.0-1_amd64.deb
 	```
 
 	> `resolute` targets Ubuntu 26.04.
@@ -360,7 +360,7 @@ Once an OS package passes validation, publish it through the distribution channe
 	Verify that Cloudsmith indexed the uploaded package.
 
 	```bash
-	cloudsmith list packages "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" -q "simply-journal-admin"
+	cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "simply-journal-admin"
 	```
 
 === "MSI"
@@ -397,7 +397,7 @@ Once an OS package passes validation, publish it through the distribution channe
 	Upload the generated MSI to the Cloudsmith Raw repository in the `pravi-brothers` workspace. The raw repository provides the stable installer URL that the Winget manifest references.
 
 	```powershell
-	cloudsmith push raw "$env:CLOUDSMITH_NAMESPACE/$env:CLOUDSMITH_REPOSITORY" .\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
+	cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
 	```
 
 	The Cloudsmith download URL becomes the `InstallerUrl` in the Winget manifest.

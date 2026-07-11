@@ -167,13 +167,13 @@ Once a Conda package passes validation, upload it to the proprietary Conda repos
 Upload the built package to the Cloudsmith Conda repository:
 
 ```bash
-cloudsmith push conda "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
 ```
 
 Verify that Cloudsmith can find the uploaded artifact:
 
 ```bash
-cloudsmith list packages "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" -q "image-processor"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "image-processor"
 ```
 
 !!! note

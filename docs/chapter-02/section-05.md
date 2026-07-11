@@ -145,11 +145,11 @@ export CLOUDSMITH_API_KEY="<your-api-key>"
 Upload the Linux or Windows binary to the target raw repository and assign a release version.
 
 ```bash
-cloudsmith push raw "${CLOUDSMITH_NAMESPACE}/${CLOUDSMITH_REPOSITORY}" ./dist/pixelpack --name pixelpack --version 1.0.0
+cloudsmith push raw "${CLOUDSMITH_REPOSITORY}" ./dist/pixelpack --name pixelpack --version 1.0.0
 ```
 
 ```powershell
-cloudsmith push raw pravi-brothers/modern-python-engineering .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
+cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
 ```
 
 After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.

@@ -187,13 +187,13 @@ export CLOUDSMITH_API_KEY="<your-api-key>"
 Upload the Debian package to the Ubuntu distribution used by the target hosts:
 
 ```bash
-cloudsmith push deb pravi-brothers/modern-python-engineering/ubuntu/noble "/build/simply-journal-admin_<debian-version>_<architecture>.deb"
+cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/noble" "/build/simply-journal-admin_<debian-version>_<architecture>.deb"
 ```
 
 Verify that Cloudsmith indexed the uploaded package:
 
 ```bash
-cloudsmith list packages pravi-brothers/modern-python-engineering -q "simply-journal-admin"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "simply-journal-admin"
 ```
 
 ### Windows MSI Build Environment
@@ -268,7 +268,7 @@ The MSI binary is published to a stable HTTPS URL in a Cloudsmith Raw repository
 Upload the MSI to a version-specific location in the Cloudsmith Raw repository:
 
 ```powershell
-cloudsmith push raw pravi-brothers/modern-python-engineering .\.build\simply-journal-admin-<version>.msi --version <version>
+cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\.build\simply-journal-admin-<version>.msi --version <version>
 ```
 
 Calculate the installer hash used by the Winget manifest:
