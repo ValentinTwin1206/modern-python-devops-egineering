@@ -1,6 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses continuumio/miniconda3 directly
 #   - creates the image-processor env from environment.yml
+#   - installs conda-build in the base environment for packaging work
 #   - installs the Cloudsmith CLI used to publish Conda package artifacts
 #   - opens an interactive shell with the conda env activated and dev tools ready
 # # # # # # # # # # #
@@ -32,6 +33,11 @@ RUN pip install --no-cache-dir cloudsmith-cli
 # Accept Anaconda channel terms so the image can build non-interactively.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Install packaging tools in the base environment so they are immediately
+# available when the container starts.
+RUN conda install -n base -c conda-forge -y conda-build \
+    && conda clean --all --yes
 
 # Copy the conda environment definition first to maximize Docker layer caching.
 COPY environment.yml ./

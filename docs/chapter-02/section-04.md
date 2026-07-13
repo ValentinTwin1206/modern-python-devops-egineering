@@ -133,7 +133,7 @@ The distinct package artifacts are:
 
 ## Packaging Workflow
 
-### Install Packaging Tools
+### Create The Package
 
 From the `projects/` directory, open the dedicated Conda packaging container and forward the API key into the container session.
 
@@ -141,15 +141,7 @@ From the `projects/` directory, open the dedicated Conda packaging container and
 ../build.sh build --path proj4_image_processor/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 ```
 
-The project development image includes the Cloudsmith CLI for publishing package artifacts. Install the required Conda packaging tools into the base environment:
-
-```bash
-conda install -n base -c conda-forge conda-build
-```
-
-### Create The Package
-
-Build the project from the repository root with the `recipe/` directory and the `conda-forge` channel enabled:
+Inside the running container, build the project from the repository root with the `recipe/` directory and the `conda-forge` channel enabled:
 
 ```bash
 conda build recipe/ --channel conda-forge
@@ -158,8 +150,6 @@ conda build recipe/ --channel conda-forge
 > The output artifact will be written to your local Conda build cache, usually under a platform directory such as `noarch`, `linux-64`, or `win-64`.
 
 ### Publish The Package
-
-Once a Conda package passes validation, upload it to the proprietary Conda repository hosted on Cloudsmith. A private Cloudsmith channel is useful when a package should stay inside an organization but still install through normal Conda workflows.
 
 !!! info
     This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already forwarded `CLOUDSMITH_API_KEY` into the running container.

@@ -147,10 +147,11 @@ uv pip install dist/docslug-1.0.0-py3-none-any.whl
 
 ### Publish The Package
 
-Once a wheel package passes validation, upload it to the proprietary Python repository hosted on Cloudsmith.
-
 !!! info
     This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
+    
+Once a wheel package passes validation, upload it to the proprietary Python repository hosted on Cloudsmith.
+
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
@@ -276,15 +277,13 @@ Install the dependency and run the script.
     uv sync
     ```
 
-
 === "pip"
 
     Create a virtual environment and install `docslug` in one command after you configured the user-level package index.
 
     ```bash
-    python -m venv .venv && . .venv/bin/activate && python -m pip install docslug
+    python -m venv .venv && . .venv/bin/activate && pip install -e .
     ```
-
     
 Run the script from the same virtual environment.
 
