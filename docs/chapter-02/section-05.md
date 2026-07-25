@@ -112,24 +112,37 @@ Build the executable.
 
 The resulting executable is written to the build output directory.
 
-### Validate the Binary
+### Inspect The Package
 
-After building the executable, verify that:
+A Linux standalone executable is an ELF binary, while a Windows executable (`.exe`) uses the PE/COFF format. These files are not archives like wheels, Debian packages, or Conda packages; inspection focuses on the executable header, linked shared libraries, embedded runtime behavior, and file identity.
 
-* the application starts successfully
-* command-line arguments work as expected
-* all required resources are included
-* the executable runs on a clean target system
-
-For example:
+Identify the executable file format and target architecture.
 
 ```bash
-./pixelpack --help
+file dist/pixelpack
+```
+
+Inspect the ELF header, including the binary class, machine architecture, entry point, and program-header layout.
+
+```bash
+readelf -h dist/pixelpack
+```
+
+List the shared libraries the executable expects from the target system.
+
+```bash
+ldd dist/pixelpack
+```
+
+Generate a checksum that can be published with the binary so consumers can verify the downloaded artifact.
+
+```bash
+sha256sum dist/pixelpack
 ```
 
 ### Publish the Binary
 
-Once a binary build passes validation, upload it to the proprietary raw repository hosted on Cloudsmith.
+Once you have inspected the binary build, upload it to the proprietary raw repository hosted on Cloudsmith.
 
 !!! info
     This workflow assumes that a Cloudsmith Raw repository already exists and that you already have a Cloudsmith API key available for the container session.

@@ -1,18 +1,25 @@
-# Modern Python Workflows with uv
+# Depsight — A Real-World Python Project
 
 ## Introduction
 
-This chapter introduces one of the hottest takeaways in modern Python development: `uv`, a lightweight, high-performance python project manager developed by Astral.
-
-Section 01 starts with the setup of `uv` and then shows how it can be used throughout the whole development lifecycle. The next section goes deeper into dependency management, including lock files, virtual environments, and dependency resolution. After that, the chapter explains `uv`'s caching concept in more detail and why it matters for faster, more reproducible workflows. It concludes with a comparison of `uv` and other tools in the Python ecosystem.
+Chapter 04 walks through a complete, production-style Python project: the
+[**Depsight - Dependency Manager**](https://github.com/ValentinTwin1206/depsight-dependency-manager) project. It brings together the
+environment, packaging, and tooling concepts from the earlier chapters by
+starting with the project overview, then moving through the development
+environment, CLI architecture, distribution, and CI/CD. Each section adds a
+practical layer to the same application, so the chapter shows how a modern
+Python project grows from local development into a modular CLI that can be
+packaged, published, containerized, and maintained through automated
+delivery workflows.
 
 ## Overview
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary |
-|---------|---------|
-| [Extra-Curriculum](./extra.md) | Per-Layer analysis |
-| [Section 01](./section-01.md) | Modern Python Project Mangement with uv|
-| [Section 02](./section-02.md) | Dependency Management with uv |
-| [Section 03](./section-03.md) | Dependency Caching with uv |
+| Section | Summary | Project |
+|---------|---------|---------|
+| [Section 01](./section-01.md) | Project Overview | Depsight |
+| [Section 02](./section-02.md) | Development Environment | Depsight |
+| [Section 03](./section-03.md) | CLI Architecture | Depsight |
+| [Section 04](./section-04.md) | Distribution | Depsight |
+| [Section 05](./section-05.md) | CI/CD | Depsight |

@@ -1,6 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses ubuntu:24.04 and its APT-managed Python 3.12
 #   - installs the Debian build toolchain used for the local .deb workflow
+#   - includes AR and dpkg inspection tools used to inspect generated .deb artifacts
 #   - installs the APT-managed `python3-systemd` binding used by simply_journal_admin
 #   - installs the Cloudsmith CLI used to publish generated package artifacts
 #   - opens an interactive shell for inspection and packaging work
@@ -31,6 +32,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        binutils \
         ca-certificates \
         curl \
         debhelper \

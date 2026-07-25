@@ -87,6 +87,34 @@ List local container images to confirm that the build produced the tagged image:
 docker image ls
 ```
 
+### Inspect The Package
+
+An OCI container image is a structured image manifest, configuration document, and set of filesystem layers. When exported with `docker save`, that image becomes a TAR archive containing the manifest JSON, image configuration JSON, and compressed or uncompressed layer TAR files.
+
+Inspect the image metadata that Docker stores for the local tag.
+
+```bash
+docker image inspect tiny-webserver:1.0.0
+```
+
+Show the image layer history and the Dockerfile instructions that produced each layer.
+
+```bash
+docker history tiny-webserver:1.0.0
+```
+
+Export the local image to a TAR archive for offline inspection.
+
+```bash
+docker save tiny-webserver:1.0.0 --output tiny-webserver-1.0.0.tar
+```
+
+List the files stored inside the exported image TAR archive.
+
+```bash
+tar -tf tiny-webserver-1.0.0.tar
+```
+
 ### Publish the Container
 
 To publish the image, you first authenticate with a container registry such as [Docker Hub](https://hub.docker.com):

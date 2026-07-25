@@ -149,6 +149,34 @@ conda build recipe/ --channel conda-forge
 
 > The output artifact will be written to your local Conda build cache, usually under a platform directory such as `noarch`, `linux-64`, or `win-64`.
 
+### Inspect The Package
+
+A modern Conda package (`.conda`) is a ZIP container that holds two compressed TAR components: an `info` component for package metadata and a `pkg` component for the installable payload. Older Conda packages use a single `.tar.bz2` TAR archive, but the inspection workflow is the same when using `conda-package-handling`.
+
+List all paths stored inside the Conda package.
+
+```bash
+cph list "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+```
+
+List only the metadata component that Conda uses for dependency solving and package records.
+
+```bash
+cph list --components info "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+```
+
+Extract only the package metadata into a temporary inspection directory.
+
+```bash
+cph extract --info --dest /tmp/image-processor-info "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+```
+
+Read the package index metadata produced by the Conda build.
+
+```bash
+cat /tmp/image-processor-info/info/index.json
+```
+
 ### Publish The Package
 
 !!! info

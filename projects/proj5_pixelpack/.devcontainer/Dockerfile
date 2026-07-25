@@ -1,6 +1,7 @@
 # DEVELOPMENT IMAGE:
 #   - uses the Ubuntu 24.04 Dev Containers base image
 #   - installs CPython, PyPy, uv, and Nuitka tooling
+#   - includes ELF inspection tools used to inspect compiled binary artifacts
 #   - runs editor terminals and lifecycle commands as vscode
 # # # # # # # # # # #
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
@@ -19,11 +20,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        binutils \
         ca-certificates \
+        coreutils \
         curl \
         debhelper \
         dpkg-dev \
+        file \
         git \
+        libc-bin \
         libjpeg-dev \
         libpng-dev \
         patchelf \

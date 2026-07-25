@@ -123,35 +123,62 @@ From the `projects/` directory, open the dedicated packaging container and forwa
 
 ### Create The Package
 
-Run following command to build the wheel (`.whl`) package:
+Modern Python builds split responsibilities between a **build frontend** and a **build backend**. The frontend is the command-line tool you run, while the backend is the project-specific implementation that produces the wheel (`.whl`) and source distribution (`.tar.gz`). PEP 517 defines the interface between both sides, and PEP 518 defines the `[build-system]` table in `pyproject.toml` where the backend and its requirements are declared.
 
-```bash
-uv build
+In this project, the build backend is `uv_build`. It is declared in `pyproject.toml`, which tells the build frontend which backend to load and which packages must be installed before the build starts. Popular build backends include `uv_build`, `hatchling`, `setuptools.build_meta`, `poetry.core.masonry.api`, etc.
+
+```toml
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
 ```
 
-> In addition to the `*.whl` file, the build also creates a `*.tar.gz` source distribution.
+In this project, the build frontend is `uv build`. It creates the isolated build environment, installs the backend requirements, and invokes `uv_build` to create the final artifacts. The command accepts a source directory, so the `pyproject.toml` file is discovered from that project path. Popular build frontends include `uv build`, `python -m build`, `pip wheel`, `pip install`, `hatch build`, `poetry build`, etc.
 
-### Validate The Package
+```bash
+uv build <path-to-project-root>
+```
 
-To validate the generated artifacts, first list the build output and confirm that the wheel and source distribution exist:
+List the generated distribution files in the `dist/` directory.
 
 ```bash
 ls dist/
 ```
 
-Then run a local smoke test by installing the wheel into the project environment with `uv`:
+### Inspect The Package
+
+A wheel (`.whl`) is a **ZIP archive** with Python modules and a `*.dist-info/` metadata directory. The source distribution created next to it is a gzip-compressed TAR archive (`.tar.gz`) that stores the source tree used to rebuild the package.
+
+List the files inside the wheel archive without extracting it.
 
 ```bash
-uv pip install dist/docslug-1.0.0-py3-none-any.whl
+zipinfo -1 dist/docslug-1.0.0-py3-none-any.whl
+```
+
+Read the wheel metadata that describes the wheel format version, generator, root layout, and compatibility tags.
+
+```bash
+unzip -p dist/docslug-1.0.0-py3-none-any.whl docslug-1.0.0.dist-info/WHEEL
+```
+
+Read the package metadata that installers and package indexes use for the project name, version, description, and dependency declarations.
+
+```bash
+unzip -p dist/docslug-1.0.0-py3-none-any.whl docslug-1.0.0.dist-info/METADATA
+```
+
+List the files inside the source distribution TAR archive.
+
+```bash
+tar -tzf dist/docslug-1.0.0.tar.gz
 ```
 
 ### Publish The Package
 
 !!! info
     This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
-    
-Once a wheel package passes validation, upload it to the proprietary Python repository hosted on Cloudsmith.
 
+Once you have inspected the wheel package, upload it to the proprietary Python repository hosted on Cloudsmith.
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
@@ -159,80 +186,17 @@ Publish the package to the Cloudsmith PyPI repository with `uv`.
 uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/" --token "$CLOUDSMITH_API_KEY"
 ```
 
+Check that the uploaded release is visible through the Cloudsmith `/simple/` API used by installers.
+
+```bash
+curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/docslug/" | grep "docslug-1.0.0"
+```
+
 ## Consumer Workflow
-
-### Configure Package Manager
-
-Before installing packages from a proprietary Python repository, create a user-level configuration file so your package manager consults the dedicated extra package index alongside the default public index.
-
-#### `uv`
-
-Create a user-level `uv.toml` file for your operating system.
-
-=== "Linux"
-
-    Store the file at `~/.config/uv/uv.toml`.
-
-    ```toml
-    [[index]]
-    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
-    default = false
-    ```
-
-=== "macOS"
-
-    Store the file at `~/.config/uv/uv.toml`.
-
-    ```toml
-    [[index]]
-    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
-    default = false
-    ```
-
-=== "Windows"
-
-    Store the file at `%APPDATA%\uv\uv.toml`.
-
-    ```toml
-    [[index]]
-    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
-    default = false
-    ```
-
-#### `pip`
-
-Create a user-level `pip.conf` or `pip.ini` file for your operating system.
-
-=== "Linux"
-
-    Store the file at `~/.config/pip/pip.conf`.
-
-    ```ini
-    [global]
-    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
-    ```
-
-=== "macOS"
-
-    Store the file at `$HOME/Library/Application Support/pip/pip.conf`.
-
-    ```ini
-    [global]
-    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
-    ```
-
-=== "Windows"
-
-    Store the file at `%APPDATA%\pip\pip.ini`.
-
-    ```ini
-    [global]
-    extra-index-url = https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
-    ```
 
 ### Install The Package
 
-After publication, users can create a small project, install `docslug` from the Cloudsmith PyPI repository, and run a short script against the created environment.
+After publication, users can create a small project, install `docslug` from the Cloudsmith PyPI repository, and run a short script against the created environment. `uv` can read package indexes directly from `pyproject.toml`, so the project can describe both the public PyPI index and the proprietary Cloudsmith index in one place. `pip` does not read package indexes from `pyproject.toml`, so its install command still needs an explicit `--extra-index-url` argument.
 
 Create a new working directory for a small consumer project.
 
@@ -252,6 +216,16 @@ Add the project files.
     dependencies = [
 	"docslug",
     ]
+
+    [tool.uv]
+
+    [[tool.uv.index]]
+    name = "pypi"
+    url = "https://pypi.org/simple"
+
+    [[tool.uv.index]]
+    name = "modern-python-engineering"
+    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
     ```
 
 === "hello.py"
@@ -271,7 +245,7 @@ Install the dependency and run the script.
 
 === "uv"
 
-    Sync the project environment with `uv` after you configured the user-level package index.
+    Sync the project environment with `uv`. It reads the package indexes from `pyproject.toml` and resolves `docslug` from the configured Cloudsmith repository.
 
     ```bash
     uv sync
@@ -279,10 +253,10 @@ Install the dependency and run the script.
 
 === "pip"
 
-    Create a virtual environment and install `docslug` in one command after you configured the user-level package index.
+    Create a virtual environment and install `docslug` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
 
     ```bash
-    python -m venv .venv && . .venv/bin/activate && pip install -e .
+    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/ docslug
     ```
     
 Run the script from the same virtual environment.
@@ -290,3 +264,8 @@ Run the script from the same virtual environment.
 ```bash
 .venv/bin/python hello.py
 ```
+
+## Useful Links
+
+- [PEP 517 - A build-system independent format for source trees](https://peps.python.org/pep-0517/)
+- [PEP 518 - Specifying Minimum Build System Requirements for Python Projects](https://peps.python.org/pep-0518/)

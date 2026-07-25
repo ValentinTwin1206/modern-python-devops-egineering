@@ -289,29 +289,55 @@ Examples:
 
 The resulting package is written to the `.build` output directory on the host.
 
-### Validate the OS Package
+### Inspect The Package
 
-After building the package, run a smoke test to confirm that the installer completes, the CLI starts, and the package can be removed cleanly.
+=== "Debian package"
 
-=== "Debian"
+	A Debian package (`.deb`) is an AR archive that contains `debian-binary`, a compressed `control.tar.*` metadata archive, and a compressed `data.tar.*` payload archive.
+
+	List the AR members inside the Debian package.
 
 	```bash
-	sudo apt install ./simply-journal-admin_<version>_all.deb
-	simply-journal-admin --since-minutes 60
-	sudo apt remove simply-journal-admin
+	ar t /build/simply-journal-admin_2.0.0-1_amd64.deb
 	```
 
-=== "MSI"
+	Inspect the Debian control metadata, including package name, version, architecture, dependencies, and description.
+
+	```bash
+	dpkg -I /build/simply-journal-admin_2.0.0-1_amd64.deb
+	```
+
+	List the filesystem payload that the Debian package installs.
+
+	```bash
+	dpkg -c /build/simply-journal-admin_2.0.0-1_amd64.deb
+	```
+
+=== "MSI package"
+
+	An MSI package (`.msi`) is a Windows Installer database stored in the OLE Compound File Binary Format; it records installer tables, embedded cabinets, features, components, and installation actions.
+
+	Use WiX `dark.exe` to decompile the MSI database and embedded cabinets into an inspection directory.
 
 	```powershell
-	msiexec /i "$PWD\simply-journal-admin-<version>.msi" /L*V! "$PWD\install.log"
-	simply-journal-admin --since-minutes 60
-	msiexec /x "$PWD\simply-journal-admin-<version>.msi"
+	dark.exe -x C:\build\msi-inspect -out C:\build\msi-inspect\Product.wxs C:\build\simply-journal-admin-2.0.0.msi
+	```
+
+	List the files extracted from the MSI payload.
+
+	```powershell
+	Get-ChildItem -Recurse C:\build\msi-inspect\File
+	```
+
+	Read the decompiled WiX source that represents the MSI tables and component metadata.
+
+	```powershell
+	Get-Content C:\build\msi-inspect\Product.wxs
 	```
 
 ### Publish the OS Package
 
-Once an OS package passes validation, publish it through the distribution channel that end users consume.
+Once you have inspected the OS package, publish it through the distribution channel that end users consume.
 
 === "Debian"
 
@@ -440,11 +466,30 @@ Once an OS package passes validation, publish it through the distribution channe
 
 ### Configure Package Manager
 
-Configure the target package manager before installation so it can resolve packages from the proprietary distribution channel.
-
 === "Debian (.deb)"
 
-	From the end-user perspective, configure the Cloudsmith APT repository from the `pravi-brothers` workspace first. Cloudsmith hosts both the Debian packages and the repository metadata that APT needs for resolution and installation.
+	Before installing a package from a private Debian repository, configure APT on the target machine. APT needs a trusted signing key, a source file that points to the repository, and a refreshed local package index before it can resolve and install and Debian package.
+
+	Debian repositories follow a dedicated directory structure so `apt` can download the correct metadata and package files for the current system. A remote repository is usually split into `/dists`, which stores release metadata and package indexes, and `/pool`, which stores the actual `.deb` package files.
+	
+	```text
+	deb/ubuntu/
+	├── dists/
+	│   └── noble/
+	│       ├── InRelease
+	│       ├── Release
+	│       ├── Release.gpg
+	│       └── main/
+	│           └── binary-amd64/
+	│               └── Packages.gz
+	└── pool/
+		└── main/
+			└── s/
+				└── simply-journal-admin/
+					└── simply-journal-admin_2.0.0-1_amd64.deb
+	```
+
+	Import the Cloudsmith signing key from the `pravi-brothers` workspace first. APT uses this key to verify repository metadata before trusting packages from the repository.
 
 	```bash
 	curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/gpg.key" | sudo gpg --dearmor -o /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg
@@ -456,17 +501,51 @@ Configure the target package manager before installation so it can resolve packa
 	printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg\n' | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
 	```
 
-	The dedicated source file contains the repository metadata in stanza form.
+	The dedicated source file `cloudsmith.sources` contains the repository metadata in stanza form.
 
 	```text
 	Types: deb
-	URIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu
+	URIs: https://dl.cloudsmith.io/public/pravi-brothers/...
 	Suites: noble
 	Components: main
 	Signed-By: /usr/share/keyrings/pravi-brothers-modern-python-engineering.gpg
 	```
 
-	> A Debian repository is organized by `Suites` and `Components`
+	APT reads the values from `cloudsmith.sources` and combines entries such as `Suite` and `Component` with the local system architecture to choose the correct repository paths.
+
+	- `Types`: Tells APT which repository format to read. `deb` means this source provides binary packages for installation.
+	- `URIs`: Declares the repository base URL that APT uses before resolving release-specific metadata and package indexes.
+	- `Suites`: Selects the release subtree inside the repository. Here, `noble` points APT to the Ubuntu 24.04 distribution metadata.
+	- `Components`: Selects the repository component within the chosen suite. Here, `main` tells APT which package index to read inside the `noble` release.
+	- `Signed-By`: Restricts signature verification to the imported Cloudsmith keyring for this repository.
+
+	Refresh the local APT metadata. With the source file in place, `apt update` downloads the release metadata, verifies it with the configured Cloudsmith key, and then downloads the package index for this host, such as `dists/noble/main/binary-amd64/Packages`.
+
+	```bash
+	sudo apt update
+	```
+
+	Afterward, inspect the downloaded package index in APT's local metadata cache.
+
+	```bash
+	batcat /var/lib/apt/lists/*modern-python-engineering*_Packages
+	```
+
+	The expected output should include the important fields below:
+
+	```text
+	Package: simply-journal-admin
+	Version: 2.0.0-1
+	Architecture: amd64
+	Depends: libbz2-1.0, ..., python3-systemd
+	Description: cross-platform admin CLI for reading systemd journal entries
+	 simply-journal-admin is a command-line tool that reads recent systemd journal
+	 ...
+	Filename: pool/noble/main/s/si/simply-journal-admin_2.0.0-1/simply-journal-admin_2.0.0-1_amd64.deb
+	SHA256: <sha256>
+	```
+
+	The `Filename` field gives APT the package path inside `/pool`. Combined with the repository base URL, this is enough for APT to build the full download URL when someone installs a specific version, such as `simply-journal-admin=2.0.0-1`.
 
 === "MSI (.msi)"
 
@@ -478,16 +557,22 @@ Users typically install the package through the native package-management workfl
 
 === "Linux (.deb)"
 
-	Refresh APT metadata on the target machine. This command reads `cloudsmith.sources`, verifies the repository metadata with the Cloudsmith signing key `pravi-brothers-modern-python-engineering.gpg`, downloads the current package indexes from Cloudsmith, and updates the local APT cache.
-
-	```bash
-	sudo apt update
-	```
-
-	Install the published package through APT. This command resolves `simply-journal-admin` from the refreshed package index, downloads the `.deb` artifact and required dependencies, unpacks the package, and registers the installed command on the system.
+	Install the published package through APT. This command reads the repository metadata cached during `apt update`, resolves `simply-journal-admin` from that package index, downloads the required `.deb` archives and dependencies, and then invokes `dpkg` to unpack the package and register the installed command on the system.
 
 	```bash
 	sudo apt install simply-journal-admin
+	```
+
+	Run `simply-journal-admin` next to confirm that the launcher works and that the package can read recent journal entries on the host.
+
+	```bash
+	simply-journal-admin --since-minutes 60
+	```
+
+	Inspect the registration stage last by asking `dpkg` for the files it recorded for `simply-journal-admin` in its local package database.
+
+	```bash
+	dpkg -L simply-journal-admin
 	```
 
 === "Windows (.msi)"

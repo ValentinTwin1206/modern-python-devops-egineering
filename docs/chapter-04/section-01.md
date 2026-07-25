@@ -1,266 +1,191 @@
-# Modern Python project management with uv
+# Project Overview
 
-## Introduction
+## Overview
 
-`uv` is a single self-contained binary written in **Rust**, developed by Astral — the same team behind the `ruff` linter. It was designed to unify Python packaging, dependency management, virtual environments, and tool execution under a single command-line interface. Instead of combining multiple tools such as `pip`, `venv`, `pip-tools`, and `pipx`, developers can use `uv` for the entire workflow.
+Python project setup used to be spread across files such as `setup.py`, `setup.cfg`, `requirements.txt`, and tool-specific configuration. `pyproject.toml` changed that by standardizing how projects define metadata, build backends, dependencies, and tool settings in one place. 
 
-Because it compiles down to native machine code, it carries no Python runtime dependency of its own and starts in milliseconds. Its rapid adoption is driven by exceptional performance and a streamlined developer experience. Written in Rust, uv executes common packaging operations dramatically faster than traditional Python tooling while remaining fully compatible with the Python packaging ecosystem.
-
-=== "macOS and Linux"
-
-    Download the standalone installer and execute the shell script
-
-    ```bash
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    ```
-
-    It ships as two statically-linked binaries — **`uv`** (main CLI) and **`uvx`** (ephemeral tool runner, equivalent to `pipx run`) — with a total on-disk footprint of ~36 MB. There are no shared libraries, no interpreter bundles, and no background daemons. The global package cache (`~/.cache/uv`) is shared across all projects to avoid redundant downloads (see more about caching in [Section-03](./section-02.md)).
-
-    ```
-    /usr/local/bin/
-    ├── uv       36 MB   ← main CLI binary (statically linked Rust)
-    └── uvx     343 KB   ← tool runner (thin wrapper)
-    ```
-
-=== "Windows"
-
-    Download the standalone installer and execute the powershell script
-
-    ```powershell
-    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    ```
+The *Depsight* project is built around this modern standard: project configuration lives in `pyproject.toml`, while `uv` manages environment creation, dependency synchronization, and publishing workflows.
 
 ---
 
-Alternatively, `uv` can also be installed from PyPi using `pip`.
+## Project Configuration
 
-```shell
-pip install uv
-```
-
-This might be more convenient for many developers, however, when installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
-
-## Managing a Python Project
-
-The following commands cover usual tasks during the lifecycle of a Python project.
-
-### Initialize a Project
-
-Create a new project with a default `pyproject.toml`.
-
-```shell
-cd ~ && uv init my-project
-cd my-project
-```
-
-This creates the project structure and initializes Python package metadata.
-
-
-```shell
-/project-folder
-└── app
-    ├── README.md
-    ├── main.py
-    └── pyproject.toml
-```
-
-The command also sets up an initial cache structure under `/home/user/.cache/uv`. 
-
-### Add Dependencies
-
-`uv` simplifies the integration of dependencies to your project.
-
-```shell
-uv add click==1.0.0
-```
-
-After the first dependency is added, the project structure looks similar to:
-
-```shell
-/project-folder
-└── app
-    ├── .venv
-    ├── README.md
-    ├── main.py
-    ├── pyproject.toml
-    └── uv.lock
-```
-
-In a single step, the command resolves dependencies, creates a virtual environment if necessary, installs the packages, adds an entry of the dependency in the `pyproject.toml`, and generates/refreshes the `uv.lock` file (details about `uv.lock` are covered in [uv.lock](./section-02.md/#uvlock)).
-
-
-Dependencies can be added to specific groups, such as development dependencies or to a custom group
-
-```shell
-uv add --dev pytest && uv add --group docs mkdocs
-```
-
-This adds the dependency to the corresponding section in the `pyproject.toml`:
-
-```toml
-[dependency-groups]
-dev = [
-    "pytest>=7.0.0",
-]
-
-docs = [
-    "mkdocs>=1.6.0",
-]
-```
-
-Dependencies can also be installed directly from Git repositories:
-
-```shell
-uv add "httpx @ git+https://github.com/encode/httpx"
-```
-
-The dependency is added to project.dependencies, while the source information is stored separately:
+The project is configured through a single `pyproject.toml` file:
 
 ```toml
 [project]
+name = "depsight"
+version = "1.3.0"
+description = "A modular dependency analysis framework"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [
+    { name = "Depsight Contributors" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+]
 dependencies = [
-    "httpx",
+    "click>=8.1.7",
+    "rich>=13.7.0",
+    "rich-click>=1.7.0",
+    "textual>=1.0.0",
 ]
 
-[tool.uv.sources]
-httpx = { git = "https://github.com/encode/httpx" }
-```
-
-This allows `uv` to install packages directly from version control systems instead of package registries.
-
-### Remove Dependencies
-
-Remove a dependency from the project.
-
-```shell
-uv remove requests
-```
-
-This command removes the package from the `pyproject.toml` and updates `uv.lock` to reflect the change. It does not modify the virtual environment — run `uv sync` afterward to clean up the `.venv`.
-
-### Synchronize the Environment
-
-When setting up a project the first time or after pulling dependencies, the `uv sync` command can be used to synchronize the project's virtual environment.
-
-```shell
-uv sync
-```
-
-This command installs all locked dependencies and ensures that the local environment exactly matches the state described in `uv.lock`. If a virtual environment does not exist, `uv` creates it automatically. It ensures full reproducibility of the project environment and generates the exact same project structure as above.
-
-```shell
-/project-folder
-└── app
-    ├── .venv
-    ├── README.md
-    ├── main.py
-    ├── pyproject.toml
-    └── uv.lock
-```
-
-
-### Update the Lock File
-
-Generate or refresh the project's lock file.
-
-```shell
-uv lock
-```
-
-The command resolves all dependencies defined in `pyproject.toml` and writes the result to `uv.lock` without installing packages into the virtual environment.
-
-During resolution, `uv` may download metadata/wheels into `~/.cache/uv` and create temporary lock files, but it does not install packages into `.venv` or `site-packages`.
-
-This is useful when dependencies have changed and you want to refresh the lock file separately from installation.
-
-### Change the Python version
-
-`uv` can manage Python interpreters directly and integrates it smoothly with the current project context. At first the needed Python version is going to be installed
-
-```bash
-uv python install 3.10
-```
-
-This downloads a standalone CPython 3.10 build into uv's shared install directory `~/.local/share/uv/python` without replacing the system Python. Afterwards the Python interpreter can be pinned to the project context
-
-```bash
-uv python pin 3.10
-```
-
-This writes the selected version to a `.python-version` file in the project root. From this point on, every `uv` command run inside the project (`uv sync`, `uv run`, `uv add`, …) will use Python 3.10. The next `uv sync` recreates `.venv` against the pinned interpreter.
-
-
-### Run commands
-
-`uv` can execute Python scripts and tools directly, without manually activating a virtual environment.
-
-```shell
-uv run main.py
-```
-
-Before running the command, `uv` ensures the project is ready: it creates the `.venv` if it does not exist, installs or updates dependencies to match `uv.lock`, and uses the pinned Python interpreter. The script is then executed inside that environment.
-
-
-!!! note "Command invocation"
-    The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
-
-### Build distributions
-
-The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
-
-```shell
-uv build
-```
-
-```
-dist/
-├── my_project-0.1.0.tar.gz              ← source distribution
-└── my_project-0.1.0-py3-none-any.whl   ← wheel
-```
-
-### Publish packages
-
-The `uv publish` command uploads the distribution files from `dist/` to PyPI using the `--token` for authentication and the `--publish-url` to override the target registry:
-
-```shell
-uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
-```
-
-## Build and Publishing Packages
-
-## Handling multiple projects with uv
-
-### Introduction into uv workspaces
-
-When multiple related projects must be developed and tested together, a consistent shared environment becomes essential. For scenarios like this, `uv` provides the concept of **[workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/)**. A workspace allows multiple related Python projects to coexist within a single repository while remaining independent packages. All workspace members share a common `uv.lock` file, ensuring a consistent dependency set across the entire workspace. At the same time, each member maintains its own `pyproject.toml`, allowing project-specific configuration and metadata.
-
-### Structure and Members
-
-A workspace consists of a root project that defines the workspace itself and one or more workspace members. In the following example, the plugin is the workspace root and the `depsight-dependency-manager` framework lives as a workspace member beneath it:
-
-```text
-depsight-third-party-plugin/
-├── pyproject.toml
-├── uv.lock
-├── src/
-│   └── depsight_third_party_plugin
-│
-└── depsight-dependency-manager/
-    ├── pyproject.toml
-    └── src/
-        └── depsight_dependency_manager
-```
-
-The workspace root (`depsight-third-party-plugin`) owns the shared `uv.lock` and a `pyproject.toml` that both declares the framework as a workspace member and pins it as a local source, so `uv` resolves it from the workspace instead of PyPI.
-
-```toml
-[tool.uv.workspace]
-members = [
-    "depsight-dependency-manager",
+[dependency-groups]
+dev = [
+    "build>=1.4.2",  # actually not needed since we use uv_build, but its listed for traiting purposes
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "ruff>=0.4",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocs-mermaid2-plugin>=1.1",
 ]
 
-[tool.uv.sources]
-depsight-dependency-manager = { workspace = true }
+[project.scripts]
+depsight = "depsight.cli:main"
+
+[project.urls]
+Homepage = "https://valentintwin1206.github.io/depsight-dependency-manager/"
+Repository = "https://github.com/ValentinTwin1206/depsight-dependency-manager"
+Issues = "https://github.com/ValentinTwin1206/depsight-dependency-manager/issues"
+
+# Plugin support
+[project.entry-points."depsight.plugins"]
+uv = "depsight.core.plugins.uv.uv:UVPlugin"
+vsce = "depsight.core.plugins.vsce.vsce:VSCEPlugin"
+
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 ```
 
-To invoke dedicated workspace members such as the `depsight-dependency-manager` framework you can simply use the `uv run --package depsight-dependency-manager` command. 
+- `project`: Declares the package metadata, supported Python version, and runtime dependencies. This is the core identity and installation contract of the project.
+- `dependency-groups`: Defines optional dependency sets for development and documentation work. These groups let `uv` install task-specific tooling without mixing it into runtime requirements.
+- `project.scripts`: Registers the `depsight` CLI entry point. Installing the project exposes a runnable command that calls `depsight.cli:main`.
+- `project.urls`: Publishes the main project links. These URLs point users and package tooling to the homepage, source repository, and issue tracker.
+- `project.entry-points."depsight.plugins"`: Registers built-in plugins through Python entry points. This allows the application to discover and load plugin implementations by name.
+- `build-system`: Defines the PEP 517 build configuration. Tools such as `uv build` act as the frontend, while `uv_build` is the backend that assembles the package artifacts and is declared in this table.
+- `tool.pytest.ini_options`: Stores pytest configuration inside the shared project file. It tells pytest where tests live and ensures `src` is available on the import path during test runs.
+
+---
+
+## Dependency Management
+
+### Synchronizing Dependencies
+
+The `uv sync` command installs all **direct dependencies** declared in `pyproject.toml` at once, along with their full **transitive dependency graph**. On a clean checkout, uv generates a `uv.lock` lockfile if one does not yet exist and provisions a virtual environment at `.venv/`. Any packages that have been downloaded before are served from uv's global cache rather than fetched from the network again, which makes repeated installs significantly faster. On subsequent runs, it detects any drift between `pyproject.toml` and the lockfile and reconciles them. The virtual environment is always kept in sync automatically, so developers can immediately work with the correct set of packages without any manual intervention.
+
+The `uv sync` command provides a set of flags that must be chosen carefully according to the target environment and use case. They significantly change its behaviour — from a permissive local install that re-resolves freely, to a strict CI check that fails on any lockfile drift, to a fully frozen production deployment that never touches `pyproject.toml` at all:
+
+=== "Local Development"
+
+    ```bash
+    # Install all dependencies and the project itself in editable mode
+    uv sync
+
+    # Also include an optional dependency-group (e.g. docs or lint)
+    uv sync --group docs
+    ```
+
+=== "CI/CD (Verification)"
+
+    ```bash
+    # Install all groups and abort if uv.lock is out of sync with pyproject.toml
+    # Ensures the lockfile was updated whenever dependencies changed
+    uv sync --all-groups --locked
+    ```
+
+=== "CI/CD (Production deployment)"
+
+    ```bash
+    # Install from uv.lock as-is, skip dev dependencies, never check pyproject.toml
+    # Fastest and most reproducible option for containerised deployments
+    uv sync --frozen --no-dev
+    ```
+
+### Updating Dependencies
+
+Consider the *Depsight* project changed `click==8.1.7` to `click>=8.1.7` in `pyproject.toml` while `uv.lock` still pins `8.1.7`. Because the locked version still satisfies the loosened constraint, `uv sync` keeps installing `8.1.7`. To pull in a newer release explicitly, run `uv lock --upgrade-package click` followed by `uv sync`.
+
+```mermaid
+flowchart TD
+    A["Project initialized with click==8.1.7"]
+    A -->|uv sync| B["click v8.1.7 gets installed and locked"]
+    B -.->C["Constraint click==8.1.7 changes to click>=8.1.7"]
+    C -->|uv sync| D["Constraint satisfied<br>uv.lock keeps 8.1.7"]
+    C -->|uv sync --locked| E["Mismatch detected<br>Aborts with error"]
+    C -->|uv sync --frozen| F["Reads uv.lock as-is<br>Installs 8.1.7"]
+    C -->|uv lock --upgrade| G["Latest version of click gets pinned in uv.lock"]
+    G -->|uv sync| H["Upgrades click in .venv to latest version"]
+```
+
+---
+
+### Testing
+
+Testing is the practice of executing code in a controlled way to verify that it behaves as intended and to catch regressions when the codebase changes. In Python, tests are usually written as regular Python functions that assert on expected behavior, which keeps the feedback loop simple and accessible. The ecosystem is centered around tools such as `pytest`, which handle discovery, fixtures, parametrization, and failure reporting.
+
+Automated tests verify that the code behaves as expected and catch regressions before they reach other developers or production. Without a test runner, verifying correctness means manually re-running the application after every change — which does not scale and is error-prone. Depsight uses [pytest](https://docs.pytest.org/). A basic test looks like this:
+
+Running `python -m pytest tests/` discovers and executes all `test_*` functions automatically.
+
+---
+
+### Code Quality Tools
+
+#### Linter and Formatter
+
+Linters and formatters improve source code quality before the program is ever run. In Python, this is especially valuable because the language emphasizes readability and has many style and correctness conventions that benefit from automatic enforcement. Modern Python tooling often combines import sorting, formatting, and static rule checking into a small number of fast commands that can run locally and in CI.
+
+Depsight uses [Ruff](https://docs.astral.sh/ruff/) as its linter and formatter. Ruff is implemented in Rust and represents a modern consolidation of the Python tooling ecosystem. It is a full replacement of `flake8`, `isort`, and `black` in a single binary while being significantly faster than any of them. Rather than maintaining separate configuration files like `.flake8` or `tox.ini`, Ruff reads all its settings from `pyproject.toml` under `[tool.ruff]`, keeping the entire project configuration in one place. Running `ruff check` on the following code
+
+```python
+import os  # unused import
+import sys
+
+x=1+2      # missing whitespace around operator
+print(x)
+```
+
+produces:
+
+```
+error[F401]: `os` imported but unused
+error[E225]: missing whitespace around operator
+```
+
+> Both issues are caught before the code is ever run or reviewed.
+
+#### Type Checker
+
+Type checking verifies that values are used consistently with their declared types, such as ensuring that a function expecting a `str` is not given an `int`. Python remains dynamically typed at runtime, but its type hint system has grown into a major part of modern development because it allows tools to analyze code statically before execution. In practice, Python type checkers improve refactoring safety, editor support, and API clarity, especially in larger projects and plugin-based architectures.
+
+Depsight uses [mypy](https://mypy.readthedocs.io/) as its static type checker. Python is dynamically typed by default, which means type errors only surface at runtime. mypy analyses the code without running it and catches type mismatches, missing attributes, and incorrect function signatures before they can become runtime failures. It replaces the need for a standalone `mypy.ini` configuration file by reading its settings from `pyproject.toml` under `[tool.mypy]`. For a project like Depsight that exposes a plugin API, type annotations enforced by mypy also serve as living documentatio. Callers know exactly what a function expects and returns without having to read the implementation. Running `mypy` on the following code:
+
+```python
+def greet(name: str) -> str:
+    return "Hello, " + name
+
+result: int = greet("world")  # assigned to int, but greet returns str
+print(result.upper())         # int has no upper() — runtime crash waiting to happen
+```
+
+produces:
+
+```
+error: Incompatible types in assignment (expression has type "str", variable has type "int")
+```

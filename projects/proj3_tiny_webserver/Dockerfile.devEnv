@@ -2,6 +2,7 @@
 #   - uses ubuntu:24.04 with its APT-managed Python 3.12 and installs uv as the project workflow tool
 #   - includes the Docker CLI so the host Docker socket can be used from
 #     inside the container (Docker-outside-of-Docker)
+#   - includes TAR inspection tools used to inspect exported container images
 #   - syncs the dev dependency group into a project-local .venv
 #   - opens an interactive shell in /app for webserver development
 # # # # # # # # # # #
@@ -15,6 +16,7 @@ RUN apt-get update \
         ca-certificates \
         python3 \
         sudo \
+        tar \
         python3-venv \
     && groupadd --force docker \
     && useradd --create-home --shell /bin/bash --groups sudo,docker snake \
@@ -34,7 +36,6 @@ RUN uv pip install --system --break-system-packages cloudsmith-cli
 ENV PATH="/app/.venv/bin:${PATH}"
 
 COPY pyproject.toml ./
-COPY README.md ./
 COPY uv.lock ./
 COPY src ./src
 COPY tests ./tests

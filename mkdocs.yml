@@ -78,18 +78,18 @@ nav:
       - Section 02: chapter-03/section-02.md
       - Section 03: chapter-03/section-03.md
       - Section 04: chapter-03/section-04.md
-      - Section 05: chapter-03/section-05.md
-      - Section 06: chapter-03/section-06.md
   - Chapter 04:
       - chapter-04/index.md
       - Section 01: chapter-04/section-01.md
       - Section 02: chapter-04/section-02.md
       - Section 03: chapter-04/section-03.md
       - Section 04: chapter-04/section-04.md
-  - Chapter 05:
-      - chapter-05/index.md
-      - Section 01: chapter-05/section-01.md
-      - Section 02: chapter-05/section-02.md
-      - Section 03: chapter-05/section-03.md
-      - Section 04: chapter-05/section-04.md
-      - Section 05: chapter-05/section-05.md
+      - Section 05: chapter-04/section-05.md
+  - Bonus:
+      - chapter-bonus/index.md
+      - Section 01: chapter-bonus/section-01.md
+      - Section 02: chapter-bonus/section-02.md
+      - Section 03: chapter-bonus/section-03.md
+      - Section 04: chapter-bonus/section-04.md
+      - Section 05: chapter-bonus/section-05.md
+      - Section 06: chapter-bonus/section-06.md

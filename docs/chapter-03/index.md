@@ -1,26 +1,18 @@
-# Python Project Configuration
+# Modern Python Workflows with uv
 
 ## Introduction
 
-Chapter 03 follows one small package through the evolution of Python
-packaging, showing how project configuration moved from early
-`distutils` layouts to the modern `pyproject.toml` standard. The chapter
-starts with Python 1.6 and `distutils`, then reviews metadata-only
-dependency hints, early `setuptools`, pinned requirements files,
-`setup.cfg`, and finally a modern `pyproject.toml` workflow. Across the
-sections, the chapter explains not only how each configuration style
-works, but also why the ecosystem changed and what each step contributed
-to current Python packaging practices.
+This chapter introduces one of the hottest takeaways in modern Python development: `uv`, a lightweight, high-performance python project manager developed by Astral.
+
+Section 01 starts with the setup of `uv` and then shows how it can be used throughout the whole development lifecycle. The next section goes deeper into dependency management, including lock files, virtual environments, and dependency resolution. After that, the chapter explains `uv`'s caching concept in more detail and why it matters for faster, more reproducible workflows. It concludes with a comparison of `uv` and other tools in the Python ecosystem.
 
 ## Overview
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary | Project |
-|---------|---------|---------|
-| [Section 01](./section-01.md) | Python 1.6 | Historic Calculator v.1.0.0 |
-| [Section 02](./section-02.md) | Python 2.3 | Historic Calculator v.2.0.0 |
-| [Section 03](./section-03.md) | Python 2.4 | Historic Calculator v.3.0.0 |
-| [Section 04](./section-04.md) | Python 2.7 | Historic Calculator v.4.0.0 |
-| [Section 05](./section-05.md) | Python 3.5 | Historic Calculator v.5.0.0 |
-| [Section 06](./section-06.md) | Python 3.11 | Historic Calculator v.6.0.0 |
+| Section | Summary |
+|---------|---------|
+| [Section 01](./section-01.md) | Modern Python Project Mangement with uv|
+| [Section 02](./section-02.md) | Dependency Management with uv |
+| [Section 03](./section-03.md) | Dependency Caching with uv |
+| [Section 04](./section-04.md) | uv in Comparison |

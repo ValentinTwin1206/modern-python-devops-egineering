@@ -1,106 +1,82 @@
-# Python 2.7
+# uv in Comparison
 
-This section introduces the Python 2.7 packaging workflow built around `pip`,
-`setup.py`, and `requirements.txt`, using a small command-line project to show
-how pinned dependency files improved reproducibility.
+## Introduction
 
-## Applied Project
+To put `uv` into perspective, this section compares it against `pip` and `poetry` — the two most widely used package managers in the Python ecosystem. `pip` is the de-facto standard installer that ships with virtually every Python distribution, while `poetry` has become a popular choice for project-centric workflows that combine dependency management, lock files, and environment handling.
 
-### Project Setup
+## Footprint
 
-The applied project is Historic Calculator, release 4.0.0. This snapshot is set in 2010, the release year of Python 2.7, and contains the `historic_calculator` package plus the `hist_calc` command-line script.
+The official Poetry [installer](https://python-poetry.org/docs/#installation) bootstraps a full Python virtualenv with 15+ transitive dependencies. On `python:3.12-slim` that single install layer costs **104 MB** — more than the base image itself. The biggest offenders: `cryptography` (15 MB), a bundled `pip` (13 MB), and `rapidfuzz` (12 MB). Poetry itself is only 5.9 MB of that total.
 
-### Run the Project
+The classic alternative — `pip` + `virtualenv` + `pyenv` — comes in at **39 MB**, but that number is misleading: it unpacks into **2,889 files** across three separate tool trees, with no shared cache, no lockfile, and no unified CLI.
 
-Application commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj6_historic_calculator/2010/README.md).
+| Tool | Install size |
+|------|-------------|
+| `uv` | ~36 MB|
+| `poetry` (official installer) | ~104 MB |
+| `pip` + `virtualenv` + `pyenv` | ~39 MB |
 
-## Background
+## Performance
 
-This project belongs to the Python 2.7 era that began in 2010, when `pip` and `requirements.txt` became the practical packaging workflow for many teams. The common layout paired `setup.py` with a pinned requirements file for:
+The benchmark ran five representative dependency sets — a web stack (Flask), a data science stack (NumPy/pandas), an API stack (FastAPI), a CLI tooling set, and a dev-tools set (pytest/mypy/ruff) — each installed from scratch inside a `python:3.12-slim` container.
 
-- Declaring abstract package metadata and entry points
-- Recording install-time runtime dependencies
-- Pinning a concrete dependency set for repeatable installs
-- Building source distributions for release
+![Installation time comparison](../assets/images/chapter-03/install_time_comparison.png)
 
-=== "`setup.py`"
-
-	The `setup.py` file keeps the package metadata, abstract runtime dependency, and console-script registration:
-
-	```python
-	setup(
-		name="historic_calculator",
-		version="4.0.0",
-		description="A tiny vector calculator using NumPy and setuptools.",
-		package_dir={"": "src"},
-		packages=["historic_calculator"],
-		install_requires=[
-			"numpy",
-		],
-		entry_points={
-			"console_scripts": [
-				"hist_calc = historic_calculator.main:main_cli",
-			],
-		},
-	)
-	```
-
-	- `name` gives the distribution its package name.
-	- `version` records the release number that build and install commands use.
-	- `description` adds a short human-readable project summary to the package metadata.
-	- `package_dir` maps packages to the `src` directory instead of the project root.
-	- `packages` lists the Python package included in the distribution.
-	- `install_requires` records the abstract NumPy runtime dependency.
-	- `entry_points` registers the `hist_calc` command through `console_scripts`.
-
-=== "`requirements.txt`"
-
-	The concrete deployment pin lives in `requirements.txt`:
-
-	```text
-	numpy==1.9.2
-	```
-
-	- `numpy==1.9.2` pins the exact NumPy release used by this project snapshot.
+`uv` is consistently the fastest across all sets. The gap is most pronounced on the heavy data-science stack: `pip` takes **99.8 s**, `poetry` **28.0 s** — `uv` finishes in **29.3 s**. On lighter sets (FastAPI, CLI tools) `uv` is **2–3× faster** than `pip` alone.
 
 ## Dependency Management
 
-### Overview
+### Environment isolation
 
-`pip` and `requirements.txt` made dependency installation more practical, but the model still had important limits:
+`uv` and `poetry` both provide first-class support for isolated virtual environments. They create and manage project-local environments automatically and activate them transparently when installing packages or running commands. This removes the need for manual activation, and in both cases the environment location can be configured (project-local or global).
 
-- ⚠️ `requirements.txt` was a pinned install input, not a complete lockfile with hashes.
-- ⚠️ Environment isolation was still a separate concern and was not provided by `pip` itself.
-- ⚠️ Older pip behavior lacked the modern resolver used by current Python workflows.
+`pip`, by contrast, does not provide environment isolation on its own. It relies on external tools such as `venv`, `virtualenv`, or Conda, which the user has to create, activate, and manage manually before installing packages.
 
-### Runtime and build dependencies
+| Feature | uv | Poetry | pip |
+|------|-------------|:--------:|:----------------:|
+| Built-in virtual environment support | ✓ | ✓ | ✓ |
+| Automatic environment creation | ✓ | ✓ | ✗ |
+| Automatic environment selection | ✓ | ✓| ✗ |
+| Manual setup required | Minimal | Minimal | High |
 
-Use `Dockerfile.devEnv` for the Python 2.7 development environment. It keeps the historical interpreter, pip-era tooling, and build tooling isolated from the host machine.
+### Locking
 
-NumPy replaces the earlier Numeric packages as the runtime component for array-style calculations. `requirements.txt` pins the exact NumPy version, so `pip install -r requirements.txt` can reproduce the dependency set more reliably than the manual download steps used in earlier sections.
+`uv` and `poetry` both ship native lock files — `uv.lock` and `poetry.lock` respectively. When dependencies are added or updated, each tool resolves the complete dependency graph and stores the exact versions, sources, and metadata required for deterministic installations. During subsequent installs, the lock file is used as the source of truth, which reproduces the same environment across machines and CI systems.
 
-Install the pinned runtime dependencies:
+`pip`, on the other hand, has historically relied on manually maintained `requirements.txt` files. These can pin versions (e.g. `numpy==2.1.0`) but do not capture the full dependency graph on their own. While newer versions of `pip` offer experimental locking via `pip lock`, reproducible workflows in practice usually still depend on auxiliary tools such as `pip-tools` (`pip-compile`).
 
-```bash
-pip install -r requirements.txt
-```
+| Feature | uv | Poetry | pip |
+|------|-------------|:--------:|:----------------:|
+| Native lock file | ✓ | ✓ | ✗ |
+| Stores full dependency graph | ✓ | ✓ | ✗ |
+| Reproducible installations | ✓ | ✓| ✗ |
 
-This installs the concrete dependency set for the Python 2.7 workflow before the project package is installed.
+### Interpreter Management 
 
-### Build the package
+`uv` stands out by integrating full Python interpreter management into the tool itself. It can download, install, and switch between multiple Python versions, and it automatically selects an appropriate interpreter based on the project's requirements.
 
-Build the source distribution:
+`poetry` can work with different interpreters and switch between them via commands like `poetry env use python3.12`, but it cannot install or manage Python versions on its own. The desired interpreter must already be available on the system.
 
-```bash
-python setup.py sdist
-```
+`pip`, finally, has no interpreter management at all. It always operates on the Python interpreter that invokes it (e.g. `python3.12 -m pip install package`), so switching versions requires fully external tooling.
 
-The era predates PEP 427 wheels, so the source distribution is the canonical artifact.
+| Feature | uv | Poetry | pip |
+|------|-------------|:--------:|:----------------:|
+| Install Python versions | ✓ | ✗ | ✗ |
+| Switch interpreter versions | ✓ | ✓ | ✗ |
+| Automatic interpreter selection | ✓ | (✓)| ✗ |
+| Requires external tool | ✗ | ✓| ✓ |
 
-### Install the package
+### Resolution
 
-Install the project itself:
+`uv` implements a modern resolver that performs full dependency-graph resolution while staying compatible with Python packaging standards. It is optimized for speed and produces deterministic results.
 
-```bash
-python setup.py install
-```
+`poetry` also performs full resolution whenever dependencies are added or updated, evaluating version constraints across the entire graph and writing a consistent lock file. However, as seen above, resolution can become slow on large projects.
+
+`pip` has used a backtracking resolver since version `20.3`, which evaluates compatibility across dependencies instead of installing greedily. This greatly improved correctness compared to older versions, but it can still lead to long resolution times in projects with many conflicting constraints.
+
+| Feature | uv | Poetry | pip |
+|------|-------------|:--------:|:----------------:|
+| Full dependency graph resolution | ✓ | ✓ | ✓ |
+| Lock-file-based resolution | ✓ | ✓ | (✓) |
+| Deterministic dependency graph | ✓ | ✓| (✓) |
+| Optimized for resolution speed | ✓ | (✓) | ✗ |
