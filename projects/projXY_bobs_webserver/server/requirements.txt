@@ -1,0 +1,7 @@
+# Last updated: 2018-09-14
+# DO NOT UPGRADE WITHOUT APPROVAL FROM BOB
+
+requests==2.0.0
+urllib3==1.7.1
+certifi==2015.04.28
+chardet==2.1.1
