@@ -1,0 +1,5 @@
+{
+  "status": "healthy",
+  "service": "legacy-api",
+  "version": "1.8.3"
+}

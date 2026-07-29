@@ -4,10 +4,38 @@ import platform
 import random
 import socket
 import sys
+import os
 import time
 
 import imp  
 from distutils.version import LooseVersion  # distutils removed in Python 3.12
+
+
+
+
+def load_database_config():
+    config = {}
+
+    path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "config",
+        "database.conf",
+    )
+
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            if not line or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            config[key.strip()] = value.strip()
+
+    return config
+
+CONFIG = load_database_config()
 
 SERVER_NAME = "legacy-api"
 SERVER_HOST = "127.0.0.1"
@@ -124,6 +152,8 @@ class APIHandler(BaseHTTPRequestHandler):
                 "build": 1837,
                 "compatibility": 7,
                 "hostname": socket.gethostname(),
+                "host": CONFIG["host"],
+                "database": CONFIG["database"],
                 "uptime": int(time.time() - STARTUP_TIME),
                 "requests": REQUEST_COUNT,
                 "retry_delay": retry_delay(4),
@@ -230,9 +260,30 @@ class APIHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(payload, indent=2).encode())
 
         # ------------------------------------------------------
+        # download files from the "files" directory
+        # ------------------------------------------------------
+        elif self.path.startswith("/download?file="):
+
+            filename = self.path.split("=", 1)[1]
+
+            try:
+                with open(f"files/{filename}", "r") as f:
+                    content = f.read()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+
+                self.wfile.write(content.encode())
+
+            except FileNotFoundError:
+
+                self.send_response(404)
+                self.end_headers()
+
+        # ------------------------------------------------------
         # everything else
         # ------------------------------------------------------
-
         else:
 
             payload = {
