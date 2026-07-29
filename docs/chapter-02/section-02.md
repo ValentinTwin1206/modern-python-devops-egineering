@@ -1,6 +1,6 @@
 # OS Packages
 
-OS packages distribute Python applications through the package manager of an operating system, such as `apt` on Debian-based systems or Windows Installer on Microsoft Windows. They are useful when a Python tool must follow system-level installation, upgrade, service registration, and removal workflows.
+Operating-system (OS) packages are the native software distribution format for operating systems. They allow Python applications to be installed, upgraded, and removed using the platform's standard software management tools instead of Python-specific package managers such as `pip` or `uv`.
 
 ## Applied Project
 
@@ -16,27 +16,36 @@ Application, test, lint, packaging, and shell-exit commands are documented in th
 
 ### Overview
 
-Operating-system packages wrap a Python application in the installation format expected by the target platform. Unlike a plain wheel, the final artifact is designed to be installed with the operating system's built-in tools, such as `apt` on Debian-based Linux systems or `msiexec` on Windows.
+OS packages distribute Python applications through platform-native package management systems, such as `apt` on Debian-based Linux distributions, `dnf` on Red Hat-based Linux distributions, `Homebrew` on macOS, or Windows Installer (`.msi`) on Microsoft Windows. Unlike Python wheels, an OS package typically bundles everything required to run the application, including the application code, a Python runtime (if needed), third-party dependencies, launchers, and platform-specific metadata. End users do not need to install Python, create a virtual environment, or run `pip install` or `uv tool install` on the target machine. Instead, they install a single OS-native package that behaves like any other application managed by the operating system.
 
-For Python applications, this usually means the package bundles everything the program needs at install time: the application code, its Python runtime or Python-facing dependencies, launchers, and platform-specific metadata. End users do not need to create a virtual environment or run `pip install` on the target machine. Instead, they install one OS-native package and let the platform package manager handle installation, upgrades, and removal.
+OS packages are particularly well suited for:
 
-* ✅ command-line tools installed for all users
-* ✅ software managed through system upgrade workflows
-* ✅ internal tools distributed through platform-native artifacts
+- ✅ System utilities and command-line applications
+- ✅ Software tightly integrated with the operating system
+- ✅ Enterprise applications managed through centralized deployment and patch management
+- ✅ Internal developer tools distributed via native package repositories
 
-### OS Packaging Ecosystem
+### OS Package Ecosystem
 
-Python OS packaging differs from Python package distribution because the final artifact must match the conventions of the target operating system.
+Unlike [Python packaging](./section-01.md), OS package distribution follows the conventions of the target platform. While Python projects can typically distribute the same wheel format across multiple operating systems — or build platform-specific wheels when native code is required — OS package distribution always targets a specific operating system and its native packaging ecosystem. As a result, projects that distribute Python applications as OS packages typically produce different package artifacts for each supported platform.
 
-The most common package formats for projects like this are:
+Although the technologies differ between operating systems, the packaging lifecycle remains largely the same. Every platform distributes native packages through a **package repository**, installs them using a platform-specific **package manager**, and relies on **package metadata** to resolve dependencies, verify package integrity, and perform installation, upgrades, and removal.
 
-| Format | Description |
-| ------ | ----------- |
-| Debian package (`.deb`) | Standard package format on Debian-based Linux systems. It integrates with `apt`, can declare system dependencies such as `python3-systemd`, and can register `systemd` services through maintainer scripts and package metadata. |
-| Windows Installer (`.msi`) | Standard enterprise-friendly installer format on Windows. It integrates with Windows Installer, can place files under `Program Files`, update `PATH`, register uninstall metadata, and package launchers plus offline application payloads in one installer. |
-| macOS installer package (`.pkg`) | Standard installer format on macOS. It integrates with built-in tools such as `installer`, can place files in system-managed locations, and is commonly produced with Apple's packaging utilities such as `pkgbuild` and `productbuild`. This project does not ship a macOS package, but the packaging model is similar: prepare one platform-native artifact that macOS can install directly. |
+Every OS package ecosystem consists of three core building blocks:
 
-> In many production environments, the OS package bundles the Python application together with the runtime or required dependencies so the target machine can install the software with native OS tools alone.
+- **Package Manager** – The client application that discovers, downloads, verifies, installs, upgrades, and removes software on the local machine.
+- **Package Format** – The platform-specific installation artifact that contains the application together with the metadata required by the operating system.
+- **Remote Repository** – The server that stores packages and repository metadata, allowing package managers to discover and download software.
+
+The following table summarizes the most common operating-system packaging ecosystems.
+
+| Platform | Package Manager | Package Format | Repository Examples |
+|----------|-----------------|----------------|---------------------|
+| Debian / Ubuntu | `apt` | `.deb` | Ubuntu Repository, Debian Repository, Cloudsmith, Artifactory |
+| Fedora / Red Hat Enterprise Linux | `dnf` | `.rpm` | Fedora Repository, Red Hat Repository, Cloudsmith, Artifactory |
+| openSUSE | `zypper` | `.rpm` | openSUSE Repository, Cloudsmith, Artifactory |
+| Windows | `winget`, Microsoft Store | `.msi`, `.exe`, `.msix` | Microsoft Store, WinGet Community Repository, Cloudsmith |
+| macOS | `Homebrew`, `installer` | `.pkg` | Homebrew Tap, Cloudsmith |
 
 ### Project Layout
 
@@ -77,7 +86,7 @@ A typical Python project prepared for OS packaging separates application code fr
 * `Dockerfile.devEnv`: Provides the Linux packaging and test environment.
 * `Dockerfile.windows`: Provides the Windows MSI build environment.
 
-#### Main Configuration Files
+### Package Maintainer Files
 
 === "`control`"
 
@@ -101,13 +110,7 @@ A typical Python project prepared for OS packaging separates application code fr
 	 python3-systemd
 	Description: cross-platform admin CLI for reading systemd journal entries
 	 simply-journal-admin is a command-line tool that reads recent systemd journal
-	 entries (Linux) through the APT-managed python3-systemd binding. The same code
-	 base also supports the Windows Event Log when installed from the MSI package.
-	 .
-	 The Debian package ships a fully offline runtime under
-	 /opt/simply-journal-admin: an embedded Python interpreter, the unpacked
-	 project wheel, and a thin wrapper at /usr/bin/simply-journal-admin. No pip,
-	 virtualenv creation, or internet access is needed on the target host.
+	 entries (Linux) through ...
 	```
 
 	* `Source`: Declares the source package name used by Debian packaging tools.
@@ -337,9 +340,44 @@ The resulting package is written to the `.build` output directory on the host.
 
 ### Publish the OS Package
 
-Once you have inspected the OS package, publish it through the distribution channel that end users consume.
+Once you have created and inspected the OS package, publish it through the distribution channel that end users consume.
 
 === "Debian"
+
+	Debian repositories are typically managed using repository software such as Cloudsmith rather than directly by package maintainers. In practice, the package maintainer creates the `.deb`, and that package already contains the package metadata from the Debian `control` file. Cloudsmith then stores the artifact, extracts that package metadata, and generates the repository metadata that APT consumes. APT does not discover packages by inspecting uploaded files directly; it reads the generated repository metadata first and uses that metadata to locate the right `.deb` file. Understanding this repository layout helps explain how package and repository metadata work together to allow APT to discover (`apt update`) and install (`apt install`) software.
+
+	The directory tree below illustrates the generic structure of a Debian-compatible APT repository. The placeholders represent values that are resolved when a package is published.
+
+	```text
+	/
+	├── dists/
+	│   └── {suite}/
+	│       ├── InRelease
+	│       ├── Release
+	│       ├── Release.gpg
+	│       └── {component}/
+	│           └── binary-{arch}/
+	│               └── Packages.gz
+	└── pool/
+		└── {component}/
+			└── {package-prefix}/
+				└── {package-name}/
+					└── {package-name}_{version}_{arch}.deb
+	```
+
+	- **`/`** – The repository root configured in the APT source. It serves as the entry point for all repository metadata and package downloads.
+
+	- **`dists/{suite}/`** – Stores the repository metadata for a Linux distribution. For example, `{suite}` becomes `noble` for Ubuntu 24.04. During publication, the repository client (for example, Cloudsmith) generates files such as `InRelease`, `Release`, `Release.gpg`, and the package indexes that APT consumes.
+
+	- **`dists/{suite}/{component}/binary-{arch}/`** – Stores package indexes such as `Packages.gz`. For example, `{component}` is typically `main` and `{arch}` might be `amd64`. These indexes are generated from the uploaded `.deb` package and contain metadata extracted from its `control` file, including the package name, version, architecture, dependencies, checksums, and the location of the corresponding package artifact. When a new package enters the repository, Cloudsmith updates the dedicated `Packages.gz` file for the affected suite, component, and architecture.
+
+	- **`Packages.gz`** – The compressed package index that APT downloads during `apt update`. It lists installable packages together with fields such as `Package`, `Version`, `Depends`, `SHA256`, and `Filename`. Cloudsmith regenerates this file automatically whenever a newly uploaded package changes the available package set for that target.
+
+	- **`Release`** – The repository summary file for one suite. It describes which package indexes belong to that suite and records checksums for files such as `Packages.gz`. If the repository uses generated release metadata, Cloudsmith updates this file automatically after a new package changes the indexed repository contents.
+
+	- **`Release.gpg`** – The detached GPG signature for the `Release` file. APT uses it to verify that the repository metadata came from a trusted publisher.
+
+	- **`pool/{component}/...`** – Stores the actual `.deb` package artifacts uploaded by the package maintainer. For example, a package named `simply-journal-admin` version `2.0.0-1` for `amd64` is stored as `pool/main/s/simply-journal-admin/simply-journal-admin_2.0.0-1_amd64.deb`. During `apt install`, APT locates this file through `Packages.gz`, downloads it, and hands it to `dpkg` for installation.
 
 	From the `projects/` directory, open the dedicated Debian packaging container and forward the API key into the container session.
 
@@ -348,7 +386,7 @@ Once you have inspected the OS package, publish it through the distribution chan
 		-- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 	```
 
-	Upload the generated Debian package for the Ubuntu 24.04 and Ubuntu 26.04 APT distributions. The upload stores the `.deb` in a Cloudsmith `debian` repository, and Cloudsmith then generates the signed APT metadata and package indexes that clients consume.
+	When you publish, you can upload the same `.deb` package into multiple Ubuntu distributions because Cloudsmith generates repository metadata independently for each target distribution. The `noble` and `resolute` segments in the upload commands tell Cloudsmith which distribution-specific repository metadata to generate.
 
 	```bash
 	cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/noble" \
@@ -369,6 +407,8 @@ Once you have inspected the OS package, publish it through the distribution chan
 	```bash
 	cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "simply-journal-admin"
 	```
+
+	At that point, APT clients can download the repository metadata during `apt update`, discover `simply-journal-admin`, and install it normally.
 
 === "MSI"
 
@@ -469,25 +509,6 @@ Once you have inspected the OS package, publish it through the distribution chan
 === "Debian (.deb)"
 
 	Before installing a package from a private Debian repository, configure APT on the target machine. APT needs a trusted signing key, a source file that points to the repository, and a refreshed local package index before it can resolve and install and Debian package.
-
-	Debian repositories follow a dedicated directory structure so `apt` can download the correct metadata and package files for the current system. A remote repository is usually split into `/dists`, which stores release metadata and package indexes, and `/pool`, which stores the actual `.deb` package files.
-	
-	```text
-	deb/ubuntu/
-	├── dists/
-	│   └── noble/
-	│       ├── InRelease
-	│       ├── Release
-	│       ├── Release.gpg
-	│       └── main/
-	│           └── binary-amd64/
-	│               └── Packages.gz
-	└── pool/
-		└── main/
-			└── s/
-				└── simply-journal-admin/
-					└── simply-journal-admin_2.0.0-1_amd64.deb
-	```
 
 	Import the Cloudsmith signing key from the `pravi-brothers` workspace first. APT uses this key to verify repository metadata before trusting packages from the repository.
 
