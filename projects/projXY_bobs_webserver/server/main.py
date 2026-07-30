@@ -19,7 +19,7 @@ def load_database_config():
     path = os.path.join(
         os.path.dirname(__file__),
         "..",
-        "config",
+        "secrets",
         "database.conf",
     )
 
@@ -269,7 +269,7 @@ class APIHandler(BaseHTTPRequestHandler):
             try:
                 with open(f"files/{filename}", "r") as f:
                     content = f.read()
-
+                    print(content)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
