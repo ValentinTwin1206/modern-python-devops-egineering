@@ -1,13 +1,8 @@
-# Python Project Distributions
+# Python Software Delivery
 
 ## Introduction
 
-Chapter 02 introduces the main ways to distribute Python projects after they
-are built. It begins with Python wheels for standard package installation,
-then moves to operating system packages, container images, Conda packages,
-and standalone binaries. Together, these sections show how distribution
-formats shape installation workflows, runtime environments, and deployment
-choices in modern Python engineering.
+Chapter 02 introduces the fundamentals of Python software delivery, covering the complete journey from turning Python sources into a running application. Through Python wheels, operating system (OS) packages, Open Container Initiative (OCI) container images, Conda packages, and standalone binaries, the chapter explores the software delivery flow, including packaging, distribution, and deployment. It also introduces the core building blocks shared across modern software ecosystems, such as the package format, metadata, remote artifact repositories, package managers, and installation runtimes. Along the way, it demonstrates how different distribution formats influence installation workflows, runtime environments, and deployment strategies.
 
 ## Overview
 

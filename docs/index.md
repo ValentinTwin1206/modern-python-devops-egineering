@@ -22,10 +22,10 @@ Use the navigation on the left to move through the chapters and bonus material:
 | Chapter | Summary |
 |---------|-------- |
 | [Chapter 01](./chapter-01/index.md) | Python Development Environments       |
-| [Chapter 02](./chapter-02/index.md) | Python Project Distributions          |
+| [Chapter 02](./chapter-02/index.md) | Python Software Delivery              |
 | [Chapter 03](./chapter-03/index.md) | uv Python Package and Project Manager |
 | [Chapter 04](./chapter-04/index.md) | Depsight - Real World Python Project  |
-| [Bonus](./chapter-bonus/index.md) | Python Project Configuration History  |
+| [Bonus](./chapter-bonus/index.md) | Python Project Configuration History    |
 
 ## External Links
 
