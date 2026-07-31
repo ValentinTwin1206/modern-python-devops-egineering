@@ -250,17 +250,35 @@ Examples:
 	uv build --wheel --out-dir /build
 	```
 
-	Run the Debian package build to create the `.deb` artifact:
+	Run the Debian package build to create the `.deb` artifact. Use the `build-deb.sh` script to build the Debian package to not pollute the container and host environment:
 
 	```bash
 	./scripts/build-deb.sh
 	```
-
-	> Use the `build-deb.sh` script to build the Debian package to not pollute the container and host environment
+	
+	> The resulting `.deb` package is written to the `.build` output directory on the host.
 
 === "MSI package"
 
-	Build the Windows MSI builder image first:
+	Move into the `projects/proj2_journal_admin` directory first. This workflow depends on Docker's **Windows Container Engine (`dockerd.exe`)**, because the MSI build image and the packaging steps run inside a Windows container rather than a Linux container. Switch Docker Desktop back to the Windows engine before starting by running following in Windows PowerShell.
+
+	```powershell
+	& "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchWindowsEngine
+	```
+
+	Confirm that Docker is using the Windows engine.
+
+	```powershell
+	docker info --format "{{.OSType}}"
+	```
+
+	The expected output is:
+
+	```text
+	windows
+	```
+
+	Then start building the container image:
 
 	```powershell
 	docker build -f Dockerfile.windows -t sja-msi-builder .
@@ -275,7 +293,11 @@ Examples:
 	Start the Windows build container with the project and build directories mounted:
 
 	```powershell
-	docker run --rm -it -v "$($PWD.ProviderPath):C:\workspace" -v "$($PWD.ProviderPath)\.build:C:\build" sja-msi-builder
+	docker run --rm -it `
+		-v "$($PWD.ProviderPath):C:\workspace" `
+		-v "$($PWD.ProviderPath)\.build:C:\build" `
+		-e CLOUDSMITH_API_KEY="$env:CLOUDSMITH_API_KEY" `
+		sja-msi-builder
 	```
 
 	Inside the running container, build the wheel:
@@ -287,10 +309,13 @@ Examples:
 	Then build the MSI package:
 
 	```powershell
-	powershell -ExecutionPolicy Bypass -File .\msi\scripts\build-msi.ps1 -WheelDir C:\build\wheel -OutDir C:\build
+	powershell -ExecutionPolicy Bypass `
+		-File .\msi\scripts\build-msi.ps1 `
+		-WheelDir C:\build\wheel `
+		-OutDir C:\build
 	```
 
-The resulting package is written to the `.build` output directory on the host.
+	> The resulting `.msi` package is written to the `.build` output directory on the host.
 
 ### Inspect The Package
 
@@ -412,95 +437,150 @@ Once you have created and inspected the OS package, publish it through the distr
 
 === "MSI"
 
-	Open an interactive Windows container and forward the Cloudsmith API key before uploading the MSI.
+	Unlike Debian, WinGet separates installer artifacts from the package index. The MSI package is stored in a ***Generic HTTPs Artifact Repository*** that provides a stable HTTPS installer URL, while a ***WinGet Package Index*** stores package manifests that describe where the installer can be downloaded.
 
-	```powershell
-	docker run --rm -it \
-		-v "$($PWD.ProviderPath):C:\workspace" \
-		-v "$($PWD.ProviderPath)\.build:C:\build" \
-		-e CLOUDSMITH_API_KEY="$env:CLOUDSMITH_API_KEY" sja-msi-builder
+	Therefore, the package maintainer publishes two different artifacts:
+
+	- MSI installer (`*.msi`)
+	- WinGet package manifests YAML
+
+	When a user executes `winget install`, WinGet first downloads the package manifest from the package index, reads the `InstallerUrl` and `InstallerSha256` checksum from the manifest, downloads the referenced installer artifact from the installer repository, verifies its integrity, and then hands it off to the appropriate installer mechanism for that package type.
+
+	The repository layout below highlights the structure of a *WinGet Package Index*.
+
+	```text
+	/
+	└── manifests/
+		└── {project}/
+			└── {package}/
+				└── 1.0.0/
+					├── package.yaml
+					├── installer.yaml
+					└── locale.en-US.yaml
 	```
 
-	Upload the generated MSI to the Cloudsmith Raw repository in the `pravi-brothers` workspace. The raw repository provides the stable installer URL that the Winget manifest references.
+	Open an interactive Windows container and forward the Cloudsmith API key.
 
 	```powershell
-	cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" \
-		.\.build\simply-journal-admin-1.0.0.msi --version 1.0.0
+	docker run --rm -it `
+		-v "$($PWD.ProviderPath):C:\workspace" `
+		-v "$($PWD.ProviderPath)\.build:C:\build" `
+		-e CLOUDSMITH_API_KEY="$env:CLOUDSMITH_API_KEY" `
+		sja-msi-builder
 	```
 
-	Calculate the installer hash used by the Winget manifest.
+	Upload the generated MSI to the Cloudsmith repository.
 
 	```powershell
-	Get-FileHash .\.build\simply-journal-admin-1.0.0.msi -Algorithm SHA256
+	cloudsmith push generic `
+		"$env:CLOUDSMITH_REPOSITORY" `
+		.\.build\simply-journal-admin-1.0.0.msi `
+		--filepath "simply-journal-admin/1.0.0/simply-journal-admin-1.0.0.msi" `
+		--name "simply-journal-admin" `
+		--version "1.0.0"
 	```
 
-	Generate a new manifest set for the first release. Use the URL of the published MSI, not a local file path.
+	Verify that Cloudsmith stores the uploaded installer.
 
 	```powershell
-	wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi"
+	cloudsmith list packages "$env:CLOUDSMITH_REPOSITORY"
 	```
 
-	The generated installer manifest records the stable Cloudsmith URL and the MSI hash.
+	Before continuing, **exit the running Windows container** and return to your Windows host machine.
+
+	The next steps use `winget` and `wingetcreate`. These tools are installed on the Windows host, but they are **not available inside the Windows container** that was used to build the MSI installer.
+
+	We will now prepare the local **WinGet package index**. This directory will contain the WinGet package manifests that describe our application. Later, the Rewinged package index server will mount this directory and serve it as a local WinGet-compatible package source.
+
+	First, create the directory structure that will become the local package index:
+
+	```powershell
+	New-Item -ItemType Directory -Path .\.build\rewinged\packages -Force
+	```
+
+	The resulting directory will be mounted into Rewinged as its package-manifest directory:
+
+	```text
+	.build/
+	└── rewinged/
+		└── packages/
+	```
+
+	Next, use `wingetcreate` to generate the WinGet manifest files from the published MSI installer URL.
+
+	Run the command inside the package index directory so that the generated manifests are written directly into the directory that Rewinged will serve:
+
+	```powershell
+	Push-Location .\.build\rewinged\packages
+	wingetcreate new 'https://generic.cloudsmith.io/pravi-brothers/modern-python-engineering/simply-journal-admin/1.0.0/simply-msi-journal-admin-1.0.0.msi'
+	Pop-Location
+	```
+
+	The generated manifests YAML contain all metadata required by WinGet.
+
+	```text
+	.build/
+	└── rewinged/
+		└── packages/
+			└── manifests/
+				└── m/
+					└── ModernPythonEngineering/
+						└── SimplyJournalAdmin/
+							└── 1.0.0/
+								├── ModernPythonEngineering.SimplyJournalAdmin.yaml
+								├── ModernPythonEngineering.SimplyJournalAdmin.installer.yaml
+								└── ModernPythonEngineering.SimplyJournalAdmin.locale.en-US.yaml
+	```
+
+	The most important file for the installation process is the installer manifest:
 
 	```yaml
 	PackageIdentifier: ModernPythonEngineering.SimplyJournalAdmin
 	PackageVersion: 1.0.0
-	InstallerType: wix
+
 	Installers:
 	- Architecture: x64
+	  InstallerType: wix
 	  InstallerUrl: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/simply-journal-admin-1.0.0.msi
 	  InstallerSha256: <sha256>
 	```
 
-	!!! info ""
-		For later releases, update the existing package identifier instead of starting from scratch.
+	At this point, the local WinGet package index is ready. The next step is to start [Rewinged](https://github.com/jantari/rewinged) and let it expose this manifest directory as a private WinGet package source.
 
-		```powershell
-		wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
-		```
-
-	External contributors have to submit manifests through a fork of `microsoft/winget-pkgs`. Prepare a local submission branch in your fork with sparse checkout enabled for this publisher folder.
+	Thus, switch Docker Desktop back to the Linux engine, since the container image `ghcr.io/jantari/rewinged:stable` is Linux based.
 
 	```powershell
-	git clone --filter=blob:none --no-checkout https://github.com/<github-user>/winget-pkgs.git
-	Set-Location winget-pkgs
-	git sparse-checkout set manifests\m\ModernPythonEngineering
-	git checkout
-	git checkout -b add-simply-journal-admin-1.0.0
+	& "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchLinuxEngine
 	```
 
-	Place the generated manifest files in the forked repository under the directory derived from the package identifier and version.
+	Confirm that Docker is using the Linux engine.
+
+	```powershell
+	docker info --format "{{.OSType}}"
+	```
+
+	The expected output is:
 
 	```text
-	manifests/
-	└── m/
-	    └── ModernPythonEngineering/
-	        └── SimplyJournalAdmin/
-	            └── 1.0.0/
-	                ├── ModernPythonEngineering.SimplyJournalAdmin.yaml
-	                ├── ModernPythonEngineering.SimplyJournalAdmin.installer.yaml
-	                └── ModernPythonEngineering.SimplyJournalAdmin.locale.en-US.yaml
+	linux
 	```
 
-	Validate the manifest directory before opening a pull request. If Windows Sandbox is available, run the sandbox test as part of the same local check.
+	Start the local Rewinged package index and mount the generated manifest directory into the container. WinGet REST sources require HTTPS, so this command assumes that `certs/cert.pem` and `certs/private.key` exist and that the certificate is trusted by the Windows client.
 
 	```powershell
-	winget validate --manifest .\manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
-	powershell .\Tools\SandboxTest.ps1 manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
+	docker run --rm -it `
+		-e REWINGED_HTTPS=true `
+		-e REWINGED_LISTEN='0.0.0.0:8443' `
+		-e REWINGED_MANIFESTPATH=/packages `
+		-e REWINGED_HTTPSCERTIFICATEFILE=/certs/cert.pem `
+		-e REWINGED_HTTPSPRIVATEKEYFILE=/certs/private.key `
+		-p 8443:8443 `
+		-v "$($PWD.ProviderPath)\.build\rewinged\packages:/packages:ro" `
+		-v "$($PWD.ProviderPath)\certs:/certs:ro" `
+		ghcr.io/jantari/rewinged:stable
 	```
 
-	Commit the manifest files and push the submission branch to your fork.
-
-	```powershell
-	git add .\manifests\m\ModernPythonEngineering\SimplyJournalAdmin\1.0.0
-	git commit -m "Add ModernPythonEngineering.SimplyJournalAdmin 1.0.0"
-	git push -u origin add-simply-journal-admin-1.0.0
-	```
-
-	Open a pull request from the pushed fork branch against `microsoft/winget-pkgs`.
-
-	!!! info "Winget Manigest Flow"
-		Microsoft validation checks the manifest schema, installer URL, hash, metadata, and installation behavior before the pull request is merged. Future versions are published by uploading a new MSI version to the Cloudsmith Raw repository, creating a new manifest version directory, updating the installer URL and SHA-256 hash, validating the manifest, and submitting one pull request per package version.
+	For Rewinged, uploading manifest YAML means placing the files in the mounted package directory. Because `.build\rewinged\packages` is bind-mounted to `/packages`, the YAML files generated by `wingetcreate` are already visible to the running package index.
 
 ## Consumer Workflow
 
@@ -570,7 +650,58 @@ Once you have created and inspected the OS package, publish it through the distr
 
 === "MSI (.msi)"
 
-	No additional local package-manager repository configuration is required as the package manifest is hosted in `winget-pkgs`.
+	Before installing packages from a private WinGet package index, configure WinGet to use the additional package source. Unlike APT, WinGet does not require a GPG key or a repository source file. Instead, package sources are registered through the WinGet client and expose a REST API that provides package manifests.
+
+	For this local workflow, use the [Rewinged](https://github.com/jantari/rewinged) WinGet package index started during the MSI publishing workflow. Rewinged reads WinGet package manifests from a local directory and serves them through the REST API that WinGet understands.
+
+	!!! info
+		WinGet requires REST sources to use HTTPS. For a local test, the development certificate used by Rewinged must be trusted on the Windows machine before adding the source.
+
+	The Rewinged API should now be available at `https://localhost:8443/api`. Register it as an additional WinGet source.
+
+	```powershell
+	winget source add `
+		--name modern-python-engineering `
+		--arg https://localhost:8443/api `
+		--type Microsoft.Rest
+	```
+
+	List the configured package sources.
+
+	```powershell
+	winget source list
+	```
+
+	The expected output should contain both the Microsoft community source and the local Rewinged package index.
+
+	```text
+	Name                         Argument
+	------------------------------------------------------------
+	winget                       https://cdn.winget.microsoft.com/cache
+	modern-python-engineering    https://localhost:8443/api
+	```
+
+	Refresh the local WinGet source cache.
+
+	```powershell
+	winget source update
+	```
+
+	During the refresh, WinGet queries the Rewinged REST API and updates its local cache with the returned package metadata. Unlike `apt update`, WinGet does not download a compressed package index such as `Packages.gz`.
+
+	Search for the published package in the private source.
+
+	```powershell
+	winget search --source modern-python-engineering SimplyJournalAdmin
+	```
+
+	The package should now appear in the search results.
+
+	```text
+	Name                     Id
+	-----------------------------------------------
+	Simply Journal Admin     ModernPythonEngineering.SimplyJournalAdmin
+	```
 
 ### Install the OS Package
 
@@ -598,13 +729,13 @@ Users typically install the package through the native package-management workfl
 
 === "Windows (.msi)"
 
-	Install the published MSI using WinGet. This command looks up `ModernPythonEngineering.SimplyJournalAdmin` in the configured WinGet source, reads the published manifest, downloads the MSI from the Cloudsmith Raw repository URL recorded in that manifest, verifies the installer metadata and hash, and invokes Windows Installer to complete the installation.
-
-	> WinGet downloads the manifest from `winget-pkgs`, then uses the manifest's stable Cloudsmith URL to download the MSI.
+	Install the published MSI using WinGet. This command looks up `ModernPythonEngineering.SimplyJournalAdmin` in the configured Rewinged source, reads the published manifest, downloads the MSI from the Cloudsmith Raw repository URL recorded in that manifest, verifies the installer metadata and hash, and hands the installer to the appropriate Windows installation mechanism.
 
 	```powershell
-	winget install --id ModernPythonEngineering.SimplyJournalAdmin --source winget
+	winget install --id ModernPythonEngineering.SimplyJournalAdmin --source modern-python-engineering
 	```
+
+	> WinGet downloads the manifest from Rewinged, then uses the manifest's stable Cloudsmith URL to download the MSI.
 
 ## Useful Links
 
