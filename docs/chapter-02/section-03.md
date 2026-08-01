@@ -12,28 +12,20 @@ The applied project is a small utility library called `Docslug Project`. It turn
 
 Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
 
-## Distribution Fundamentals
+## Building Blocks
 
 ### Overview
 
-A Python container distribution packages an application and its full runtime environment into a portable *Open Container Initiative (OCI)* image. Instead of distributing only source code or binaries, it bundles the Python interpreter, application code, system dependencies (such as Linux libraries), required Python packages, and runtime configuration into a **single self-contained unit** that can run on any OCI-compliant runtime without relying on the host system’s Python or environment setup.
+OCI container images are built distributions that package an application with its Python runtime, Python dependencies, operating-system libraries, and runtime configuration. The Open Container Initiative defines interoperable image and runtime specifications, allowing the same image to run with compatible tools across development, CI, and production. Containers are typically used for backend APIs, microservices, data pipelines, scheduled jobs, and cloud deployments that need a reproducible runtime environment.
 
-- ✅ Backend APIs (FastAPI, Django, Flask)
-- ✅ Microservices
-- ✅ Data pipelines
-- ✅ Cloud-based production deployments
+Container distribution connects four building blocks: an OCI image stores immutable filesystem layers and image metadata, a build recipe describes how to assemble those layers, a container engine pulls and manages images, and a registry publishes image manifests and layer content. Tools such as Docker, Podman, Buildah, and Skopeo can participate in different parts of this workflow because they implement OCI-compatible formats and APIs.
 
-### Container Packaging Ecosystem
-
-Due to the *OCI* standard, container images are portable and can be built, run, and managed interchangeably across different tools in the ecosystem. While Docker is the most widely used container manager, there are many other compatible solutions that serve different roles in building, running, and operating containers.
-
-|    Tool    | Description |
-|------------|-------------|
-| *Buildah*    | Specialized tool for building *OCI* container images without requiring a full container runtime |
-| *Docker*     | Most widely used container engine and CLI tool |
-| *Kubernetes* | Container orchestration system for deploying, scaling, and managing containers in production |
-| *Podman*     | Daemonless, rootless *OCI*-compatible container engine (Docker alternative) |
-| *Skopeo*     | Tool for inspecting, copying, and managing container images across registries without running containers |
+| Building Block | Role | Common Examples |
+|----------------|------|-----------------|
+| Package Format | Stores the image manifest, configuration, and immutable filesystem layers. | OCI image, Docker image |
+| Maintainer / Metadata File | Defines image build steps and records runtime settings, labels, and annotations. | `Dockerfile`, `Containerfile`, OCI image configuration |
+| Package Manager | Builds, pulls, inspects, runs, and removes images on a host. | Docker, Podman, Buildah |
+| Remote Repository | Stores image manifests and layers under repository names and tags. | Docker Hub, GitHub Container Registry, Amazon ECR, Quay.io |
 
 ### Project Layout
 
@@ -54,22 +46,51 @@ A typical Python container project is structured to separate application code, b
 - `.dockerignore`: Defines files and directories excluded from the build context to reduce image size and improve build speed.
 - `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build system configuration.
 
-### Package Layout
+### Package Manifest
 
-The result of a container build is an ***OCI-compliant*** container image. Unlike wheels or source distributions, a container image is not typically represented as a single file inside the project directory. Instead, it is stored internally by the container runtime as a collection of immutable filesystem layers and associated metadata.
+The `Dockerfile` is the maintainer file for an OCI image. It selects the base image, copies application files, installs dependencies, and defines the process that starts when a container runs.
 
-These layers together encapsulate the complete application environment, including the installed Python package or wheel, runtime dependencies, operating-system libraries, configuration, and execution entry point.
+```dockerfile
+FROM <base-image>:<tag>
 
-Container images are identified by a repository name and tag:
+WORKDIR <application-directory>
+COPY <source-path> <destination-path>
+RUN <dependency-install-command>
 
-```text
-tiny-webserver:1.0.0
+ENTRYPOINT ["<executable>"]
+CMD ["<default-argument>"]
 ```
 
-- `tiny-webserver`: Image name or repository.
-- `1.0.0`: Image tag, typically representing a version.
+- `FROM`: Selects the base image and its version.
+- `WORKDIR`: Sets the default directory for later build steps and container startup.
+- `COPY`: Adds the application or built artifacts to the image filesystem.
+- `RUN`: Executes build-time installation or configuration commands.
+- `ENTRYPOINT` and `CMD`: Define the executable and default arguments used at runtime.
 
-Container images can be published to container registries such as Docker Hub, GitHub Container Registry (GHCR), Amazon ECR, or other OCI-compatible registries, where they can be downloaded and executed on any compatible container runtime.
+### Package Layout
+
+An OCI container image is a content-addressed collection of JSON metadata and immutable filesystem layers. Registries and container runtimes store these objects by digest rather than as one ordinary archive file. The image manifest connects the configuration document to the ordered layers that form the container filesystem.
+
+```text
+{image-name}:{tag}
+├── manifest
+│   ├── config digest
+│   └── layer digests
+├── configuration
+│   ├── environment
+│   ├── entry point
+│   └── platform
+└── filesystem layers
+	├── base operating-system files
+	├── runtime and dependencies
+	└── application files
+```
+
+- Manifest: Identifies the image configuration and lists filesystem layers in order.
+- Configuration: Records runtime settings, architecture, environment variables, and the command that starts the container.
+- Filesystem layers: Store additions, changes, and deletions that combine into the container's root filesystem.
+
+The repository name and tag provide a convenient reference, while the digest identifies exact image content. Exporting an image with `docker save` wraps its metadata and layers in a TAR archive for transfer or inspection.
 
 ## Packaging Workflow
 

@@ -12,37 +12,20 @@ The applied project is a small utility library called `Docslug Project`. It turn
 
 Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
 
-## Distribution Fundamentals
+## Building Blocks
 
 ### Overview
 
-A Python wheel is a built distribution format defined by PEP 427. It lets tools such as `pip` and `uv` install pre-built code instead of rebuilding from source.
+Python wheels are built distributions defined by PEP 427. A wheel contains installable Python code and metadata in a ZIP-based `.whl` artifact, so an installer can copy files into an environment without rebuilding the project from source. Wheels are typically used for Python libraries, command-line applications, SDKs, and frameworks; pure-Python wheels can work across operating systems, while wheels containing native extensions target specific Python versions, ABIs, and platforms.
 
-- ✅ Python libraries
-- ✅ CLI applications
-- ✅ internal tools, SDKs and frameworks 
+Wheel distribution depends on four connected building blocks: the wheel artifact carries the installable payload, project and embedded metadata describe the release, a Python package manager resolves and installs it, and a remote repository makes releases discoverable. Build frontends such as `uv build` or `python -m build` use the backend declared in `pyproject.toml` to create the artifact before publication.
 
-### Python Packaging Ecosystem
-
-Modern Python packaging separates the command-line frontend from the backend that creates distribution artifacts. The frontend reads `pyproject.toml` to choose the backend, which keeps packaging tools interchangeable.
-
-The build backend is configured in the `build-system` section of the `pyproject.toml` file:
-
-```toml
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-```
-
-Common frontend and backend tools include:
-
-| Type | Tool | Description |
-|--------|--------|--------|
-| Frontend | `uv build` | Build command from the uv ecosystem |
-| Frontend | `python -m build` | PyPA's reference build frontend |
-| Backend | `hatchling` | Lightweight backend |
-| Backend | `setuptools` | Widely used backend |
-| Backend | `uv_build` | Backend used by uv-based projects |
+| Building Block | Role | Common Examples |
+|----------------|------|-----------------|
+| Package Format | Stores the built Python package, compatibility tags, and embedded installation metadata. | `.whl` |
+| Maintainer / Metadata File | Defines project metadata, dependencies, and the build backend; the wheel embeds generated metadata under `*.dist-info/`. | `pyproject.toml`, `METADATA`, `WHEEL`, `RECORD` |
+| Package Manager | Resolves dependencies and installs wheels into a Python environment. | `pip`, `uv` |
+| Remote Repository | Publishes package releases and exposes an index that package managers can query. | PyPI, Cloudsmith, Artifactory |
 
 ### Project Layout
 
@@ -51,7 +34,7 @@ A wheel is built from the project files, source code, and packaging metadata alr
 ```text
 {project_root}/
 ├── src/
-│   └── docslug/
+│   └── {module}/
 │       ├── __init__.py
 │       └── core.py
 ├── tests/
@@ -65,60 +48,66 @@ A wheel is built from the project files, source code, and packaging metadata alr
 - `README.md`: Project description displayed on package repositories such as PyPI.
 - `LICENSE`: Defines the legal terms under which the package can be used and distributed.
 
+### Package Manifest
+
+!!! note
+    Chapter 04 covers [`pyproject.toml` project configuration](../chapter-04/section-01.md) in more detail.
+    
+The `pyproject.toml` file defines the project metadata, Python requirements, dependencies, command-line entry points, and build backend used to create the wheel.
+
+```toml
+[project]
+name = "<package-name>"
+version = "<package-version>"
+description = "<package-description>"
+requires-python = ">=<minimum-python-version>"
+dependencies = ["<runtime-dependency>"]
+
+[build-system]
+requires = ["<build-backend-package>"]
+build-backend = "<build-backend-module>"
+```
+
+- `name`: Defines the distribution name used in package indexes and wheel filenames.
+- `version`: Identifies the published release.
+- `requires-python`: Declares compatible Python versions.
+- `dependencies`: Lists packages required when the wheel is installed.
+- `[build-system]`: Selects the build backend and the packages needed to run it.
+
 ### Package Layout
 
-A Python wheel is represented by a `*.whl` file. Its filename follows this general structure:
+A Python wheel is a ZIP archive with a `.whl` extension. It bundles the importable package, distribution metadata, and an installation record that lets Python package managers place and track the files in an environment.
 
 ```text
-{NAME}-{VERSION}-{PYTHON_TAG}-{ABI_TAG}-{PLATFORM_TAG}.whl
-```
-
-The individual identifiers have the following meaning:
-
-- `{NAME}`: Package name taken from `project.name` in `pyproject.toml`.
-- `{VERSION}`: Package version taken from `project.version` in `pyproject.toml`.
-- `{PYTHON_TAG}`: Python tag describing the supported Python interpreter version.
-    - `py3` → Any Python 3 version
-    - `py310` → Python 3.10
-    - `py311` → Python 3.11
-    - ...
-- `{ABI_TAG}`: The *Application Binary Interface (ABI)* tag describing binary compatibility.
-    - `none` → No compiled extensions
-    - `cp310` → CPython 3.10 ABI
-    - `cp311` → CPython 3.11 ABI
-    - ...
-- `{PLATFORM_TAG}`: Platform tag describing the target operating system and architecture.
-    - `any` → Platform independent
-    - `win_amd64` → Windows 64-bit
-    - `manylinux_x86_64` → Linux 64-bit
-    - `manylinux_aarch64` → Linux ARM64
-    - `macosx_11_0_arm64` → macOS Apple Silicon
-    - `macosx_10_9_x86_64` → macOS Intel
-
-Typical wheel contents look like this:
-
-```text
-docslug-1.0.0-py3-none-any.whl
-├── docslug/
+{name}-{version}-{python-tag}-{abi-tag}-{platform-tag}.whl
+├── {import-package}/
 │   ├── __init__.py
-│   └── core.py
-└── docslug-1.0.0.dist-info/
+│   └── ...
+└── {name}-{version}.dist-info/
     ├── METADATA
     ├── RECORD
-    └── WHEEL
+    ├── WHEEL
+    └── entry_points.txt
 ```
 
-The distinct package artifacts are:
+- `{import-package}/`: Contains the Python modules and package data installed into the environment.
+- `METADATA`: Records package identity, Python requirements, dependencies, and descriptive metadata.
+- `WHEEL`: Records the wheel format and compatibility tags.
+- `RECORD`: Lists installed files and their hashes so the installer can track and uninstall them.
 
-- `docslug/`: The importable package code that ships inside the wheel, including the Python modules that make up the application.
-- `*.dist-info/`: The metadata directory that records the package name, version, dependencies, and installation records.
+The filename tags tell the package manager which Python interpreter, ABI, and platform can use the wheel. A pure-Python wheel commonly ends in `py3-none-any.whl`, while a wheel with compiled extensions uses more specific tags.
 
 ## Packaging Workflow
 
-From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith API key into the container session.
+!!! info
+    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
+
+From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj1_docslug/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+../build.sh build --path proj1_docslug/Dockerfile.devEnv -- \
+    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 ```
 
 ### Create The Package
@@ -175,9 +164,6 @@ tar -tzf dist/docslug-1.0.0.tar.gz
 
 ### Publish The Package
 
-!!! info
-    This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already exported `CLOUDSMITH_API_KEY` on the host.
-
 Once you have inspected the wheel package, upload it to the proprietary Python repository hosted on Cloudsmith.
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
@@ -189,7 +175,7 @@ uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/
 Check that the uploaded release is visible through the Cloudsmith `/simple/` API used by installers.
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/docslug/" | grep "docslug-1.0.0"
+curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/docslug/" | grep "docslug-1.0.0"
 ```
 
 ## Consumer Workflow
@@ -225,7 +211,7 @@ Add the project files.
 
     [[tool.uv.index]]
     name = "modern-python-engineering"
-    url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
+    url = "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/"
     ```
 
 === "hello.py"
@@ -256,7 +242,7 @@ Install the dependency and run the script.
     Create a virtual environment and install `docslug` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
 
     ```bash
-    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/ docslug
+    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ docslug
     ```
     
 Run the script from the same virtual environment.

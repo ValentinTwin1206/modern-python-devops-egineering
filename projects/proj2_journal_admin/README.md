@@ -176,7 +176,7 @@ Build the Debian package:
 
 ##### Upload to Cloudsmith
 
-This pattern publishes the generated `.deb` to a Cloudsmith Debian repository in the `pravi-brothers` workspace. It assumes the repository already exists and that you have an API key with upload permission. Cloudsmith hosts both the Debian packages and the APT repository metadata.
+This pattern publishes the generated `.deb` to a Cloudsmith Debian repository. It assumes the repository already exists and that you have an API key with upload permission. Cloudsmith hosts both the Debian packages and the APT repository metadata.
 
 Authenticate the Cloudsmith CLI with an existing API key:
 
@@ -280,13 +280,13 @@ Get-FileHash .\.build\simply-journal-admin-<version>.msi -Algorithm SHA256
 Generate the first Winget manifest set from the published installer URL:
 
 ```powershell
-wingetcreate new "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/<version>/simply-journal-admin-<version>.msi"
+wingetcreate new "https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/<version>/simply-journal-admin-<version>.msi"
 ```
 
 For later releases, update the existing package identifier:
 
 ```powershell
-wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
+wingetcreate update ModernPythonEngineering.SimplyJournalAdmin -u "https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/<version>/simply-journal-admin-<version>.msi" -v "<version>"
 ```
 
 Validate the generated manifest directory before opening a pull request against `microsoft/winget-pkgs`:

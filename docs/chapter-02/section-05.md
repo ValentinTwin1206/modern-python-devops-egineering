@@ -12,29 +12,20 @@ The applied project is a small image-processing CLI called `Pixelpack Project`. 
 
 Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md).
 
-## Distribution Fundamentals
+## Building Blocks
 
 ### Overview
 
-Python binary distributions are created using specialized packaging tools that transform Python applications into standalone executables. Unlike wheel distributions, which require a Python interpreter on the target system, binaries package the application together with its runtime dependencies.
+Python binary distributions transform an application into a platform-specific executable that can run without a separately managed Python environment. Packaging tools bundle or compile the application together with the interpreter and required dependencies, producing an ELF binary on Linux, a PE executable on Windows, or a Mach-O binary on macOS. Standalone binaries are typically used for command-line applications, desktop software, internal business tools, and utilities distributed to users who do not manage Python installations.
 
-* ✅ command-line applications
-* ✅ desktop applications
-* ✅ internal business tools
-* ✅ software distributed to non-Python users
+Binary distribution connects four building blocks: the executable carries the runnable payload, packaging configuration controls how the artifact is assembled and identifies its release, a delivery mechanism places it on the target system, and a remote repository hosts versioned downloads. A standalone executable does not require a dedicated package manager, although projects often wrap it in an [operating-system package](./section-02/index.md) when managed installation and upgrades are required.
 
-### Binary Packaging Ecosystem
-
-Python binary packaging differs from Python package distribution because the generated artifacts are operating-system-specific.
-
-The most common packaging tools are:
-
-| Tool        | Description |
-|-------------|-------------|
-| PyInstaller | Bundles Python applications and dependencies into a standalone executable. It focuses on portability and ease of use |
-| Nuitka | Compiles Python code to C/C++ and produces native executables. It focuses on native compilation and potential runtime performance improvements |
-
-> In many production environments, the generated executable is further packaged into an [operating-system-level installer](./section-02.md).
+| Building Block | Role | Common Examples |
+|----------------|------|-----------------|
+| Package Format | Stores native machine code or a bundled Python runtime and application payload for one target platform. | ELF executable, Windows PE `.exe`, macOS Mach-O executable |
+| Maintainer / Metadata File | Configures included modules, resources, entry points, version information, and build behavior. | PyInstaller `.spec`, Nuitka settings in `pyproject.toml` |
+| Package Manager | Delivers or installs the executable; no dedicated manager is required for direct downloads. | Direct download, `curl`, optional OS package manager |
+| Remote Repository | Hosts versioned binaries and checksums for users or automation to download. | GitHub Releases, Cloudsmith Raw, object storage |
 
 ### Project Layout
 
@@ -57,18 +48,40 @@ A typical Python binary project is structured to separate application code, pack
 * `README.md`: Project documentation and usage instructions.
 * `LICENSE`: Defines the legal terms under which the project can be used and distributed.
 
-### Package Layout
+### Package Manifest
 
-The result of a Python binary build is usually a single platform-specific standalone executable file that users can run directly without installing a separate Python environment. Unlike installer packages such as `.msi`, `.deb`, or `.rpm`, this binary distribution typically does not include additional installation files.
+A PyInstaller `.spec` file is an executable Python manifest that defines the application entry point, bundled data, hidden imports, and executable settings.
 
-Examples:
+```python
+analysis = Analysis(
+    ["<entry-point.py>"],
+    datas=[("<source-data>", "<destination-directory>")],
+    hiddenimports=["<hidden-import>"],
+)
 
-```text
-pixelpack.exe
-pixelpack
+executable = EXE(
+    PYZ(analysis.pure),
+    analysis.scripts,
+    name="<executable-name>",
+    console=<true-or-false>,
+)
 ```
 
+- `Analysis`: Discovers imported modules and declares additional files or imports that static analysis cannot find.
+- `PYZ`: Packages discovered pure-Python modules into the bundled Python archive.
+- `EXE`: Defines the executable name, startup scripts, and console behavior.
+
+!!! note
+    Nuitka can store project options in `pyproject.toml`. Chapter 04 covers [`pyproject.toml` project configuration](../chapter-04/section-01.md) in more detail.
+
+### Package Layout
+
+A standalone executable is a native binary rather than a general-purpose archive. Linux commonly uses the ELF format, while Windows uses PE/COFF. Both formats divide the file into headers and sections that the operating-system loader uses to map code and data into memory. Thus, unlike `.whl`, `.deb`, or `.conda` packages, an executable does not have one portable internal directory layout.
+
 ## Packaging Workflow
+
+!!! info
+    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container shell.
 
 Install the Dev Container CLI on the host first.
 
@@ -86,7 +99,10 @@ devcontainer up --workspace-folder proj5_pixelpack
 Open a shell in the running development container.
 
 ```bash
-devcontainer exec --workspace-folder proj5_pixelpack bash
+devcontainer exec --workspace-folder proj5_pixelpack \
+    --remote-env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    --remote-env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+    bash
 ```
 
 The Dev Container image already includes the binary build tooling, including PyInstaller, Nuitka, and the Cloudsmith CLI.
@@ -144,16 +160,7 @@ sha256sum dist/pixelpack
 
 Once you have inspected the binary build, upload it to the proprietary raw repository hosted on Cloudsmith.
 
-!!! info
-    This workflow assumes that a Cloudsmith Raw repository already exists and that you already have a Cloudsmith API key available for the container session.
-
 For a managed download endpoint, upload the compiled binary to a Cloudsmith Raw repository.
-
-Inside the container, define the API key before uploading the binary.
-
-```bash
-export CLOUDSMITH_API_KEY="<your-api-key>"
-```
 
 Upload the Linux or Windows binary to the target raw repository and assign a release version.
 
@@ -168,7 +175,7 @@ cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\dist\pixelpack.exe --name pix
 After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.
 
 ```text
-https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/raw/versions/1.0.0/pixelpack
+https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/pixelpack
 ```
 
 ## Consumer Workflow

@@ -104,7 +104,7 @@ Authenticate the Cloudsmith CLI with an API key that can deploy to the Conda rep
 export CLOUDSMITH_API_KEY="<your-api-key>"
 ```
 
-Upload the built package to the Cloudsmith Conda repository in the `pravi-brothers` workspace:
+Upload the built package to your Cloudsmith Conda repository:
 
 ```bash
 cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$CONDA_PREFIX/conda-bld/noarch/image-processor-1.0.0-py_0.conda"

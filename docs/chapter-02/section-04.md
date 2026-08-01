@@ -12,69 +12,20 @@ The applied project is a small image-processing pipeline called `Image Processor
 
 Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_image_processor/README.md).
 
-## Distribution Fundamentals
+## Building Blocks
 
 ### Overview
 
-A Conda package is a tarball archive (compressed with `.tar.bz2` or `.conda`) containing pre-compiled binaries, libraries, and metadata. It lets the `conda` package manager install software without relying on system-level compilers.
+Conda packages are built distributions that can contain Python modules, native libraries, command-line tools, and software from multiple language ecosystems. Modern packages use the `.conda` format, while older releases may use `.tar.bz2`; both carry a pre-built payload and metadata so installation does not require compiling dependencies on the target machine. Conda packages are typically used for data science, machine learning, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes.
 
-- ✅ Data Science & ML pipelines
-- ✅ C/C++ native extensions
-- ✅ Multi-language environments (Python, R, C, CUDA)
+Conda distribution connects four building blocks: the package archive carries the payload, a recipe defines how to build it and which dependencies it requires, a Conda-compatible package manager resolves environments, and a channel publishes package indexes and artifacts. Build tools such as `conda-build` and `rattler-build` turn `meta.yaml` or `recipe.yaml` recipes into packages before they are uploaded to a channel.
 
-### Conda Packaging Ecosystem
-
-Conda uses recipes to explicitly define how a package is built, its dependencies, and its target channels. Unlike standard Python tools that read `pyproject.toml`, Conda builds look for a recipe file named `meta.yaml` or `recipe.yaml` inside a `recipe/` folder.
-
-The build metadata and dependencies are strictly defined in the `meta.yml`:
-
-```yaml
-package:
-  name: image-processor
-  version: 1.0.0
-
-source:
-  # Build from the project root next to this recipe directory.
-  path: ..
-
-build:
-  number: 0
-  noarch: python
-  entry_points:
-    - image-processor = image_processor.main:main
-  script: |
-    mkdir -p ${SP_DIR}/image_processor
-    cp -r src/image_processor/. ${SP_DIR}/image_processor/
-
-requirements:
-  host:
-    - python >=3.12
-  run:
-    - python >=3.12
-    - numpy >=2.1
-    - py-opencv >=4.10
-
-test:
-  imports:
-    - image_processor
-  commands:
-    - image-processor --help
-
-about:
-  home: https://github.com/ValentinTwin1206/modern-python-devops-egineering
-  summary: OpenCV image-processing showcase distributed as a Conda package.
-  license: Apache-2.0
-```
-
-Common frontend and backend tools in the Conda ecosystem include build engines, package managers, and workflow tools:
-
-|   Type   |       Tool       | Description |
-|----------|------------------|-------------|
-| Frontend | `conda-build`    | Classic reference build engine for Conda packages           |
-| Frontend | `rattler-build`  | Modern, fast, and secure declarative build tool             |
-| Backend | `conda` / `mamba` | Package managers used to resolve and install dependencies   |
-| Backend | `pixi`            | High-performance workflow tool built on the Conda ecosystem |
-
+| Building Block | Role | Common Examples |
+|----------------|------|-----------------|
+| Package Format | Stores the built payload and generated package metadata. | `.conda`, `.tar.bz2` |
+| Maintainer / Metadata File | Defines package identity, source, build steps, dependencies, tests, and descriptive metadata. | `recipe/meta.yaml`, `recipe/recipe.yaml`, `info/index.json` |
+| Package Manager | Resolves packages and creates or updates isolated environments. | `conda`, `mamba`, `micromamba`, `pixi` |
+| Remote Repository | Publishes packages and channel indexes for supported platforms and architectures. | conda-forge, Anaconda.org, Cloudsmith |
 
 ### Project Layout
 
@@ -98,47 +49,77 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 - `src/`: Contains the core application source modules.
 - `environment.yml`: The central configuration file for local environment replication. It defines the environment name, target channels, and deterministic dependencies used to stand up development and testing environments consistently across machines.
 
+### Package Manifest
+
+The Conda recipe in `meta.yaml` defines the package identity, source, build behavior, dependencies, tests, and descriptive metadata used to create a Conda package.
+
+```yaml
+package:
+    name: <package-name>
+    version: <package-version>
+
+source:
+    path: <source-path>
+
+build:
+    number: <build-number>
+    script: <build-command>
+
+requirements:
+    host:
+        - <build-dependency>
+    run:
+        - <runtime-dependency>
+
+about:
+    summary: <package-summary>
+    license: <license-identifier>
+```
+
+- `package`: Defines the package name and upstream version.
+- `source`: Identifies the source archive or local source directory.
+- `build`: Defines the build number and command used to assemble the package.
+- `requirements`: Separates dependencies needed during the build from dependencies needed at runtime.
+- `about`: Supplies descriptive and licensing metadata for repositories and package tools.
+
 ### Package Layout
 
-A Conda package file adheres to a structured compression format. Its filename structure is straightforward:
+A modern Conda package is a ZIP container with a `.conda` extension. It holds two compressed TAR archives: one for metadata and one for the files installed into a Conda environment.
 
 ```text
-{NAME}-{VERSION}-{BUILD_STRING}.conda
+{name}-{version}-{build}.conda
+├── metadata.json
+├── info-{checksum}.tar.zst
+│   └── info/
+│       ├── index.json
+│       ├── paths.json
+│       ├── about.json
+│       └── recipe/
+└── pkg-{checksum}.tar.zst
+    ├── bin/ or Scripts/
+    ├── lib/ or Library/
+    └── site-packages/
 ```
 
-The individual identifiers have the following meaning:
+- `metadata.json`: Identifies the two component archives and the Conda package format version.
+- `info-*.tar.zst`: Stores package identity, dependencies, file records, licensing details, and build information under `info/`.
+- `pkg-*.tar.zst`: Stores the payload placed into the target environment, such as Python modules, executables, shared libraries, or headers.
 
-- `{NAME}`: The lowercase identifier of the package.
-- `{VERSION}`: The specific semantic version of the application.
-- `{BUILD_STRING}`: A unique string identifying the Python version, variant, and build number (e.g., `py310h1234567_0`). This specifies the exact binary compatibility matrix.
-
-Typical extracted Conda package contents look like this:
-
-```text
-image_processor-1.0.0-py310_0.conda
-├── info/
-│   ├── about.json
-│   ├── index.json
-│   ├── paths.json
-│   ├── recipe/
-│   └── files
-└── site-packages/
-    └── image_processor/
-```
-
-The distinct package artifacts are:
-
-- `info/`: The internal metadata directory that stores package identity, dependency metadata, file manifests, and the original build recipe. Conda reads this data to resolve dependencies, verify compatibility, and track which files belong to the installed package.
-- `site-packages/` (or `lib/`, `bin/`, `Scripts/`, or `Library/` on other builds): The payload area that contains the files installed into the target environment. For a `noarch: python` package like this one, that usually means Python modules under `site-packages/`, while platform-specific packages may also ship shared libraries, executables, headers, or other runtime assets.
+The filename combines the package name, version, and build string. Conda uses the metadata and build string to select a package compatible with the requested environment and platform.
 
 ## Packaging Workflow
 
+!!! info
+    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
+
 ### Create The Package
 
-From the `projects/` directory, open the dedicated Conda packaging container and forward the API key into the container session.
+From the `projects/` directory, open the dedicated Conda packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj4_image_processor/Dockerfile.devEnv -- --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+../build.sh build --path proj4_image_processor/Dockerfile.devEnv -- \
+    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 ```
 
 Inside the running container, build the project from the repository root with the `recipe/` directory and the `conda-forge` channel enabled:
@@ -179,9 +160,6 @@ cat /tmp/image-processor-info/info/index.json
 
 ### Publish The Package
 
-!!! info
-    This workflow assumes that the Cloudsmith repository in the [`pravi-brothers`](https://app.cloudsmith.com/pravi-brothers) workspace already exists and that you already forwarded `CLOUDSMITH_API_KEY` into the running container.
-
 Upload the built package to the Cloudsmith Conda repository:
 
 ```bash
@@ -206,7 +184,7 @@ After publication, users can target the Cloudsmith Conda channel to install the 
 Install the package into your current environment from the proprietary channel:
 
 ```bash
-conda install -c https://conda.cloudsmith.io/pravi-brothers/modern-python-engineering/ image-processor
+conda install -c https://conda.cloudsmith.io/<cloudsmith-repo>/ image-processor
 ```
 
 For repeat installs, add the channel to `.condarc` or to an `environment.yml` file, then let Conda resolve `image-processor` together with its `conda-forge` dependencies.

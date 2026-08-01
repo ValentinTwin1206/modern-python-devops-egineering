@@ -11,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Put user-level tools installed by uv on PATH.
 ENV PATH="/home/vscode/.local/bin:${PATH}" \
-    CLOUDSMITH_REPOSITORY=pravi-brothers/modern-python-engineering
+    CLOUDSMITH_REPOSITORY=""
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
