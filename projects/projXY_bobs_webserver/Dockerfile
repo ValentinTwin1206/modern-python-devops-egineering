@@ -24,13 +24,17 @@ RUN groupadd --system bob && \
 
 
 # setup bobs server
-COPY ./server/* /app
+COPY ./server/* /app/server
+COPY ./../secrets /app/secrets
 
+RUN ls -la /app/secrets
 RUN python3.9 -m venv /opt/venv  \
-    && /opt/venv/bin/python3 -m pip install -r /app/requirements.txt \
+    && /opt/venv/bin/python3 -m pip install -r /app/server/requirements.txt \
     && chown -R bob:bob /app /opt/venv \
     && chmod -R 755 /app /opt/venv
 
 USER bob
 
-ENTRYPOINT ["/opt/venv/bin/python3", "/app/bobs_server.py"]
+EXPOSE 8000
+
+ENTRYPOINT ["/opt/venv/bin/python3", "/app/server/main.py"]
