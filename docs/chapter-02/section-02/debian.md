@@ -263,11 +263,19 @@ Signed-By: /usr/share/keyrings/cloudsmith-repository.gpg
 - `Components`: Selects the repository component. Here, `main` identifies the package index inside the `noble` release.
 - `Signed-By`: Restricts signature verification to the imported Cloudsmith keyring.
 
-Refresh the local APT metadata. `apt update` downloads the release metadata, verifies it with the configured Cloudsmith key, and downloads the package index for this host.
+Refresh the local APT metadata. APT verifies the release metadata with the key named by `Signed-By`, then selects the package index for the host architecture.
 
 ```bash
 sudo apt update
 ```
+
+For an `amd64` host, the entries illustrated above produce this package-index URL based on specified entries for `URIs`, `Suites`, `Components`. 
+
+```text
+https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/ubuntu/dists/noble/main/binary-amd64/Packages.gz
+```
+
+This follows the repository layout shown [above](#publish-the-os-package). APT may negotiate another available compression format, such as `Packages.xz`, but the index contains the same package metadata.
 
 Inspect the downloaded package index in APT's local metadata cache.
 
