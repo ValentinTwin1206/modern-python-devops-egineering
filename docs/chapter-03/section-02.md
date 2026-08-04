@@ -1,231 +1,266 @@
-# Dependency management with uv
+# Modern Python project management with uv
 
 ## Introduction
 
-Modern Python applications are built on top of dependencies. Managing those dependencies becomes increasingly challenging when developers work on different operating systems, use different Python versions, or require platform-specific tooling. 
+`uv` is a single self-contained binary written in **Rust**, developed by Astral — the same team behind the `ruff` linter. It was designed to unify Python packaging, dependency management, virtual environments, and tool execution under a single command-line interface. Instead of combining multiple tools such as `pip`, `venv`, `pip-tools`, and `pipx`, developers can use `uv` for the entire workflow.
 
-## Environment Isolation
+Because it compiles down to native machine code, it carries no Python runtime dependency of its own and starts in milliseconds. Its rapid adoption is driven by exceptional performance and a streamlined developer experience. Written in Rust, uv executes common packaging operations dramatically faster than traditional Python tooling while remaining fully compatible with the Python packaging ecosystem.
 
-`uv` manages a persistent virtual environment in a `.venv` directory next to the `pyproject.toml`. The environment is created and updated automatically by commands such as `uv venv`, `uv add`, `uv sync`, or `uv run`.
+=== "macOS and Linux"
 
-Using `uv python install` and `.python-version`, projects can pin an exact Python version which is managed by `uv` as part of the project setup. Developers do not need to manually create environments with a specific Python executable or keep track of interpreter paths. When entering a project, `uv` automatically discovers the required interpreter, creates the virtual environment with that interpreter, and keeps the interpreter and environment aligned
+    Download the standalone installer and execute the shell script
 
-The relationship between the pinned interpreter and the virtual environment is recorded in `.venv/pyvenv.cfg`:
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
 
-```ini
-home = /root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/bin
-implementation = CPython
-uv = 0.11.19
-version_info = 3.10.20
-include-system-site-packages = false
-```
+    It ships as two statically-linked binaries — **`uv`** (main CLI) and **`uvx`** (ephemeral tool runner, equivalent to `pipx run`) — with a total on-disk footprint of ~36 MB. There are no shared libraries, no interpreter bundles, and no background daemons. The global package cache (`~/.cache/uv`) is shared across all projects to avoid redundant downloads (see more about caching in [Section 04](./section-04.md)).
 
-This allows developers to work with the exact Python version required by the project while keeping the system Python untouched.
+    ```
+    /usr/local/bin/
+    ├── uv       36 MB   ← main CLI binary (statically linked Rust)
+    └── uvx     343 KB   ← tool runner (thin wrapper)
+    ```
 
-!!! note "Interpreter change"
-    Interpreter changes forces to remove and recreate the `.venv` folder against the new interpreter. Dependency versions still follow `uv.lock`; package artifacts are usually reused from `~/.cache/uv` and hard-linked into the new environment, and are only downloaded again when they are missing or incompatible with the new Python version/platform.
+=== "Windows"
 
-## Locking
+    Download the standalone installer and execute the powershell script
 
-Dependency locking ensures that every installation uses the exact same dependency versions, making builds reproducible and preventing unexpected breakages caused by newly released package versions.
+    ```powershell
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
 
-Traditional Python package managers such as `pip` only provide limited support for dependency locking. While developers often use `pip freeze` to generate a `requirements.txt` file, this approach merely captures the current state of a local environment and may produce inconsistent results across different platforms and Python versions.
+---
 
-`uv` addresses this problem out of the box through its built-in lockfile mechanism. Whenever dependencies are added, removed, or updated, `uv` resolves the complete dependency graph and stores the result in the `uv.lock` file.
-
-!!! note "uv.lock file"
-    The `uv.lock` file serves as the single source of truth for your project's dependencies.It contains the fully resolved dependency graph, including all direct and transitive dependencies, along with the exact versions that should be installed. Because uv uses a universal resolution strategy, the lockfile remains portable across operating systems and Python environments.
-
-The uv.lock file remains unchanged until it is explicitly updated. This ensures that dependency versions stay consistent across development, CI, and production environments.
-
-Validate that the lockfile is in sync with the project's dependency definitions:
+Alternatively, `uv` can also be installed from PyPi using `pip`.
 
 ```shell
-uv lock --check
+pip install uv
 ```
 
-Update all locked dependencies to the latest compatible versions and regenerate the lockfile:
+This might be more convenient for many developers, however, when installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
+
+## Managing a Python Project
+
+The following commands cover usual tasks during the lifecycle of a Python project.
+
+### Initialize a Project
+
+Create a new project with a default `pyproject.toml`.
 
 ```shell
-uv lock --upgrade
+cd ~ && uv init my-project
+cd my-project
 ```
 
-Update a single dependency while leaving the rest of the lockfile unchanged:
+This creates the project structure and initializes Python package metadata.
+
 
 ```shell
-uv lock --upgrade-package fastapi
+/project-folder
+└── app
+    ├── README.md
+    ├── main.py
+    └── pyproject.toml
 ```
 
-By requiring explicit updates to uv.lock, dependency changes become predictable, reviewable, and fully reproducible.
+The command also sets up an initial cache structure under `/home/user/.cache/uv`. 
 
-## Resolution
+### Add Dependencies
 
-Before a lockfile can be created, the package manager must first resolve a valid dependency graph - this process is called **resolution**. 
-
-`uv` performs dependency resolution automatically whenever dependencies are added, updated, or synchronized.
-
-### Strategies
-
-By default, `uv` prefers the latest compatible version of each dependency. This keeps projects up to date while still respecting version constraints defined in `pyproject.toml`.
-
-When developing libraries, however, testing only against the latest versions is often insufficient. A dependency declaration such as `fastapi>=0.100.0` the following claims compatibility with every version starting from `0.100.0`, not just the latest release.
-
-To validate these compatibility guarantees, `uv` supports alternative resolution strategies:
+`uv` simplifies the integration of dependencies to your project.
 
 ```shell
-uv sync --resolution lowest
+uv add click==1.0.0
 ```
 
-Installs the lowest compatible version for all direct and transitive dependencies.
+After the first dependency is added, the project structure looks similar to:
 
 ```shell
-uv sync --resolution lowest-direct
+/project-folder
+└── app
+    ├── .venv
+    ├── README.md
+    ├── main.py
+    ├── pyproject.toml
+    └── uv.lock
 ```
 
-Installs the lowest compatible versions for direct dependencies while keeping transitive dependencies at their latest compatible versions.
+In a single step, the command resolves dependencies, creates a virtual environment if necessary, installs the packages, adds an entry of the dependency in the `pyproject.toml`, and generates/refreshes the `uv.lock` file (details about `uv.lock` are covered in [Locking](./section-03.md/#locking)).
 
-These strategies are particularly useful in CI pipelines to verify that declared version bounds are accurate and that a project does not accidentally depend on newer package releases.
 
-### Dependency Groups
+Dependencies can be added to specific groups, such as development dependencies or to a custom group
 
-Not all dependencies are required in every environment. Development tools, test frameworks, and documentation generators are typically only needed during development.
+```shell
+uv add --dev pytest && uv add --group docs mkdocs
+```
 
-Dependency groups allow related dependencies to be separated from production requirements:
+This adds the dependency to the corresponding section in the `pyproject.toml`:
 
-```yaml
+```toml
 [dependency-groups]
 dev = [
-    "pytest",
-    "ruff",
+    "pytest>=7.0.0",
+]
+
+docs = [
+    "mkdocs>=1.6.0",
 ]
 ```
 
-Dependencies can then be installed selectively:
+Dependencies can also be installed directly from Git repositories:
 
 ```shell
-uv sync --group dev
+uv add "httpx @ git+https://github.com/encode/httpx"
 ```
 
-Grouping dependencies keeps production environments lean while ensuring that development tooling remains easy to install and manage.
+The dependency is added to project.dependencies, while the source information is stored separately:
 
-### Dependency Markers
-
-Some dependencies are only valid on specific platforms or Python versions. Without additional information, the resolver assumes that every dependency must be installed in every environment.
-
-Consider a project that uses Windows Authentication through `pywin32`:
-
-```yaml
+```toml
+[project]
 dependencies = [
-    "fastapi",
-    "sqlalchemy",
-    "pywin32"
+    "httpx",
 ]
+
+[tool.uv.sources]
+httpx = { git = "https://github.com/encode/httpx" }
 ```
 
-While the project perfectly bootstraps on Windows, the same setup on WSL crashes with the following hint
+This allows `uv` to install packages directly from version control systems instead of package registries.
+
+### Remove Dependencies
+
+Remove a dependency from the project.
+
+```shell
+uv remove requests
+```
+
+This command removes the package from the `pyproject.toml` and updates `uv.lock` to reflect the change. It does not modify the virtual environment — run `uv sync` afterward to clean up the `.venv`.
+
+### Synchronize the Environment
+
+When setting up a project the first time or after pulling dependencies, the `uv sync` command can be used to synchronize the project's virtual environment.
+
+```shell
+uv sync
+```
+
+This command installs all locked dependencies and ensures that the local environment exactly matches the state described in `uv.lock`. If a virtual environment does not exist, `uv` creates it automatically. It ensures full reproducibility of the project environment and generates the exact same project structure as above.
+
+```shell
+/project-folder
+└── app
+    ├── .venv
+    ├── README.md
+    ├── main.py
+    ├── pyproject.toml
+    └── uv.lock
+```
+
+
+### Update the Lock File
+
+Generate or refresh the project's lock file.
+
+```shell
+uv lock
+```
+
+The command resolves all dependencies defined in `pyproject.toml` and writes the result to `uv.lock` without installing packages into the virtual environment.
+
+During resolution, `uv` may download metadata/wheels into `~/.cache/uv` and create temporary lock files, but it does not install packages into `.venv` or `site-packages`.
+
+This is useful when dependencies have changed and you want to refresh the lock file separately from installation.
+
+### Change the Python version
+
+`uv` can manage Python interpreters directly and integrates it smoothly with the current project context. At first the needed Python version is going to be installed
 
 ```bash
-error: Distribution `pywin32==312 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform
+uv python install 3.10
 ```
 
-Dependency markers allow such constraints to be expressed directly:
+This downloads a standalone CPython 3.10 build into uv's shared install directory `~/.local/share/uv/python` without replacing the system Python. Afterwards the Python interpreter can be pinned to the project context
 
-```yaml
-dependencies = [
-    "fastapi",
-    "sqlalchemy",
-    "pywin32; sys_platform == 'win32'"
+```bash
+uv python pin 3.10
+```
+
+This writes the selected version to a `.python-version` file in the project root. From this point on, every `uv` command run inside the project (`uv sync`, `uv run`, `uv add`, …) will use Python 3.10. The next `uv sync` recreates `.venv` against the pinned interpreter.
+
+
+### Run commands
+
+`uv` can execute Python scripts and tools directly, without manually activating a virtual environment.
+
+```shell
+uv run main.py
+```
+
+Before running the command, `uv` ensures the project is ready: it creates the `.venv` if it does not exist, installs or updates dependencies to match `uv.lock`, and uses the pinned Python interpreter. The script is then executed inside that environment.
+
+
+!!! note "Command invocation"
+    The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
+
+### Build distributions
+
+The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
+
+```shell
+uv build
+```
+
+```
+dist/
+├── my_project-0.1.0.tar.gz              ← source distribution
+└── my_project-0.1.0-py3-none-any.whl   ← wheel
+```
+
+### Publish packages
+
+The `uv publish` command uploads the distribution files from `dist/` to PyPI using the `--token` for authentication and the `--publish-url` to override the target registry:
+
+```shell
+uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
+```
+
+## Build and Publishing Packages
+
+## Handling multiple projects with uv
+
+### Introduction into uv workspaces
+
+When multiple related projects must be developed and tested together, a consistent shared environment becomes essential. For scenarios like this, `uv` provides the concept of **[workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/)**. A workspace allows multiple related Python projects to coexist within a single repository while remaining independent packages. All workspace members share a common `uv.lock` file, ensuring a consistent dependency set across the entire workspace. At the same time, each member maintains its own `pyproject.toml`, allowing project-specific configuration and metadata.
+
+### Structure and Members
+
+A workspace consists of a root project that defines the workspace itself and one or more workspace members. In the following example, the plugin is the workspace root and the `depsight-dependency-manager` framework lives as a workspace member beneath it:
+
+```text
+depsight-third-party-plugin/
+├── pyproject.toml
+├── uv.lock
+├── src/
+│   └── depsight_third_party_plugin
+│
+└── depsight-dependency-manager/
+    ├── pyproject.toml
+    └── src/
+        └── depsight_dependency_manager
+```
+
+The workspace root (`depsight-third-party-plugin`) owns the shared `uv.lock` and a `pyproject.toml` that both declares the framework as a workspace member and pins it as a local source, so `uv` resolves it from the workspace instead of PyPI.
+
+```toml
+[tool.uv.workspace]
+members = [
+    "depsight-dependency-manager",
 ]
+
+[tool.uv.sources]
+depsight-dependency-manager = { workspace = true }
 ```
 
-The resolver now includes `pywin32` only on Windows systems, producing a valid dependency graph across different environments.
-
-!!! note
-    Dependency markers are defined by the `PEP 508` standard and can be looked up from the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. In practice, operating system and Python version markers are by far the most common use cases, especially when supporting mixed environments such as Windows, Linux, WSL, CI runners, and production containers.
-
-## Comparison
-
-The table below compares `uv`, `poetry`, and `pip` across environment isolation, locking, and resolution—the core components of dependency management.
-
-<table>
-<tbody>
-<tr style="background-color: #f5f5f5;">
-<td style="font-weight: bold;">Environment Isolation</td>
-<td style="text-align: center; font-weight: bold;">uv</td>
-<td style="text-align: center; font-weight: bold;">Poetry</td>
-<td style="text-align: center; font-weight: bold;">pip</td>
-</tr>
-<tr>
-<td>Automatic environment creation</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr>
-<td>Automatic environment selection</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr>
-<td>Install python version</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr>
-<td>Switch python version</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr style="background-color: #f5f5f5;">
-<td colspan="4" style="font-weight: bold;">Locking</td>
-</tr>
-<tr>
-<td>Native lock file</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr>
-<td>Stores full dependency graph</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr>
-<td>Reproducible installations</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✗</td>
-</tr>
-<tr style="background-color: #f5f5f5;">
-<td colspan="4" style="font-weight: bold;">Resolution</td>
-</tr>
-<tr>
-<td>Full dependency graph resolution</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-</tr>
-<tr>
-<td>Lock-file-based resolution</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">(✓)</td>
-</tr>
-<tr>
-<td>Deterministic dependency graph</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">(✓)</td>
-</tr>
-<tr>
-<td>Optimized for resolution speed</td>
-<td style="text-align: center;">✓</td>
-<td style="text-align: center;">(✓)</td>
-<td style="text-align: center;">✗</td>
-</tr>
-</tbody>
-</table>
+To invoke dedicated workspace members such as the `depsight-dependency-manager` framework you can simply use the `uv run --package depsight-dependency-manager` command. 

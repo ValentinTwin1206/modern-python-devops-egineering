@@ -1,356 +1,231 @@
-# Dependency Caching with uv
+# Dependency management with uv
 
 ## Introduction
 
-`uv` uses **aggressive caching** to avoid redundant network requests and wheel builds.
-Every resolution, download, and install operation feeds a structured, on-disk cache so that
-subsequent runs can skip work that has already been done.
+Modern Python applications are built on top of dependencies. Managing those dependencies becomes increasingly challenging when developers work on different operating systems, use different Python versions, or require platform-specific tooling. 
 
----
+## Environment Isolation
 
-## Cache footprint on Linux
+`uv` manages a persistent virtual environment in a `.venv` directory next to the `pyproject.toml`. The environment is created and updated automatically by commands such as `uv venv`, `uv add`, `uv sync`, or `uv run`.
 
-### Introduction
+Using `uv python install` and `.python-version`, projects can pin an exact Python version which is managed by `uv` as part of the project setup. Developers do not need to manually create environments with a specific Python executable or keep track of interpreter paths. When entering a project, `uv` automatically discovers the required interpreter, creates the virtual environment with that interpreter, and keeps the interpreter and environment aligned
 
-Before exploring the cache layout itself, it is important to understand **what gets written
-to disk** when you install a package. This section gives a brief overview of the artifacts
-and libraries that end up on the system.
+The relationship between the pinned interpreter and the virtual environment is recorded in `.venv/pyvenv.cfg`:
 
-The following comparison installs a single, dependency-free library — `click` — and
-examines the resulting footprint for three installation routines: 
-
-* `pip`
-* `uv pip install`
-* `uv sync`
-
-!!! note "Cache directory"
-    By default, `uv` stores its cache in `$HOME/.cache/uv`. This can be changed with the
-    `--cache-dir` flag or the `tool.uv.cache-dir` setting in `pyproject.toml`.
-
-For the sake of comparison each of the three commands had been executed inside a `python:3.12-slim` 
-container image. The resulting last image layer, produced by the install command, was
-then exported and inspected to extract file counts, sizes, and artifacts.
-
-=== "Using pip install"
-
-    `pip` is the traditional Python package manager and is itself a Python package. The installation of `click` is straight forward and the installation command inside ``Dockerfile`` looks like
-    the following
-
-    ```Dockerfile
-    RUN pip install click
-    ```
-
-    The extracted layer reveals two distinct areas that were written to disk:
-
-    ```
-    └─ root/.cache/pip/                       # pip's own HTTP cache
-        ├── http-v2/                          # cached PyPI responses
-        └── selfcheck/                        # pip version check data
-    └─ usr/local/lib/python3.12/
-        ├── __pycache__/                      # top-level stdlib .pyc files
-        ├── collections/, email/, encodings/  # stdlib packages touched at runtime
-        ├── html/, ..., urllib/               # ...
-        └── site-packages/
-            ├── click/                        # target package (~892 KB)
-            ├── click-8.3.3.dist-info/
-            └── pip/                          # pip itself (~4.8 MB)
-    ```
-
-    `root/.cache/pip/` is pip's **HTTP response cache**. Every request to PyPI is stored here
-    so that repeated installs can serve responses locally. Unlike `uv`, pip does not hard-link 
-    installed packages from this cache — it is purely a download artefact.
-
-    `usr/local/lib/python3.12/` contains two categories of new files. First, the stdlib
-    `.pyc` bytecode which are compiled modules across packages like `http`, `email`, `urllib`,
-    `json` etc.. Second, `site-packages/` holds both the target package `click` and `pip` itself , which ships pre-installed in the image but gets modified during the install.
-
-    !!! note "`.pyc` files"
-        When `pip` runs, the CPython interpreter imports dozens of stdlib modules (http.client, urllib, email, hashlib, zipfile, …) to handle HTTP requests, checksum verification, and wheel unpacking. Each first-time import compiles the module and writes a `.pyc` bytecode file into `__pycache__/`. 
-
-=== "Using uv pip install"
-
-    `uv` provides a `pip`-compatible interface that installs packages directly into the system
-    `site-packages`:
-
-    ```Dockerfile
-    RUN uv pip install --system click  # skips installation inside a venv 
-    ```
-
-    The extracted layer reveals two areas:
-
-    ```
-    └─ root/.cache/uv/                                 # uv structured cache (~584 KB)
-        ├── archive-v0/                                # unpacked wheel archive (~452 KB)
-        │   └── click/    
-        ├── wheels-v1/pypi/click/                      # downloaded wheel + HTTP metadata
-        ├── simple-v12/pypi/                           # cached PyPI Simple API index
-        └── interpreter-v2/                            # interpreter discovery metadata
-    └─ usr/local/lib/python3.12/site-packages/
-        ├── click/                                     # target package (~420 KB)
-        └── click-8.3.3.dist-info/
-    ```
-
-    `root/.cache/uv/` is uv's **structured cache** with purpose-specific buckets that will be explored in detail in the [Cache organisation](#cache-organisation) section below.
-
-    `usr/local/lib/python3.12/site-packages/` contains **only** the `click` package and its
-    dist-info. Because uv is a compiled Rust binary, the Python interpreter is never 
-    invoked during the install, so no bytecode compilation takes place.
-
-    The click sources appear in both `archive-v0/` (the cache) and `site-packages/` (the
-    install target), but uv does not copy the files — it creates **hard-links**, meaning
-    both paths point to the **same inode** on disk.
-
-=== "Using uv sync"
-
-    The `uv sync` command reads dependencies from the `pyproject.toml`, resolves
-    them, and installs everything into a project-local `.venv`. The `pyproject.toml` used here declares a single dependency:
-
-    ```toml
-    [project]
-    name = "uv-cache-demo"
-    version = "0.1.0"
-    requires-python = ">=3.12"
-    dependencies = ["click"]
-    ```
-
-    The install command:
-
-    ```Dockerfile
-    RUN uv sync
-    ```
-
-    The extracted layer reveals two areas:
-
-    ```
-    └─ root/.cache/uv/                                 # uv structured cache (~668 KB)
-        ├── archive-v0/                                # unpacked wheel archive (~452 KB)
-        │   └── click/
-        ├── wheels-v1/pypi/                            # downloaded wheels + HTTP metadata
-        │   ├── click/
-        │   └── colorama/                              # resolved for universal lock
-        ├── ...
-    └─ app/
-        ├── uv.lock                                    # universal lockfile (~4 KB)
-        └── .venv/                                     # project-local virtual environment
-            ├── ...
-            └── lib/python3.12/site-packages/
-                ├── click/                             # target package (~420 KB)
-                ├── click-8.3.3.dist-info/
-                └── _virtualenv.py
-    ```
-
-    `root/.cache/uv/` follows the same bucket layout as the previous section. Two differences
-    stand out: `simple-v12/` now caches index data for both `click` and `colorama`,
-    and `built-wheels-v3/` contains build metadata for the project root itself.
-
-    `app/` holds the project-level artefacts like the `uv.lock` file that pins the
-    full dependency graph across all platforms. The `.venv/` directory is a standard virtual
-    environment created by uv containing the `site-packages/` with the installed packages. Also the 
-    click files in `.venv/site-packages/` are **hard-linked** from `archive-v0/` in the cache, 
-    so no bytes are duplicated on disk.
-
-    !!! note "Why is colorama in the cache but not in `.venv`?"
-        The universal lockfile resolves `colorama` because it is a click dependency on Windows.
-        uv downloads and caches the wheel metadata (`wheels-v1/` and `simple-v12/`), but since
-        the install runs on Linux, `colorama` is never actually unpacked into `archive-v0/` or
-        installed into `.venv/site-packages/`.
-
-### Summary
-
-The table below condenses the three layer extractions into a side-by-side comparison.
-The contrast is stark: `pip` pulls in its own runtime, compiles stdlib bytecode, and
-bloats the layer by an order of magnitude, while both `uv` approaches keep the footprint
-close to the size of the target package itself.
-
-| Metric | pip | uv pip install | uv sync |
-|---|---|---|---|
-| Install time | ~7 482 ms | ~346 ms | ~4 192 ms |
-| Layer size | ~11 MB | ~640 KB | ~800 KB |
-| File count | 518 | 56 | 74 |
-| site-packages size | ~5.7 MB | ~452 KB | ~464 KB |
-
---- 
-
-## Cache organisation
-
-The cache lives under `~/.cache/uv/` (or the path set via `UV_CACHE_DIR`) and is split
-into **typed, versioned buckets**. Each bucket handles one kind of artifact; the version
-suffix (e.g. `-v5`) is bumped whenever the on-disk format changes, so different uv
-versions can share the same cache root safely.
-
-```
-~/.cache/uv/
-├── archive-v0/       ← unpacked wheel trees (hard-link source)
-├── builds-v0/        ← temporary build workspace
-├── git-v0/           ← bare git clones + checkouts
-├── interpreter-v4/   ← Python interpreter metadata
-├── sdists-v9/        ← source distributions & source-built wheels
-├── simple-v16/       ← PyPI Simple API index responses
-└── wheels-v5/        ← downloaded pre-built wheels
+```ini
+home = /root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.11.19
+version_info = 3.10.20
+include-system-site-packages = false
 ```
 
-Which buckets are populated depends entirely on **where the dependency comes from**.
-The following examples each install a single package from a different source and show
-the resulting cache tree.
+This allows developers to work with the exact Python version required by the project while keeping the system Python untouched.
 
-**Git source with setuptools backend**
+!!! note "Interpreter change"
+    Interpreter changes forces to remove and recreate the `.venv` folder against the new interpreter. Dependency versions still follow `uv.lock`; package artifacts are usually reused from `~/.cache/uv` and hard-linked into the new environment, and are only downloaded again when they are missing or incompatible with the new Python version/platform.
 
-The legacy build backend forces uv to pull setuptools as a build dependency, inflating `archive-v0/`:
+## Locking
 
-```Dockerfile
-RUN uv pip install --system \
-  "markupsafe @ git+https://github.com/pallets/markupsafe.git@3.0.2"
+Dependency locking ensures that every installation uses the exact same dependency versions, making builds reproducible and preventing unexpected breakages caused by newly released package versions.
+
+Traditional Python package managers such as `pip` only provide limited support for dependency locking. While developers often use `pip freeze` to generate a `requirements.txt` file, this approach merely captures the current state of a local environment and may produce inconsistent results across different platforms and Python versions.
+
+`uv` addresses this problem out of the box through its built-in lockfile mechanism. Whenever dependencies are added, removed, or updated, `uv` resolves the complete dependency graph and stores the result in the `uv.lock` file.
+
+!!! note "uv.lock file"
+    The `uv.lock` file serves as the single source of truth for your project's dependencies.It contains the fully resolved dependency graph, including all direct and transitive dependencies, along with the exact versions that should be installed. Because uv uses a universal resolution strategy, the lockfile remains portable across operating systems and Python environments.
+
+The uv.lock file remains unchanged until it is explicitly updated. This ensures that dependency versions stay consistent across development, CI, and production environments.
+
+Validate that the lockfile is in sync with the project's dependency definitions:
+
+```shell
+uv lock --check
 ```
 
-```
-~/.cache/uv/
-├── git-v0/
-│   ├── db/<hash>/                   # bare clone of pallets/markupsafe
-│   ├── checkouts/<hash>/28ace20/    # working tree at the pinned commit
-│   └── locks/
-├── sdists-v9/git/                   # wheel built from git source
-├── wheels-v5/pypi/setuptools/       # setuptools fetched from PyPI (build dep)
-├── simple-v16/pypi/                 # PyPI index for setuptools resolution
-├── archive-v0/
-│   ├── <hash-a>/markupsafe/         # unpacked target wheel (~68 KB)
-│   └── <hash-b>/setuptools/         # unpacked build dep (~4.6 MB)
-└── builds-v0/                       # empty after build
+Update all locked dependencies to the latest compatible versions and regenerate the lockfile:
+
+```shell
+uv lock --upgrade
 ```
 
-**Git source with modern backend (flit)**
+Update a single dependency while leaving the rest of the lockfile unchanged:
 
-No setuptools needed, so `archive-v0/` stays small:
-
-```Dockerfile
-RUN uv pip install --system \
-  "tomli @ git+https://github.com/hukkin/tomli.git@2.2.1"
+```shell
+uv lock --upgrade-package fastapi
 ```
 
-```
-~/.cache/uv/
-├── git-v0/
-│   ├── db/<hash>/
-│   ├── checkouts/<hash>/73c3d10/
-│   └── locks/
-├── sdists-v9/git/                   # wheel built from git source
-├── wheels-v5/pypi/flit-core/        # flit-core from PyPI (build dep)
-├── simple-v16/pypi/
-├── archive-v0/
-│   ├── <hash-a>/tomli/              # unpacked target wheel
-│   └── <hash-b>/flit_core/          # unpacked build dep (~284 KB)
-└── builds-v0/
-```
+By requiring explicit updates to uv.lock, dependency changes become predictable, reviewable, and fully reproducible.
 
-!!! note "Takeaway"
-    Packages with modern build backends (`flit`, `hatchling`, `maturin`) keep the
-    build-dependency footprint in `archive-v0/` minimal compared to setuptools.
+## Resolution
 
-**Default index vs explicit `--index-url`**
+Before a lockfile can be created, the package manager must first resolve a valid dependency graph - this process is called **resolution**. 
 
-uv keys cache entries by index URL. Using the built-in default *and* an explicit `--index-url` pointing to the same PyPI creates **duplicate** entries:
+`uv` performs dependency resolution automatically whenever dependencies are added, updated, or synchronized.
 
-```Dockerfile
-RUN uv pip install --system click \
-  && uv pip install --system --reinstall \
-     --index-url https://pypi.org/simple/ click
+### Strategies
+
+By default, `uv` prefers the latest compatible version of each dependency. This keeps projects up to date while still respecting version constraints defined in `pyproject.toml`.
+
+When developing libraries, however, testing only against the latest versions is often insufficient. A dependency declaration such as `fastapi>=0.100.0` the following claims compatibility with every version starting from `0.100.0`, not just the latest release.
+
+To validate these compatibility guarantees, `uv` supports alternative resolution strategies:
+
+```shell
+uv sync --resolution lowest
 ```
 
-```
-~/.cache/uv/
-├── wheels-v5/
-│   ├── pypi/click/                       # from default index
-│   └── index/<digest>/click/             # from explicit --index-url (same PyPI!)
-├── simple-v16/
-│   ├── pypi/                             # default index metadata
-│   └── index/                            # duplicate index metadata
-└── archive-v0/
-    ├── <hash-a>/click/                   # unpacked wheel (default)
-    └── <hash-b>/click/                   # unpacked wheel (duplicate)
+Installs the lowest compatible version for all direct and transitive dependencies.
+
+```shell
+uv sync --resolution lowest-direct
 ```
 
-!!! warning "Avoid mixing index styles"
-    Stick to **one** way of referencing each index. Mixing the default PyPI with an
-    explicit `--index-url https://pypi.org/simple/` doubles cache usage for no benefit.
+Installs the lowest compatible versions for direct dependencies while keeping transitive dependencies at their latest compatible versions.
 
-**Direct URL**
+These strategies are particularly useful in CI pipelines to verify that declared version bounds are accurate and that a project does not accidentally depend on newer package releases.
 
-A wheel fetched from a URL is cached under `wheels-v5/url/`, keyed
-by a hash of the URL. No `simple-v16/` entry is created because there is no index
-to query:
+### Dependency Groups
 
-```Dockerfile
-RUN uv pip install --system \
-  "click @ https://files.pythonhosted.org/packages/7e/d4/...click-8.1.8-py3-none-any.whl"
+Not all dependencies are required in every environment. Development tools, test frameworks, and documentation generators are typically only needed during development.
+
+Dependency groups allow related dependencies to be separated from production requirements:
+
+```yaml
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
 ```
 
-```
-~/.cache/uv/
-├── wheels-v5/
-│   └── url/<digest>/click/               # wheel metadata + HTTP cache
-└── archive-v0/
-    └── <hash>/click/                     # unpacked wheel
+Dependencies can then be installed selectively:
+
+```shell
+uv sync --group dev
 ```
 
-!!! note "Direct URLs vs index installs"
-    uv cannot de-duplicate a direct-URL wheel against the same version fetched from
-    an index — they live in separate namespaces and are cached independently.
+Grouping dependencies keeps production environments lean while ensuring that development tooling remains easy to install and manage.
 
----
+### Dependency Markers
 
-## Cache versioning across uv upgrades
+Some dependencies are only valid on specific platforms or Python versions. Without additional information, the resolver assumes that every dependency must be installed in every environment.
 
-Each bucket name includes a version suffix (e.g. `wheels-v5`). When a new uv release
-changes the internal format of a bucket, it increments the suffix and writes to a new
-directory. The old one remains on disk untouched.
+Consider a project that uses Windows Authentication through `pywin32`:
 
-There are two possible outcomes when upgrading uv, depending on whether bucket versions
-changed:
-
-**Breaking upgrade (e.g. 0.4.0 → 0.7.8)** — bucket versions differ. The new uv
-ignores the old buckets and re-downloads everything from the network. After the
-install, both old and new bucket directories coexist on disk, effectively doubling
-cache usage.
-
-**Compatible upgrade (e.g. 0.4.11 → 0.4.12)** — bucket versions are identical.
-The cache built by the older version is fully readable by the newer one. This can be
-proven by copying the old cache into a fresh environment and installing without any
-network access:
-
-```Dockerfile
-COPY --from=cache-builder /root/.cache/uv /root/.cache/uv
-
-RUN --network=none uv pip install --offline --system click
+```yaml
+dependencies = [
+    "fastapi",
+    "sqlalchemy",
+    "pywin32"
+]
 ```
 
-The install succeeds entirely from cache — no duplicated buckets, no re-download.
-
----
-
-## Cache maintenance
-
-uv ships two commands to manage cache disk usage:
+While the project perfectly bootstraps on Windows, the same setup on WSL crashes with the following hint
 
 ```bash
-uv cache clean
+error: Distribution `pywin32==312 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform
 ```
 
-This wipes the entire cache. Every bucket is deleted, regardless of
-version. Subsequent installs must re-download and rebuild everything from scratch.
+Dependency markers allow such constraints to be expressed directly:
 
-```
-Clearing cache at: /home/user/.cache/uv
-Removed 31 files (463.2KiB)
-```
-
-```bash
-uv cache prune
+```yaml
+dependencies = [
+    "fastapi",
+    "sqlalchemy",
+    "pywin32; sys_platform == 'win32'"
+]
 ```
 
-This removes only stale bucket directories that the running uv
-version can no longer read. Current-version buckets and valid `archive-v0/` entries
-are left intact.
+The resolver now includes `pywin32` only on Windows systems, producing a valid dependency graph across different environments.
 
-```
-Pruning cache at: /home/user/.cache/uv
-Removed 12 files (148.8KiB)
-```
+!!! note
+    Dependency markers are defined by the `PEP 508` standard and can be looked up from the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. In practice, operating system and Python version markers are by far the most common use cases, especially when supporting mixed environments such as Windows, Linux, WSL, CI runners, and production containers.
+
+## Comparison
+
+The table below compares `uv`, `poetry`, and `pip` across environment isolation, locking, and resolution—the core components of dependency management.
+
+<table>
+<tbody>
+<tr style="background-color: #f5f5f5;">
+<td style="font-weight: bold;">Environment Isolation</td>
+<td style="text-align: center; font-weight: bold;">uv</td>
+<td style="text-align: center; font-weight: bold;">Poetry</td>
+<td style="text-align: center; font-weight: bold;">pip</td>
+</tr>
+<tr>
+<td>Automatic environment creation</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Automatic environment selection</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Install python version</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Switch python version</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr style="background-color: #f5f5f5;">
+<td colspan="4" style="font-weight: bold;">Locking</td>
+</tr>
+<tr>
+<td>Native lock file</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Stores full dependency graph</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td>Reproducible installations</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr style="background-color: #f5f5f5;">
+<td colspan="4" style="font-weight: bold;">Resolution</td>
+</tr>
+<tr>
+<td>Full dependency graph resolution</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Lock-file-based resolution</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+</tr>
+<tr>
+<td>Deterministic dependency graph</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+</tr>
+<tr>
+<td>Optimized for resolution speed</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">(✓)</td>
+<td style="text-align: center;">✗</td>
+</tr>
+</tbody>
+</table>
