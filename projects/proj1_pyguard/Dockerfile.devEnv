@@ -31,7 +31,6 @@ RUN uv pip install --system --break-system-packages cloudsmith-cli
 COPY pyproject.toml ./
 COPY README.md ./
 COPY src ./src
-COPY tests ./tests
 
 RUN chown -R snake:snake /app
 

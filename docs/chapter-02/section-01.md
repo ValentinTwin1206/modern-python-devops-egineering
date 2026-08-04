@@ -6,11 +6,11 @@ Python wheels are the standard built package format for Python projects. They le
 
 ### Project Setup
 
-The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
+The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
+Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
 
 ## Building Blocks
 
@@ -105,7 +105,7 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj1_docslug/Dockerfile.devEnv -- \
+../build.sh build --path proj1_pyguard/Dockerfile.devEnv -- \
     --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
     --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
 ```
@@ -141,25 +141,25 @@ A wheel (`.whl`) is a **ZIP archive** with Python modules and a `*.dist-info/` m
 List the files inside the wheel archive without extracting it.
 
 ```bash
-zipinfo -1 dist/docslug-1.0.0-py3-none-any.whl
+zipinfo -1 dist/pyguard-0.1.0-py3-none-any.whl
 ```
 
 Read the wheel metadata that describes the wheel format version, generator, root layout, and compatibility tags.
 
 ```bash
-unzip -p dist/docslug-1.0.0-py3-none-any.whl docslug-1.0.0.dist-info/WHEEL
+unzip -p dist/pyguard-0.1.0-py3-none-any.whl pyguard-0.1.0.dist-info/WHEEL
 ```
 
 Read the package metadata that installers and package indexes use for the project name, version, description, and dependency declarations.
 
 ```bash
-unzip -p dist/docslug-1.0.0-py3-none-any.whl docslug-1.0.0.dist-info/METADATA
+unzip -p dist/pyguard-0.1.0-py3-none-any.whl pyguard-0.1.0.dist-info/METADATA
 ```
 
 List the files inside the source distribution TAR archive.
 
 ```bash
-tar -tzf dist/docslug-1.0.0.tar.gz
+tar -tzf dist/pyguard-0.1.0.tar.gz
 ```
 
 ### Publish The Package
@@ -175,19 +175,19 @@ uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/
 Check that the uploaded release is visible through the Cloudsmith `/simple/` API used by installers.
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/docslug/" | grep "docslug-1.0.0"
+curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/pyguard/" | grep "pyguard-0.1.0"
 ```
 
 ## Consumer Workflow
 
 ### Install The Package
 
-After publication, users can create a small project, install `docslug` from the Cloudsmith PyPI repository, and run a short script against the created environment. `uv` can read package indexes directly from `pyproject.toml`, so the project can describe both the public PyPI index and the proprietary Cloudsmith index in one place. `pip` does not read package indexes from `pyproject.toml`, so its install command still needs an explicit `--extra-index-url` argument.
+After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment. `uv` can read package indexes directly from `pyproject.toml`, so the project can describe both the public PyPI index and the proprietary Cloudsmith index in one place. `pip` does not read package indexes from `pyproject.toml`, so its install command still needs an explicit `--extra-index-url` argument.
 
 Create a new working directory for a small consumer project.
 
 ```bash
-mkdir docslug-consumer && cd docslug-consumer
+mkdir pyguard-consumer && cd pyguard-consumer
 ```
 
 Add the project files.
@@ -196,11 +196,11 @@ Add the project files.
 
     ```toml
     [project]
-    name = "docslug-consumer"
+    name = "pyguard-consumer"
     version = "0.1.0"
     requires-python = ">=3.12"
     dependencies = [
-	"docslug",
+        "pyguard",
     ]
 
     [tool.uv]
@@ -217,21 +217,27 @@ Add the project files.
 === "hello.py"
 
     ```python
-    from docslug import slugify
+    from pyguard import PyGuardMiddleware, Request, RequestBlocked
 
     def main() -> None:
-	print(slugify("Hello from Docslug"))
+        guard = PyGuardMiddleware()
+        request = Request(method="GET", path="/download", query="file=../../etc/passwd")
+
+        try:
+            guard.before_request(request)
+        except RequestBlocked as exc:
+            print(exc)
 
 
     if __name__ == "__main__":
-	main()
+        main()
     ```
 
 Install the dependency and run the script.
 
 === "uv"
 
-    Sync the project environment with `uv`. It reads the package indexes from `pyproject.toml` and resolves `docslug` from the configured Cloudsmith repository.
+    Sync the project environment with `uv`. It reads the package indexes from `pyproject.toml` and resolves `pyguard` from the configured Cloudsmith repository.
 
     ```bash
     uv sync
@@ -239,10 +245,10 @@ Install the dependency and run the script.
 
 === "pip"
 
-    Create a virtual environment and install `docslug` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
+    Create a virtual environment and install `pyguard` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
 
     ```bash
-    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ docslug
+    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ pyguard
     ```
     
 Run the script from the same virtual environment.

@@ -10,9 +10,9 @@ Section 01 starts with the setup of `uv` and then shows how it can be used throu
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary |
-|---------|---------|
-| [Section 01](./section-01.md) | Modern Python Project Mangement with uv|
-| [Section 02](./section-02.md) | Dependency Management with uv |
-| [Section 03](./section-03.md) | Dependency Caching with uv |
-| [Section 04](./section-04.md) | uv in Comparison |
+| Section | Summary | Project | Notebook |
+|---------|---------|---------|-----------|
+| [Section 01](./section-01.md) | Modern Python Project Mangement with uv| |
+| [Section 02](./section-02.md) | Dependency Management with uv | |
+| [Section 03](./section-03.md) | Dependency Caching with uv | |
+| [Section 04](./section-04.md) | uv in Comparison | |

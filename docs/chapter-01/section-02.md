@@ -6,11 +6,11 @@ This page covers Python's standard-library `venv` module.
 
 ### Project Setup
 
-The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
+The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
+Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
 
 ## `venv` environment model
 
@@ -165,7 +165,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     include-system-site-packages = false
     version = 3.12.3
     executable = /usr/bin/python3.12
-    command = /usr/bin/python3 -m venv /path/to/projects/proj1_docslug/.venv
+    command = /usr/bin/python3 -m venv /path/to/projects/proj1_pyguard/.venv
     ```
 
 ### Activation and import path
@@ -273,6 +273,6 @@ python3 -c "import sys; print(sys.prefix); print(sys.base_prefix)"
 Show where installed packages live:
 
 ```bash
-python3 -c "import docslug; print(docslug.__file__)"
+python3 -c "import pyguard; print(pyguard.__file__)"
 ```
 

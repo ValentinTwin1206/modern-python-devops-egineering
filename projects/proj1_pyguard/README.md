@@ -1,6 +1,6 @@
-# Docslug
+# PyGuard
 
-This section introduces *Docslug* as a small Python library that turns headings, titles, and filenames into stable slugs for URLs, documentation pages, and generated files, while demonstrating how a pure-Python package can be developed with `venv` and `uv`, distributed as a wheel, and published to PyPI.
+This section introduces *PyGuard* as a small Python library that blocks suspicious web requests before they reach application handlers, while demonstrating how a pure-Python package can be developed with `venv` and `uv`, distributed as a wheel, and published to PyPI.
 
 ## Project Components
 
@@ -10,27 +10,26 @@ The table below lists the main files that support the `venv` example project.
 | --------- | ----------- |
 | [Dockerfile.devEnv](Dockerfile.devEnv) | This development image installs `uv`, syncs the `dev` dependency group, and opens an interactive shell with the project virtual environment on `PATH`. It provides a reproducible containerized setup for the library workflow. |
 | [pyproject.toml](pyproject.toml) | This file defines the package metadata, the `uv_build` build backend, and the development dependency group for Karva and Ruff. It is the main configuration file for the library-style project layout. |
-| [src/docslug/](src/docslug/) | This source package holds the reusable slug helpers that end users import from their own applications. The `src` layout keeps imports honest by ensuring tests exercise the installed package shape rather than the repository root. |
-| [tests/](tests/) | This directory contains the automated tests for the pure-Python slug helpers. It gives Karva a small but realistic library test surface without introducing any runtime dependencies. |
+| [src/pyguard/](src/pyguard/) | This source package holds the reusable request-scanning middleware that end users import from their own web applications. The `src` layout keeps imports honest by ensuring development behavior matches the installed package shape. |
 
 ## End-User Guide
 
-This section shows how an end user installs and uses `docslug` as a published Python library from PyPI.
+This section shows how an end user installs and uses `pyguard` as a published Python library from PyPI.
 
 ### Requirements
 
-- Python 3.12 or newer.
+- Python 3.9 or newer.
 - `uv` if you install from `pyproject.toml`.
 - `pip`, or another installer that reads `requirements.txt` files.
 
 ### Installation
 
-Add `docslug` to your project metadata when you manage dependencies with `uv`:
+Add `pyguard` to your project metadata when you manage dependencies with `uv`:
 
 ```toml
 [project]
 dependencies = [
-	"docslug==1.0.0",
+    "pyguard==0.1.0",
 ]
 ```
 
@@ -43,7 +42,7 @@ uv sync
 If your project uses a `requirements.txt` file instead, add the published package there:
 
 ```text
-docslug==1.0.0
+pyguard==0.1.0
 ```
 
 Install the requirements with `pip`:
@@ -54,29 +53,56 @@ python -m pip install -r requirements.txt
 
 ### Usage
 
-Create a filesystem-safe slug from a document title:
+Create a request model and scan it before your application handles the request:
 
 ```python
-from docslug import slugify
+from pyguard import PyGuardMiddleware, Request
 
-print(slugify("Release Notes: Summer 2026"))
+guard = PyGuardMiddleware()
+request = Request(method="GET", path="/download", query="file=report.pdf")
+
+guard.before_request(request)
 ```
 
-Create a unique slug when a name already exists:
+Block a path traversal attempt:
 
 ```python
-from docslug import unique_slug
+from pyguard import PyGuardMiddleware, Request, RequestBlocked
 
-existing = {"release-notes-summer-2026", "release-notes-summer-2026-2"}
-print(unique_slug("Release Notes: Summer 2026", existing))
+guard = PyGuardMiddleware()
+request = Request(method="GET", path="/download", query="file=../../etc/passwd")
+
+try:
+    guard.before_request(request)
+except RequestBlocked as exc:
+    print(exc)
 ```
 
-Build a nested slug path for generated documentation:
+Integrate the middleware with a FastAPI application:
 
 ```python
-from docslug import slug_path
+from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
 
-print(slug_path("Guides", "API Reference"))
+from pyguard import PyGuardMiddleware, Request, RequestBlocked
+
+app = FastAPI()
+guard = PyGuardMiddleware()
+
+
+@app.middleware("http")
+async def security_middleware(request: FastAPIRequest, call_next):
+    guard_request = Request(
+        method=request.method,
+        path=request.url.path,
+        query=request.url.query,
+    )
+
+    try:
+        guard.before_request(guard_request)
+    except RequestBlocked as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    return await call_next(request)
 ```
 
 ## Developer Guide
@@ -86,7 +112,7 @@ print(slug_path("Guides", "API Reference"))
 Use the development image in [Dockerfile.devEnv](Dockerfile.devEnv) to open an interactive shell with `uv` and the project environment already prepared. Run the following command from the `projects/` directory through the shared helper:
 
 ```bash
-./build.sh build --path proj1_docslug/Dockerfile.devEnv
+./build.sh build --path proj1_pyguard/Dockerfile.devEnv
 ```
 
 ### Sync Environment
@@ -101,14 +127,6 @@ Then source the virtual environment so the installed tools are on `PATH`:
 
 ```bash
 source .venv/bin/activate
-```
-
-### Run Tests
-
-Within the active virtual environment, you can run the test suite with Karva:
-
-```bash
-karva test tests/
 ```
 
 ### Lint
@@ -134,7 +152,7 @@ uv build --wheel --out-dir /build
 The wheel is written inside the container to `/build` and appears on the host at:
 
 ```text
-.build/docslug-1.0.0-py3-none-any.whl
+.build/pyguard-0.1.0-py3-none-any.whl
 ```
 
 #### Upload to PyPI

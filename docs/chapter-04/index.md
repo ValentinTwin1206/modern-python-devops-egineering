@@ -16,10 +16,10 @@ delivery workflows.
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary | Project |
-|---------|---------|---------|
-| [Section 01](./section-01.md) | Project Overview | Depsight |
-| [Section 02](./section-02.md) | Development Environment | Depsight |
-| [Section 03](./section-03.md) | CLI Architecture | Depsight |
-| [Section 04](./section-04.md) | Distribution | Depsight |
-| [Section 05](./section-05.md) | CI/CD | Depsight |
+| Section | Summary | Project | Notebook |
+|---------|---------|---------|-----------|
+| [Section 01](./section-01.md) | Project Overview | Depsight | |
+| [Section 02](./section-02.md) | Development Environment | Depsight | |
+| [Section 03](./section-03.md) | CLI Architecture | Depsight | |
+| [Section 04](./section-04.md) | Distribution | Depsight | |
+| [Section 05](./section-05.md) | CI/CD | Depsight | |

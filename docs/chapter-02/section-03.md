@@ -6,11 +6,11 @@ Python containers package an application together with the runtime files it need
 
 ### Project Setup
 
-The applied project is a small utility library called `Docslug Project`. It turns headings and file names into stable slugs without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
+The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for containers because a pure-Python library can be packaged with its runtime environment while keeping the application artifact small.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_docslug/README.md).
+Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
 
 ## Building Blocks
 
