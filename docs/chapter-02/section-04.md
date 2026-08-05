@@ -117,9 +117,9 @@ The filename combines the package name, version, and build string. Conda uses th
 From the `projects/` directory, open the dedicated Conda packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj4_image_processor/Dockerfile.devEnv -- \
-    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+../build.sh build --path proj4_image_processor/Dockerfile.devEnv \
+    --cloudsmith-workspace "<cloudsmith-repo>" \
+    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
 Inside the running container, build the project from the repository root with the `recipe/` directory and the `conda-forge` channel enabled:

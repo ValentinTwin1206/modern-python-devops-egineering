@@ -6,6 +6,10 @@ build-backend = "uv_build"
 name = "tiny-webserver"
 version = "1.0.0"
 description = "Example project for venv"
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [

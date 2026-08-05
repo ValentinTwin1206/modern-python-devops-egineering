@@ -6,11 +6,11 @@ Python containers package an application together with the runtime files it need
 
 ### Project Setup
 
-The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for containers because a pure-Python library can be packaged with its runtime environment while keeping the application artifact small.
+The applied project is a small HTTP server called `Tiny Webserver Project`. It serves a single route with [Bottle](https://bottlepy.org/) and starts from a console entry point. This makes it a good fit for containers because the application, its Python runtime, and its dependencies can be packaged into one image that behaves the same on every host with a container engine.
 
 ### Run the Project
 
-Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
+Application, test, lint, and build commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_tiny_webserver/README.md).
 
 ## Building Blocks
 
@@ -25,7 +25,7 @@ Container distribution connects four building blocks: an OCI image stores immuta
 | Package Format | Stores the image manifest, configuration, and immutable filesystem layers. | OCI image, Docker image |
 | Maintainer / Metadata File | Defines image build steps and records runtime settings, labels, and annotations. | `Dockerfile`, `Containerfile`, OCI image configuration |
 | Package Manager | Builds, pulls, inspects, runs, and removes images on a host. | Docker, Podman, Buildah |
-| Remote Repository | Stores image manifests and layers under repository names and tags. | Docker Hub, GitHub Container Registry, Amazon ECR, Quay.io |
+| Remote Repository | Stores image manifests and layers under repository names and tags. | Cloudsmith, GitHub Container Registry, Amazon ECR, Quay.io |
 
 ### Project Layout
 
@@ -48,7 +48,7 @@ A typical Python container project is structured to separate application code, b
 
 ### Package Manifest
 
-The `Dockerfile` is the maintainer file for an OCI image. It selects the base image, copies application files, installs dependencies, and defines the process that starts when a container runs.
+The `Dockerfile` is not the package manifest itself. It is the build recipe and the single source of truth that project maintainers work with. During the build, the container manager reads that recipe and turns it into image layers, runtime configuration, and manifest data such as `manifest.json`. The `Dockerfile` tells the builder what to do: select a base image, copy application files, install dependencies, and define the process that starts when a container runs.
 
 ```dockerfile
 FROM <base-image>:<tag>
@@ -69,30 +69,78 @@ CMD ["<default-argument>"]
 
 ### Package Layout
 
-An OCI container image is a content-addressed collection of JSON metadata and immutable filesystem layers. Registries and container runtimes store these objects by digest rather than as one ordinary archive file. The image manifest connects the configuration document to the ordered layers that form the container filesystem.
+OCI container images are more sophisticated than the package formats introduced earlier in this chapter. While a wheel, Debian package, or Conda package is typically a single archive containing files and metadata, a container image resembles a small filesystem distribution. It consists of metadata, runtime configuration, and a stack of immutable filesystem layers, each recording changes such as the base operating system, Python runtime, installed dependencies, or application code. Because layers are content-addressed by digest and shared across images, they can be reused efficiently, reducing storage requirements and accelerating image pulls and pushes. This layout is standardized by the [OCI Image Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how images, metadata, layers, and manifests are represented and exchanged between container tools and registries.
 
-```text
-{image-name}:{tag}
-├── manifest
-│   ├── config digest
-│   └── layer digests
-├── configuration
-│   ├── environment
-│   ├── entry point
-│   └── platform
-└── filesystem layers
-	├── base operating-system files
-	├── runtime and dependencies
-	└── application files
-```
+Container images are typically referenced by a **repository** and a **tag**, for example the official Python image `python:3.12-slim`. The repository identifies the image, while the tag is a human-readable label. In this example, `3.12-slim` selects the Python 3.12 image variant based on a slim Debian runtime. Developers usually build, push, and pull images using a repository and tag because they are easy to read and remember. Internally, however, every image is identified by a **digest**: a cryptographic hash that uniquely represents its exact contents. When an image is pulled, the registry resolves the tag to the corresponding digest, ensuring the correct image is downloaded. Unlike tags, which can be reassigned to newer image versions, a digest is immutable and always refers to the same image.
 
-- Manifest: Identifies the image configuration and lists filesystem layers in order.
-- Configuration: Records runtime settings, architecture, environment variables, and the command that starts the container.
-- Filesystem layers: Store additions, changes, and deletions that combine into the container's root filesystem.
-
-The repository name and tag provide a convenient reference, while the digest identifies exact image content. Exporting an image with `docker save` wraps its metadata and layers in a TAR archive for transfer or inspection.
+| Component | Example | Purpose |
+| ---------- | ------- | ------- |
+| Repository | `python` | Identifies the official Python image repository. |
+| Tag | `3.12-slim` | Human-readable label that selects the Python version and image variant. |
+| Digest | `sha256:<digest>` | Immutable identifier for the exact image contents. |
+| Image (tag) | `python:3.12-slim` | Convenient reference used by developers. |
+| Image (digest) | `python@sha256:<digest>` | Immutable reference that always resolves to the same image. |
 
 ## Packaging Workflow
+
+!!! info
+    This workflow assumes that you have a valid Cloudsmith repository and access to its Docker registry. Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`, before you publish.
+
+The development environment for this section is a Dev Container that uses *Docker outside of Docker*. The commands below run inside the Dev Container, while image builds are handled by the host Docker daemon.
+
+### Prepare the Development Environment
+
+First, confirm that Docker is installed and running on the host machine:
+
+```bash
+docker version
+```
+
+Install Node.js and npm if the host does not already have them:
+
+```bash
+sudo apt-get update && sudo apt-get install -y nodejs npm
+```
+
+Install the Dev Container CLI with npm:
+
+```bash
+sudo npm install -g @devcontainers/cli
+```
+
+Move into the Tiny Webserver project directory:
+
+```bash
+cd projects/proj3_tiny_webserver
+```
+
+Set the Cloudsmith repository that will receive the published image:
+
+```bash
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+```
+
+### Boot the Development Environment
+
+Build and start the Dev Container workspace:
+
+```bash
+devcontainer up --workspace-folder .
+```
+
+Open an interactive shell inside the running Dev Container:
+
+```bash
+devcontainer exec --workspace-folder . bash
+```
+
+Inside that shell, confirm that the Docker CLI can reach the host Docker daemon:
+
+```bash
+docker version
+```
+
+Run the remaining workflow commands from inside this Dev Container shell.
 
 ### Create the Container
 
@@ -110,13 +158,15 @@ docker image ls
 
 ### Inspect The Package
 
-An OCI container image is a structured image manifest, configuration document, and set of filesystem layers. When exported with `docker save`, that image becomes a TAR archive containing the manifest JSON, image configuration JSON, and compressed or uncompressed layer TAR files.
+An OCI container image is a structured image manifest, configuration document, and set of filesystem layers. Docker stores these pieces behind the local image tag, and inspection commands let you see different views of that structure.
 
 Inspect the image metadata that Docker stores for the local tag.
 
 ```bash
-docker image inspect tiny-webserver:1.0.0
+docker inspect tiny-webserver:1.0.0
 ```
+
+The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
 
 Show the image layer history and the Dockerfile instructions that produced each layer.
 
@@ -124,7 +174,7 @@ Show the image layer history and the Dockerfile instructions that produced each 
 docker history tiny-webserver:1.0.0
 ```
 
-Export the local image to a TAR archive for offline inspection.
+Export the local image to a TAR archive for offline inspection. This archive is Docker's portable image export format; it exposes the same main ideas: a manifest, a configuration JSON document, and layer TAR files.
 
 ```bash
 docker save tiny-webserver:1.0.0 --output tiny-webserver-1.0.0.tar
@@ -136,45 +186,62 @@ List the files stored inside the exported image TAR archive.
 tar -tf tiny-webserver-1.0.0.tar
 ```
 
+The exported archive has a structure similar to this:
+
+```text
+tiny-webserver-1.0.0.tar
+├── manifest.json
+├── repositories
+├── <image-config-digest>.json
+├── <layer-digest>/
+│   ├── VERSION
+│   ├── json
+│   └── layer.tar
+└── ...
+```
+
+- `manifest.json`: Connects the image tag to the configuration document and ordered layer list.
+- `<image-config-digest>.json`: Records runtime configuration such as environment variables, exposed ports, entry point, command, architecture, and operating system.
+- `<layer-digest>/layer.tar`: Contains one immutable filesystem layer. Docker applies these layers in manifest order to assemble the container root filesystem.
+
 ### Publish the Container
 
-To publish the image, you first authenticate with a container registry such as [Docker Hub](https://hub.docker.com):
+To publish the image, set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
 
 ```bash
-docker login
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
 ```
 
-Then push the tagged image:
+Then authenticate with Cloudsmith's Docker registry:
 
 ```bash
-docker push tiny-webserver:1.0.0
+docker login docker.cloudsmith.io
 ```
 
-For production use, images are typically tagged with a registry namespace:
+Tag the local image with the Cloudsmith registry path:
 
 ```bash
-docker tag tiny-webserver:1.0.0 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
-docker push {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+docker tag tiny-webserver:1.0.0 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
 ```
 
-> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.
+Then upload the tagged image:
+
+```bash
+docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
+```
 
 ## Consumer Workflow
 
 ### Install the Container
 
-Once published, the image can be downloaded from Docker Hub:
+Once published, the image can be downloaded from Cloudsmith:
 
 ```bash
-docker pull {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
 ```
-
-> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.
 
 To run the packaged web server, you can leverage the `run` command:
 
 ```bash
-docker run -p 8080:8080 {DOCKER_HUB_USER}/tiny-webserver:1.0.0
+docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
 ```
-
-> Replace `{DOCKER_HUB_USER}` with your Docker Hub user name.

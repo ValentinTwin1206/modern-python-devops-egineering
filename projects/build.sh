@@ -32,19 +32,18 @@ ${BLUE}${BOLD}USAGE${RESET}
 ${BLUE}${BOLD}COMMANDS${RESET}
     ${GREEN}build${RESET}                  Builds an image from a Dockerfile, then opens an
                            interactive Bash shell unless ${YELLOW}--build-only${RESET} is set.
-                           ${CYAN}.devcontainer/Dockerfile${RESET} paths are handled by
-                           the Dev Containers CLI instead of Docker/Podman.
     ${GREEN}remove${RESET}                 Remove local images whose full tag matches ${YELLOW}--regex${RESET}.
 
 ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
-                              ${DIM}(e.g. proj3_tiny_webserver/Dockerfile.devEnv).${RESET}
+                              ${DIM}(e.g. proj3_tiny_webserver/Dockerfile).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
-        ${YELLOW}--privileged${RESET}          Run the container with ${YELLOW}--privileged${RESET} so the
-                              in-container Docker daemon can start (Docker-in-Docker).
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
-        ${YELLOW}--${RESET}                    Pass everything after this flag to docker run.
+        ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}<WORKSPACE>${RESET}
+                              Forward ${CYAN}CLOUDSMITH_REPOSITORY${RESET} into the container.
+        ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}<API_KEY>${RESET}
+                              Forward ${CYAN}CLOUDSMITH_API_KEY${RESET} into the container.
 
     Each container run also bind-mounts the project's ${CYAN}.build/${RESET} directory at
     ${CYAN}/build${RESET} inside the container so wheels, compiled binaries, and other build
@@ -56,16 +55,10 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
                               ${CYAN}"projects-.*"${RESET}.
 
 ${BLUE}${BOLD}EXAMPLES${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj3_tiny_webserver/Dockerfile.devEnv${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_image_processor/Dockerfile${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}-p${RESET} ${CYAN}proj5_pixelpack/.devcontainer/Dockerfile${RESET} ${YELLOW}--rebuild${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj1_pyguard/Dockerfile.devEnv${RESET} ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}_YOUR_CLOUDSMITH_REPO_${RESET} ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}_YOUR_API_KEY_${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}
-
-${BLUE}${BOLD}DEVCONTAINER CLI${RESET}
-    Install Node.js/npm:  ${CYAN}sudo apt-get update && sudo apt-get install -y nodejs npm${RESET}
-    Install globally:     ${CYAN}npm install -g @devcontainers/cli${RESET}
-    Or run once with:     ${CYAN}npx @devcontainers/cli build --workspace-folder proj5_pixelpack${RESET}
 EOF
 }
 
@@ -77,31 +70,6 @@ detect_container_engine() {
     else
         die "neither docker nor podman is installed"
     fi
-}
-
-detect_devcontainer_cli() {
-    if command -v devcontainer >/dev/null 2>&1; then
-        DEVCONTAINER_CLI="devcontainer"
-    else
-        die "devcontainer CLI is required for '.devcontainer/Dockerfile' paths. Install Node.js/npm first if needed, then run 'npm install -g @devcontainers/cli' or 'npx @devcontainers/cli'."
-    fi
-}
-
-confirm_devcontainer_cli() {
-    local action="$1"
-    local workspace_folder="$2"
-    local answer=""
-
-    warn ".devcontainer/Dockerfile must be handled by the Dev Containers CLI, not by docker build."
-    warn "This will run: ${DEVCONTAINER_CLI} ${action} --workspace-folder ${workspace_folder}"
-
-    if [[ ! -t 0 ]]; then
-        die "interactive confirmation is required before running the Dev Containers CLI"
-    fi
-
-    printf '%sType %s to continue: %s' "${YELLOW}${BOLD}" "devcontainer" "${RESET}" >&2
-    read -r answer
-    [[ "${answer}" == "devcontainer" ]] || die "Dev Containers CLI run cancelled"
 }
 
 image_tag_for() {
@@ -151,8 +119,8 @@ parse_build_args() {
     PORT_MAPPING="8080:8080"
     BUILD_ONLY=0
     NO_CACHE=0
-    PRIVILEGED=0
-    EXTRA_ARGS=()
+    CLOUDSMITH_WORKSPACE=""
+    CLOUDSMITH_API_KEY=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -186,14 +154,23 @@ parse_build_args() {
                 NO_CACHE=1
                 shift
                 ;;
-            --privileged)
-                PRIVILEGED=1
+            --cloudsmith-workspace)
+                [[ $# -ge 2 ]] || die "--cloudsmith-workspace requires a value"
+                CLOUDSMITH_WORKSPACE="$2"
+                shift 2
+                ;;
+            --cloudsmith-workspace=*)
+                CLOUDSMITH_WORKSPACE="${1#*=}"
                 shift
                 ;;
-            --)
+            --cloudsmith-api-key)
+                [[ $# -ge 2 ]] || die "--cloudsmith-api-key requires a value"
+                CLOUDSMITH_API_KEY="$2"
+                shift 2
+                ;;
+            --cloudsmith-api-key=*)
+                CLOUDSMITH_API_KEY="${1#*=}"
                 shift
-                EXTRA_ARGS+=("$@")
-                break
                 ;;
             -*)
                 die "unknown build option: $1 (try --help)"
@@ -211,30 +188,22 @@ build_command() {
     parse_build_args "$@"
 
     local dockerfile_abs dockerfile_dir dockerfile_name build_context image_tag container_name
-    local is_devcontainer is_dev_image section_name mount_source mount_target
+    local is_dev_image mount_source mount_target
 
     dockerfile_abs="$(resolve_dockerfile_path "${DOCKERFILE_PATH}")"
 
     dockerfile_dir="$(cd -- "$(dirname -- "${dockerfile_abs}")" && pwd)"
     dockerfile_name="$(basename -- "${dockerfile_abs}")"
 
-    is_devcontainer=0
     if [[ "${dockerfile_dir}" == */.devcontainer ]]; then
-        build_context="$(cd -- "${dockerfile_dir}/.." && pwd)"
-        is_devcontainer=1
-    else
-        build_context="${dockerfile_dir}"
+        die "building .devcontainer/Dockerfile images is not supported; pass a project Dockerfile or Dockerfile.devEnv instead"
     fi
-
-    if [[ "${is_devcontainer}" -eq 1 ]]; then
-        run_devcontainer_command "${build_context}"
-        exit 0
-    fi
+    build_context="${dockerfile_dir}"
 
     detect_container_engine
 
     is_dev_image=0
-    if [[ "${dockerfile_name}" == *.devEnv ]] || [[ "${is_devcontainer}" -eq 1 ]]; then
+    if [[ "${dockerfile_name}" == *.devEnv ]]; then
         is_dev_image=1
     fi
 
@@ -271,14 +240,8 @@ build_command() {
     host_gid="$(id -g)"
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
-        section_name="$(basename -- "${build_context}")"
-        if [[ "${is_devcontainer}" -eq 1 ]]; then
-            mount_source="${build_context}"
-            mount_target="/workspaces/${section_name}"
-        else
-            mount_source="${build_context}"
-            mount_target="/app"
-        fi
+        mount_source="${build_context}"
+        mount_target="/app"
 
         if [[ -d "${mount_source}" ]]; then
             log "Bind-mount:      ${mount_source} -> ${mount_target}"
@@ -297,13 +260,15 @@ build_command() {
 
     run_cmd+=(--publish "${PORT_MAPPING}")
 
-    if [[ "${PRIVILEGED}" -eq 1 ]]; then
-        log "Privileged:      ${GREEN}enabled${RESET} (Docker-in-Docker)"
-        run_cmd+=(--privileged)
+    # --cloudsmith-workspace maps to CLOUDSMITH_REPOSITORY, which the container tooling reads.
+    if [[ -n "${CLOUDSMITH_WORKSPACE}" ]]; then
+        log "Cloudsmith:      forwarding CLOUDSMITH_REPOSITORY"
+        run_cmd+=(--env "CLOUDSMITH_REPOSITORY=${CLOUDSMITH_WORKSPACE}")
     fi
 
-    if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
-        run_cmd+=("${EXTRA_ARGS[@]}")
+    if [[ -n "${CLOUDSMITH_API_KEY}" ]]; then
+        log "Cloudsmith:      forwarding CLOUDSMITH_API_KEY"
+        run_cmd+=(--env "CLOUDSMITH_API_KEY=${CLOUDSMITH_API_KEY}")
     fi
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
@@ -319,33 +284,6 @@ build_command() {
     log "Opening interactive Bash shell..."
     printf '%s    %s%s\n' "${DIM}" "${run_cmd[*]}" "${RESET}"
     exec "${run_cmd[@]}"
-}
-
-run_devcontainer_command() {
-    local workspace_folder="$1"
-    local action="up"
-    local devcontainer_cmd
-
-    [[ ${#EXTRA_ARGS[@]} -eq 0 ]] || die "docker run passthrough args are not supported for .devcontainer/Dockerfile paths"
-
-    detect_devcontainer_cli
-
-    if [[ "${BUILD_ONLY}" -eq 1 ]]; then
-        action="build"
-    fi
-
-    confirm_devcontainer_cli "${action}" "${workspace_folder}"
-
-    devcontainer_cmd=("${DEVCONTAINER_CLI}" "${action}" --workspace-folder "${workspace_folder}")
-    if [[ "${NO_CACHE}" -eq 1 && "${action}" == "build" ]]; then
-        devcontainer_cmd+=(--no-cache)
-    elif [[ "${NO_CACHE}" -eq 1 ]]; then
-        warn "--rebuild is ignored for devcontainer up; use --build-only --rebuild to force a no-cache build"
-    fi
-
-    log "Running Dev Containers CLI..."
-    printf '%s    %s%s\n' "${DIM}" "${devcontainer_cmd[*]}" "${RESET}"
-    exec "${devcontainer_cmd[@]}"
 }
 
 remove_command() {

@@ -1,51 +1,47 @@
 # Tiny Webserver
 
-This section introduces *Tiny Webserver* project as a simple Python-based web server that demonstrates how to use Python's standard-library `venv` environment to isolate dependencies inside a project-local directory, and how the same web server can be packaged and distributed as a Linux container image.
+This section introduces *Tiny Webserver* as a small Bottle-based HTTP server that demonstrates how a Python project can use a Dev Container with Docker outside of Docker (DooD), `uv`, and a deployment container image published to Cloudsmith.
 
 ## Project Components
 
-The table below lists the main files that support the `venv` example project.
+The table below lists the main files that support the Dev Container and container-image example project.
 
 | Component | Description |
 | --------- | ----------- |
-| [Dockerfile.devEnv](Dockerfile.devEnv) | This development image creates and activates a virtual environment at `/opt/venv`. It gives you a reproducible example of how the project and its tools are installed into an isolated interpreter. |
-| [Dockerfile](Dockerfile) | This deployment image builds the project wheel and installs it into the same virtual-environment layout. It shows how the `venv` pattern carries from interactive development into container deployment. |
-| [pyproject.toml](pyproject.toml) | This file defines the package metadata and dependencies for the example project. Those dependencies are what get installed into the virtual environment during the workflow shown below. |
+| [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) | This file is the entry point for the Dev Container setup. It enables the `docker-outside-of-docker` Feature, passes Cloudsmith configuration into the container, and runs the dependency sync after creation. |
+| [.devcontainer/Dockerfile](.devcontainer/Dockerfile) | This development image builds the environment that VS Code opens. It installs Python, `uv`, and the Cloudsmith CLI, while the Docker CLI itself is contributed by the Feature. |
+| [Dockerfile](Dockerfile) | This deployment image builds the project wheel, installs it into a runtime virtual environment, exposes port 8080, and starts the `tiny-webserver` console script. |
+| [pyproject.toml](pyproject.toml) | This file defines the project metadata, runtime dependency on Bottle, and development tools that `uv sync --group dev` installs inside the Dev Container. |
 
 ## End-User Guide
 
-This section shows how an end user installs and runs `tiny-webserver` as a published container image.
+This section shows how an end user installs and runs `tiny-webserver` as a container image published to Cloudsmith.
 
 ### Requirements
 
 - Docker or Podman.
+- Access to the Cloudsmith repository that publishes the image.
 
 ### Installation
 
-Download the `tiny-webserver` image from Docker Hub:
+Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
 
 ```bash
-docker pull {DOCKER_HUB_REPOSITORY}/tiny-webserver:latest
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
 ```
 
-> Use `{DOCKER_HUB_REPOSITORY}` for the Docker Hub repository that publishes `tiny-webserver`.
-
-### Uninstallation
-
-Remove the package again when you are done experimenting:
+Download the `tiny-webserver` image from Cloudsmith:
 
 ```bash
-docker rmi {DOCKER_HUB_REPOSITORY}/tiny-webserver:latest
+docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:latest"
 ```
-
-> Use `{DOCKER_HUB_REPOSITORY}` for the Docker Hub repository that publishes `tiny-webserver`.
 
 ### Usage
 
 Run the container detached and give it a name so you can manage it explicitly:
 
 ```bash
-docker run -d --rm --name tiny-webserver -p 8080:8080 {DOCKER_HUB_REPOSITORY}/tiny-webserver:latest
+docker run -d --rm --name tiny-webserver -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:latest"
 ```
 
 Send a request from another terminal:
@@ -62,30 +58,56 @@ docker stop tiny-webserver
 
 ## Developer Guide
 
+The project workflow runs inside the Dev Container image because the container includes the Python tooling and the Cloudsmith CLI. Docker outside of Docker (DooD) keeps image builds on the host Docker daemon while the development commands still run inside the container.
+
+DooD is provided by the official [`docker-outside-of-docker`](https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker) Dev Container Feature. The Feature installs the Docker CLI, mounts the host Docker socket, and aligns socket permissions when the container starts, so no manual group or socket configuration is needed on the host.
+
+> **Security note:** Access to the host Docker socket is equivalent to root access on the host. Only use this Dev Container with sources you trust.
+
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) uses *Docker outside of Docker (DooD)* so you can build the deployment image from inside the development container through the host Docker daemon. It contains all required development tools, and build artifacts are stored on the host in `.build/`. Run following command from the `/projects` directory to build the development image: 
+Install the Dev Container CLI on the host if you want to build and enter the same environment outside VS Code:
 
 ```bash
-./build.sh build --path proj3_tiny_webserver/Dockerfile.devEnv -- \
-	--group-add "$(stat -c '%g' /var/run/docker.sock)" \
-	--volume /var/run/docker.sock:/var/run/docker.sock
+sudo apt-get update && sudo apt-get install -y nodejs npm
 ```
 
-This mounts the host Docker socket into the container and adds the socket's group ID so the Docker CLI inside the container can talk to the host daemon without `--privileged`.
+Next, install the Dev Container CLI via `npm`:
+
+```bash
+sudo npm install -g @devcontainers/cli
+```
+
+Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path that will receive the published image:
+
+```bash
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+```
+
+From the project directory, start the Dev Container workspace:
+
+```bash
+devcontainer up --workspace-folder .
+```
+
+Open an interactive shell in that container:
+
+```bash
+devcontainer exec --workspace-folder . bash
+```
+
+Confirm that the container can reach the host Docker daemon:
+
+```bash
+docker version
+```
 
 ### Sync Environment
 
-Within the running container, you can sync the project environment with `uv`:
+The Dev Container runs `uv sync --group dev` automatically through `postCreateCommand`. If you change dependencies later, resync them manually inside the container:
 
 ```bash
-uv sync --all-groups
-```
-
-Then source the virtual environment so the installed tools are on `PATH`:
-
-```bash
-source .venv/bin/activate
+uv sync --group dev
 ```
 
 ### Run Tests
@@ -93,7 +115,7 @@ source .venv/bin/activate
 Within the running container, you can run the test suite with Karva:
 
 ```bash
-karva test tests/
+PYTHONPATH=src uv run karva test tests/
 ```
 
 ### Lint
@@ -101,45 +123,47 @@ karva test tests/
 Within the running container, you can run Ruff against the source tree:
 
 ```bash
-ruff check .
+uv run ruff check .
 ```
 
 ### Build Guide
 
-The deployment image in [Dockerfile](Dockerfile) is a two-stage build: it produces the project wheel with `uv build --wheel`, installs it into a virtual environment at `/opt/venv`, and starts the `tiny-webserver` console script on port 8080. Run the commands below from the project directory, on the host or from inside the [development image](#setup-environment) .
+Run the build commands below from a shell opened with `devcontainer exec --workspace-folder . bash`. Files written inside the project directory remain available on the host because the workspace is bind-mounted into the Dev Container.
 
-#### Build the Wheel
-
-Inside the development image, run following command to build the wheel:
+Build the project wheel:
 
 ```bash
 uv build --wheel
 ```
 
-#### Build the Container Image
-
-Inside the development image, run following command to build the final `tiny-webserver` container:
+Build the final `tiny-webserver` container image through the host Docker daemon:
 
 ```bash
-docker build --file Dockerfile --tag tiny-webserver .
+docker build --file Dockerfile --tag tiny-webserver:latest .
 ```
 
-#### Upload the Container Image
+> Because the daemon runs on the host, any `-v` path you pass to `docker run` is resolved on the host rather than inside the container. Use the `LOCAL_WORKSPACE_FOLDER` variable, which the Dev Container sets to the host path of this project, when a container needs to mount workspace files.
 
-Tag the local image for your Docker Hub repository:
+Tag the local image for the configured Cloudsmith Docker registry path:
 
 ```bash
-docker tag tiny-webserver:latest {DOCKER_HUB_REPOSITORY}/tiny-webserver:latest
+docker tag tiny-webserver:latest "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:latest"
 ```
 
-Log in to Docker Hub from the same shell:
+Log in to Cloudsmith's Docker registry from the same shell:
 
 ```bash
-docker login
+docker login docker.cloudsmith.io
 ```
 
-Push the image to Docker Hub:
+Upload the image to Cloudsmith:
 
 ```bash
-docker push {DOCKER_HUB_REPOSITORY}/tiny-webserver:latest
+docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:latest"
+```
+
+List the package in Cloudsmith after the upload finishes:
+
+```bash
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "tiny-webserver"
 ```

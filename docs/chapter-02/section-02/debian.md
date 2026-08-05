@@ -119,9 +119,9 @@ The exact contents of `data.tar.*` depend on the package. A command-line tool mi
 Use the helper script to open the Linux packaging environment.
 
 ```bash
-../build.sh build --path proj2_journal_admin/Dockerfile.devEnv -- \
-    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+../build.sh build --path proj2_journal_admin/Dockerfile.devEnv \
+    --cloudsmith-workspace "<cloudsmith-repo>" \
+    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
 Inside the container, synchronize the environment and build the wheel:
@@ -201,8 +201,8 @@ From the `projects/` directory, open the dedicated Debian packaging container an
 
 ```bash
 ../build.sh build --path proj2_journal_admin/Dockerfile.devEnv \
-    -- --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+    --cloudsmith-workspace "<cloudsmith-repo>" \
+    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
 You can upload the same `.deb` package into multiple Ubuntu distributions because Cloudsmith generates repository metadata independently for each target distribution. The `noble` and `resolute` segments tell Cloudsmith which distribution-specific metadata to generate.

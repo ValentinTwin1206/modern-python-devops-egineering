@@ -105,9 +105,9 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj1_pyguard/Dockerfile.devEnv -- \
-    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY"
+../build.sh build --path proj1_pyguard/Dockerfile.devEnv \
+    --cloudsmith-workspace "<cloudsmith-repo>" \
+    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
 ### Create The Package
