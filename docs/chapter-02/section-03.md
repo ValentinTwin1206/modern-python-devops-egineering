@@ -16,16 +16,20 @@ Application, test, lint, and build commands are documented in the [section READM
 
 ### Overview
 
-OCI container images are built distributions that package an application with its Python runtime, Python dependencies, operating-system libraries, and runtime configuration. The Open Container Initiative defines interoperable image and runtime specifications, allowing the same image to run with compatible tools across development, CI, and production. Containers are typically used for backend APIs, microservices, data pipelines, scheduled jobs, and cloud deployments that need a reproducible runtime environment.
+In contrast to Python wheels, operating-system packages, or Conda packages, OCI container images are not primarily package archives but complete runtime environments. They package an application together with everything required to execute it, including the operating system components, language runtime, libraries, configuration, and application code. For example, a Python container image typically includes the Python interpreter and its dependencies, while a Java container image includes a Java runtime.
 
-Container distribution connects four building blocks: an OCI image stores immutable filesystem layers and image metadata, a build recipe describes how to assemble those layers, a container engine pulls and manages images, and a registry publishes image manifests and layer content. Tools such as Docker, Podman, Buildah, and Skopeo can participate in different parts of this workflow because they implement OCI-compatible formats and APIs.
+The [Open Container Initiative (OCI)](https://github.com/opencontainers) defines open standards for building, distributing, and running container images. The **OCI Image Format Specification** describes how images are represented using immutable filesystem layers together with image metadata, while the **OCI Runtime Specification** defines how containers are executed. The **OCI Distribution Specification** defines how images are pushed to and pulled from container registries.
+
+At a high level, container distribution consists of five building blocks: a **build recipe** (`Dockerfile` or `Containerfile`) that describes how an image is assembled, an **OCI image** that packages the application and its runtime environment, a **container registry** that stores and distributes images, a **container manager** that builds, stores, pulls, and runs images on a host, and an **OCI runtime** that creates and executes containers. Because these building blocks follow OCI standards, different tools can participate in the same workflow while remaining interoperable across development, CI/CD, and production environments.
 
 | Building Block | Role | Common Examples |
 |----------------|------|-----------------|
-| Package Format | Stores the image manifest, configuration, and immutable filesystem layers. | OCI image, Docker image |
-| Maintainer / Metadata File | Defines image build steps and records runtime settings, labels, and annotations. | `Dockerfile`, `Containerfile`, OCI image configuration |
-| Package Manager | Builds, pulls, inspects, runs, and removes images on a host. | Docker, Podman, Buildah |
-| Remote Repository | Stores image manifests and layers under repository names and tags. | Cloudsmith, GitHub Container Registry, Amazon ECR, Quay.io |
+| Package Format | Packages an application as immutable filesystem layers together with OCI image metadata. | OCI image, Docker image |
+| Build Recipe | Describes how the image is assembled. | `Dockerfile`, `Containerfile` |
+| Maintainer / Metadata File | OCI metadata generated during the image build. Package maintainers typically do **not** edit these files directly. | OCI image manifest, OCI image configuration (`config.json`), image index |
+| Package Manager | Builds, stores, pulls, pushes, inspects, and runs OCI images on a host. | Docker, Podman |
+| Remote Repository | Stores and distributes OCI images using repositories and tags. | Docker Hub, GitHub Container Registry, Amazon ECR, Cloudsmith, Quay.io |
+
 
 ### Project Layout
 
@@ -69,17 +73,17 @@ CMD ["<default-argument>"]
 
 ### Package Layout
 
-OCI container images are more sophisticated than the package formats introduced earlier in this chapter. While a wheel, Debian package, or Conda package is typically a single archive containing files and metadata, a container image resembles a small filesystem distribution. It consists of metadata, runtime configuration, and a stack of immutable filesystem layers, each recording changes such as the base operating system, Python runtime, installed dependencies, or application code. Because layers are content-addressed by digest and shared across images, they can be reused efficiently, reducing storage requirements and accelerating image pulls and pushes. This layout is standardized by the [OCI Image Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how images, metadata, layers, and manifests are represented and exchanged between container tools and registries.
+OCI container images follow the [OCI Image Format Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how image manifests, metadata, configuration, and filesystem layers are structured and exchanged. Unlike wheels, Debian packages, or Conda packages, container images represent complete execution environments consisting of operating system components, runtime, dependencies, application code, and runtime configuration. Because they follow an open standard, OCI images can be created, stored, and consumed by different container tools such as Docker, Podman, and containerd.
 
-Container images are typically referenced by a **repository** and a **tag**, for example the official Python image `python:3.12-slim`. The repository identifies the image, while the tag is a human-readable label. In this example, `3.12-slim` selects the Python 3.12 image variant based on a slim Debian runtime. Developers usually build, push, and pull images using a repository and tag because they are easy to read and remember. Internally, however, every image is identified by a **digest**: a cryptographic hash that uniquely represents its exact contents. When an image is pulled, the registry resolves the tag to the corresponding digest, ensuring the correct image is downloaded. Unlike tags, which can be reassigned to newer image versions, a digest is immutable and always refers to the same image.
+When an image is pulled from a registry, the container manager stores its metadata and filesystem layers locally using its own internal storage mechanism. These components are managed as shared image layers, image metadata, and writable container layers rather than as a single archive file. To inspect an image as a portable file, it can be exported from the container manager. The `docker save` command creates a TAR archive (see [Inspect The Package](#inspect-the-package)) containing the complete image, including its layers and metadata. In contrast, `docker export` creates a flat filesystem archive from a running container and does not preserve image metadata, layer history, or runtime configuration. Registries provide the remote equivalent of this workflow by storing and distributing the same image metadata and layers so that other hosts can pull and recreate the image locally.
 
-| Component | Example | Purpose |
-| ---------- | ------- | ------- |
-| Repository | `python` | Identifies the official Python image repository. |
-| Tag | `3.12-slim` | Human-readable label that selects the Python version and image variant. |
-| Digest | `sha256:<digest>` | Immutable identifier for the exact image contents. |
-| Image (tag) | `python:3.12-slim` | Convenient reference used by developers. |
-| Image (digest) | `python@sha256:<digest>` | Immutable reference that always resolves to the same image. |
+Container images are usually referenced using a **repository**, a **tag**, or a **digest**:
+
+- **Repository** identifies the image source, for example `python`.
+- **Tag** is a human-readable label that selects an image variant, for example `3.12-slim`.
+- **Digest** is an immutable cryptographic hash that uniquely identifies the exact image contents, for example `sha256:<digest>`.
+
+Developers typically use repository and tag references because they are easy to read and remember, for example `docker pull python:3.12-slim`. Internally, the registry resolves the tag to the corresponding digest. Unlike tags, which can be reassigned to newer image versions, a digest always refers to the same image. Pulling an image by digest, for example `docker pull python@sha256:<digest>`, guarantees that the exact same image is retrieved across different environments, making deployments reproducible.
 
 ## Packaging Workflow
 
@@ -190,19 +194,20 @@ The exported archive has a structure similar to this:
 
 ```text
 tiny-webserver-1.0.0.tar
+├── index.json
 ├── manifest.json
-├── repositories
-├── <image-config-digest>.json
-├── <layer-digest>/
-│   ├── VERSION
-│   ├── json
-│   └── layer.tar
-└── ...
+├── oci-layout
+└── blobs/sha256
+    ├── <sha256>.json (config)
+    ├── <sha256>.json (layer1)
+    ├── <sha256>.json (layer2)
+    └── ...
 ```
 
-- `manifest.json`: Connects the image tag to the configuration document and ordered layer list.
-- `<image-config-digest>.json`: Records runtime configuration such as environment variables, exposed ports, entry point, command, architecture, and operating system.
-- `<layer-digest>/layer.tar`: Contains one immutable filesystem layer. Docker applies these layers in manifest order to assemble the container root filesystem.
+- `oci-layout`: Identifies the archive as an OCI image layout and records the layout version.
+- `index.json`: Acts as the archive entry point. It points to one or more image manifests and can associate those manifests with tags.
+- `manifest.json`: Preserves Docker-compatible image metadata for saved images, including the configuration object and ordered layer list.
+- `blobs/sha256/<digest>`: Stores content-addressed image objects. JSON blobs hold metadata such as the image configuration or manifest, while layer blobs hold the filesystem changes that Docker applies in order to assemble the container root filesystem.
 
 ### Publish the Container
 
