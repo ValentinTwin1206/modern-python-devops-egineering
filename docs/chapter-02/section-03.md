@@ -16,20 +16,23 @@ Application, test, lint, and build commands are documented in the [section READM
 
 ### Overview
 
-In contrast to Python wheels, operating-system packages, or Conda packages, OCI container images are not primarily package archives but complete runtime environments. They package an application together with everything required to execute it, including the operating system components, language runtime, libraries, configuration, and application code. For example, a Python container image typically includes the Python interpreter and its dependencies, while a Java container image includes a Java runtime.
+In contrast to Python wheels, operating-system packages, or Conda packages, OCI container images are not primarily package archives but complete runtime environments. They package an application together with everything required to execute it, including the operating system components, language runtime, libraries, configuration, and application code. In addition, **container managers** are more comprehensive than classical package managers, as they do not only build and install images, but also  pull, push, store, inspect, create, and run containers, and manage their lifecycle on the host.
 
-The [Open Container Initiative (OCI)](https://github.com/opencontainers) defines open standards for building, distributing, and running container images. The **OCI Image Format Specification** describes how images are represented using immutable filesystem layers together with image metadata, while the **OCI Runtime Specification** defines how containers are executed. The **OCI Distribution Specification** defines how images are pushed to and pulled from container registries.
+The [Open Container Initiative (OCI)](https://github.com/opencontainers) defines open standards that make container images portable across different tools and environments. The three core specifications cover different parts of the container lifecycle:
+
+- **OCI Image Format Specification**: Defines the structure of a container image, including its manifest, image configuration, and immutable filesystem layers.
+- **OCI Distribution Specification**: Defines how container images are stored and exchanged through registries, including operations such as pushing and pulling manifests and layers.
+- **OCI Runtime Specification**: Defines how a container is configured and executed, including the runtime bundle and settings such as the process, environment, mounts, and isolation.
 
 At a high level, container distribution consists of five building blocks: a **build recipe** (`Dockerfile` or `Containerfile`) that describes how an image is assembled, an **OCI image** that packages the application and its runtime environment, a **container registry** that stores and distributes images, a **container manager** that builds, stores, pulls, and runs images on a host, and an **OCI runtime** that creates and executes containers. Because these building blocks follow OCI standards, different tools can participate in the same workflow while remaining interoperable across development, CI/CD, and production environments.
 
 | Building Block | Role | Common Examples |
 |----------------|------|-----------------|
-| Package Format | Packages an application as immutable filesystem layers together with OCI image metadata. | OCI image, Docker image |
+| Container Format | Packages an application as immutable filesystem layers together with OCI image metadata. | OCI image, Docker image |
 | Build Recipe | Describes how the image is assembled. | `Dockerfile`, `Containerfile` |
 | Maintainer / Metadata File | OCI metadata generated during the image build. Package maintainers typically do **not** edit these files directly. | OCI image manifest, OCI image configuration (`config.json`), image index |
-| Package Manager | Builds, stores, pulls, pushes, inspects, and runs OCI images on a host. | Docker, Podman |
+| Container Manager | Builds, stores, pulls, pushes, inspects, and runs OCI images on a host. | Docker, Podman |
 | Remote Repository | Stores and distributes OCI images using repositories and tags. | Docker Hub, GitHub Container Registry, Amazon ECR, Cloudsmith, Quay.io |
-
 
 ### Project Layout
 
@@ -73,17 +76,9 @@ CMD ["<default-argument>"]
 
 ### Package Layout
 
-OCI container images follow the [OCI Image Format Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how image manifests, metadata, configuration, and filesystem layers are structured and exchanged. Unlike wheels, Debian packages, or Conda packages, container images represent complete execution environments consisting of operating system components, runtime, dependencies, application code, and runtime configuration. Because they follow an open standard, OCI images can be created, stored, and consumed by different container tools such as Docker, Podman, and containerd.
+OCI container images follow the [OCI Image Format Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how image manifests, metadata, configuration, and filesystem layers are structured and exchanged. Because they follow an open standard, OCI images can be created, stored, and consumed by different container tools such as *Docker*, *Podman*, etc.
 
-When an image is pulled from a registry, the container manager stores its metadata and filesystem layers locally using its own internal storage mechanism. These components are managed as shared image layers, image metadata, and writable container layers rather than as a single archive file. To inspect an image as a portable file, it can be exported from the container manager. The `docker save` command creates a TAR archive (see [Inspect The Package](#inspect-the-package)) containing the complete image, including its layers and metadata. In contrast, `docker export` creates a flat filesystem archive from a running container and does not preserve image metadata, layer history, or runtime configuration. Registries provide the remote equivalent of this workflow by storing and distributing the same image metadata and layers so that other hosts can pull and recreate the image locally.
-
-Container images are usually referenced using a **repository**, a **tag**, or a **digest**:
-
-- **Repository** identifies the image source, for example `python`.
-- **Tag** is a human-readable label that selects an image variant, for example `3.12-slim`.
-- **Digest** is an immutable cryptographic hash that uniquely identifies the exact image contents, for example `sha256:<digest>`.
-
-Developers typically use repository and tag references because they are easy to read and remember, for example `docker pull python:3.12-slim`. Internally, the registry resolves the tag to the corresponding digest. Unlike tags, which can be reassigned to newer image versions, a digest always refers to the same image. Pulling an image by digest, for example `docker pull python@sha256:<digest>`, guarantees that the exact same image is retrieved across different environments, making deployments reproducible.
+On a host machine, an OCI image is not stored as one ordinary project file. It is persisted through the container manager's internal storage logic, which manages image metadata, shared filesystem layers, and writable container layers. To inspect or move that content as a file, use a dedicated export format such as the [**OCI image-layout TAR archive**](#inspect-the-package), [**Docker image TAR archive**](inspect-the-package) or as a flat filesystem archive from a container (`docker export`).
 
 ## Packaging Workflow
 
@@ -92,7 +87,9 @@ Developers typically use repository and tag references because they are easy to 
 
 The development environment for this section is a Dev Container that uses *Docker outside of Docker*. The commands below run inside the Dev Container, while image builds are handled by the host Docker daemon.
 
-### Prepare the Development Environment
+### Swtup the Development Environment
+
+#### Install Development Tools
 
 First, confirm that Docker is installed and running on the host machine:
 
@@ -124,7 +121,7 @@ Set the Cloudsmith repository that will receive the published image:
 export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
 ```
 
-### Boot the Development Environment
+#### Boot Dev Container
 
 Build and start the Dev Container workspace:
 
@@ -148,68 +145,82 @@ Run the remaining workflow commands from inside this Dev Container shell.
 
 ### Create the Container
 
-The container image is built using a `Dockerfile`-based build process, which produces a tagged image:
+The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
 
-```bash
-docker build -t tiny-webserver:1.0.0 .
-```
+=== "Classical container image"
 
-List local container images to confirm that the build produced the tagged image:
+    This command builds the image from the `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `tiny-webserver:1.0.0`. The image can then be inspected, run, tagged for a registry, or pushed from the local Docker host.
 
-```bash
-docker image ls
-```
+    ```bash
+    docker build -t tiny-webserver:1.0.0 .
+    ```
+
+    
+    List local container images to confirm that the build produced the tagged image:
+
+    ```bash
+    docker image ls
+    ```
+
+=== "OCI image archive"
+
+    This command uses BuildKit through `docker buildx` to build the image and write it directly to `image.tar` as an OCI image layout archive. The archive contains OCI metadata and content-addressed blobs, but it is not loaded into Docker's local image store unless you import it later.
+
+    ```bash
+    docker buildx build \
+      --output type=oci,dest=tiny-webserver-1.0.0.tar \
+      .
+    ```
 
 ### Inspect The Package
 
-An OCI container image is a structured image manifest, configuration document, and set of filesystem layers. Docker stores these pieces behind the local image tag, and inspection commands let you see different views of that structure.
+The inspection command depends on the output format created in the previous step. A local Docker image is inspected through the container manager's image store, while an OCI image archive is inspected as files inside the TAR archive.
 
-Inspect the image metadata that Docker stores for the local tag.
+=== "Classical container image"
 
-```bash
-docker inspect tiny-webserver:1.0.0
-```
+    Inspect the metadata that Docker stores for the local image tag:
 
-The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
+    ```bash
+    docker inspect tiny-webserver:1.0.0
+    ```
 
-Show the image layer history and the Dockerfile instructions that produced each layer.
+    The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
 
-```bash
-docker history tiny-webserver:1.0.0
-```
+    Show the image layer history and the Dockerfile instruction associated with each layer:
 
-Export the local image to a TAR archive for offline inspection. This archive is Docker's portable image export format; it exposes the same main ideas: a manifest, a configuration JSON document, and layer TAR files.
+    ```bash
+    docker history tiny-webserver:1.0.0
+    ```
 
-```bash
-docker save tiny-webserver:1.0.0 --output tiny-webserver-1.0.0.tar
-```
+=== "OCI image archive"
 
-List the files stored inside the exported image TAR archive.
+    Inspect the archive created by `docker buildx build --output type=oci` by listing the files inside the TAR archive:
 
-```bash
-tar -tf tiny-webserver-1.0.0.tar
-```
+    ```bash
+    tar -tf tiny-webserver-1.0.0.tar
+    ```
 
-The exported archive has a structure similar to this:
+    The exported OCI archive has a structure similar to this:
 
-```text
-tiny-webserver-1.0.0.tar
-├── index.json
-├── manifest.json
-├── oci-layout
-└── blobs/sha256
-    ├── <sha256>.json (config)
-    ├── <sha256>.json (layer1)
-    ├── <sha256>.json (layer2)
-    └── ...
-```
+    ```text
+    tiny-webserver-1.0.0.tar
+    ├── blobs/
+    │   └── sha256/
+    │       ├── <digest> (manifest JSON)
+    │       ├── <digest> (configuration JSON)
+    │       ├── <digest> (filesystem layer)
+    │       └── ...
+    ├── index.json
+    └── oci-layout
+    ```
 
-- `oci-layout`: Identifies the archive as an OCI image layout and records the layout version.
-- `index.json`: Acts as the archive entry point. It points to one or more image manifests and can associate those manifests with tags.
-- `manifest.json`: Preserves Docker-compatible image metadata for saved images, including the configuration object and ordered layer list.
-- `blobs/sha256/<digest>`: Stores content-addressed image objects. JSON blobs hold metadata such as the image configuration or manifest, while layer blobs hold the filesystem changes that Docker applies in order to assemble the container root filesystem.
+    - `oci-layout`: Identifies the archive as an OCI image layout and records the layout version.
+    - `index.json`: Acts as the archive entry point. It points to the image manifest stored under `blobs/sha256/` and can associate that manifest with a tag.
+    - `blobs/sha256/<digest>`: Stores all content-addressed image objects. Some blobs are JSON documents, such as the image manifest and image configuration, while other blobs are compressed filesystem layers.
 
 ### Publish the Container
+
+Published images are addressed by a repository and tag, such as `python:3.12-slim`, while registries resolve that tag to an immutable digest such as `sha256:<digest>`. Tags are readable and convenient, but they can be reassigned; pulling by digest, for example `docker pull python@sha256:<digest>`, guarantees the same image content across environments.
 
 To publish the image, set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
 
