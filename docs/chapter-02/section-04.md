@@ -160,29 +160,89 @@ cat /tmp/image-processor-info/info/index.json
 
 ### Publish The Package
 
-Upload the package to the Cloudsmith Conda repository.
+Conda repositories organize packages by platform directory and expose each directory through a generated `repodata.json` index. A `noarch` package such as `image-processor` is stored under `noarch/`, while compiled packages are stored under platform-specific directories such as `linux-64/`, `osx-arm64/`, or `win-64/`. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching `repodata.json` file so Conda clients can discover and resolve the package before downloading the artifact.
+
+```text
+repository-root/
+└── noarch/
+    ├── repodata.json
+    └── image-processor-1.0.0-py_0.conda
+```
+
+When a user later installs `image-processor`, Conda first downloads the lightweight `noarch/repodata.json` index, solves dependencies locally, and only then downloads the selected `.conda` artifact.
+
+Upload the built package to the Cloudsmith Conda repository.
 
 ```bash
 cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
 ```
 
-Verify that the package is available.
+Check that Cloudsmith received and processed the package.
 
 ```bash
 cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "image-processor"
 ```
 
-!!! note
-    For private repositories, use the Conda channel URL and authentication settings provided by Cloudsmith. Avoid storing API keys in `environment.yml`, source code, or shell history.
-
 ## Consumer Workflow
+
+### Configure the Package Manager
+
+When Conda creates or updates an environment, it consults the configured `channels` list to locate packages and resolve compatible dependency versions. The proprietary channel should appear before `conda-forge` so Conda can find `image-processor` in the proprietary repository, then resolve public runtime dependencies such as Python, NumPy, and OpenCV from `conda-forge`.
+
+Keep authenticated URLs out of `environment.yml`, source control, and shell history. For one user, configure the authenticated channel in `~/.condarc`, while for a managed Debian-based system, use `/etc/conda/.condarc`. Cloudsmith authenticates private Conda repositories through the channel URL itself. For Cloudsmith, prefer an *Entitlement Token URL* like `https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/`, although HTTP Basic authentication also works.
+
+=== "User configuration (`~/.condarc`)"
+
+    ```yaml
+    channels:
+        - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
+        - conda-forge
+    channel_priority: strict
+    ```
+
+=== "System-wide configuration (`/etc/conda/.condarc`)"
+
+    ```yaml
+    channels:
+        - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
+        - conda-forge
+    channel_priority: strict
+    ```
+
+For CI or ephemeral machines, prefer an untracked Conda config file and point Conda to it with `CONDARC` instead of exposing the full authenticated channel through `CONDA_CHANNELS`.
+
+```bash
+export CONDARC="$HOME/.config/conda/cloudsmith.condarc"
+```
 
 ### Install The Package
 
-After publication, users can install the package directly from the Cloudsmith Conda channel.
+After publication, users can create a small consumer project that records the runtime dependency in `environment.yml`. The package source comes from the Conda channels configured in [Configure the Package Manager](#configure-the-package-manager).
+
+Create a new working directory for a small consumer project.
 
 ```bash
-conda install -c https://conda.cloudsmith.io/<cloudsmith-repo>/ image-processor
+mkdir imageprocessor-consumer && cd imageprocessor-consumer
 ```
 
-For repeated use, configure the channel in `.condarc` or reference it from an `environment.yml` file. Conda will automatically resolve `image-processor` together with all required dependencies from the configured channels, ensuring that compatible package versions are installed into the target environment.
+Add the project environment file.
+
+```yaml
+name: image-processor-demo
+dependencies:
+    - python=3.12
+    - image-processor
+```
+
+Create the environment from `environment.yml`.
+
+```bash
+conda env create -f environment.yml
+```
+
+Activate the environment and run the installed command-line application.
+
+```bash
+conda activate image-processor-demo
+image-processor --output edges.png
+```

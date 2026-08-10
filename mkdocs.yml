@@ -60,40 +60,46 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Chapter 01:
-      - chapter-01/index.md
-      - Section 01: chapter-01/section-01.md
-      - Section 02: chapter-01/section-02.md
-      - Section 03: chapter-01/section-03.md
-      - Section 04: chapter-01/section-04.md
+      - Overview: chapter-01/index.md
+      - Sections:
+        - Section 01: chapter-01/section-01.md
+        - Section 02: chapter-01/section-02.md
+        - Section 03: chapter-01/section-03.md
+        - Section 04: chapter-01/section-04.md
   - Chapter 02:
-      - chapter-02/index.md
-      - Section 01: chapter-02/section-01.md
-      - Section 02:
-          - chapter-02/section-02/index.md
+      - Overview: chapter-02/index.md
+      - Sections:
+        - Section 01: chapter-02/section-01.md
+        - Section 02:
+          - Overview: chapter-02/section-02/index.md
           - Debian Packages: chapter-02/section-02/debian.md
           - Windows Packages: chapter-02/section-02/windows.md
-      - Section 03: chapter-02/section-03.md
-      - Section 04: chapter-02/section-04.md
-      - Section 05: chapter-02/section-05.md
+        - Section 03: chapter-02/section-03.md
+        - Section 04: chapter-02/section-04.md
+      - Bonus:
+        - Bonus 01: chapter-02/bonus-01.md
   - Chapter 03:
-      - chapter-03/index.md
-      - Section 01: chapter-03/section-01.md
-      - Section 02: chapter-03/section-02.md
-      - Section 03: chapter-03/section-03.md
-      - Section 04: chapter-03/section-04.md
-      - Section 05: chapter-03/section-05.md
+      - Overview: chapter-03/index.md
+      - Sections:
+        - Section 01: chapter-03/section-01.md
+        - Section 02: chapter-03/section-02.md
+        - Section 03: chapter-03/section-03.md
+        - Section 04: chapter-03/section-04.md
+        - Section 05: chapter-03/section-05.md
   - Chapter 04:
-      - chapter-04/index.md
-      - Section 01: chapter-04/section-01.md
-      - Section 02: chapter-04/section-02.md
-      - Section 03: chapter-04/section-03.md
-      - Section 04: chapter-04/section-04.md
-      - Section 05: chapter-04/section-05.md
+      - Overview: chapter-04/index.md
+      - Sections:
+        - Section 01: chapter-04/section-01.md
+        - Section 02: chapter-04/section-02.md
+        - Section 03: chapter-04/section-03.md
+        - Section 04: chapter-04/section-04.md
+        - Section 05: chapter-04/section-05.md
   - Bonus:
-      - chapter-bonus/index.md
-      - Section 01: chapter-bonus/section-01.md
-      - Section 02: chapter-bonus/section-02.md
-      - Section 03: chapter-bonus/section-03.md
-      - Section 04: chapter-bonus/section-04.md
-      - Section 05: chapter-bonus/section-05.md
-      - Section 06: chapter-bonus/section-06.md
+      - Overview: chapter-bonus/index.md
+      - Sections:
+        - Section 01: chapter-bonus/section-01.md
+        - Section 02: chapter-bonus/section-02.md
+        - Section 03: chapter-bonus/section-03.md
+        - Section 04: chapter-bonus/section-04.md
+        - Section 05: chapter-bonus/section-05.md
+        - Section 06: chapter-bonus/section-06.md
