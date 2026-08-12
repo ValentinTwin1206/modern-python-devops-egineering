@@ -55,36 +55,51 @@ The Conda recipe in `meta.yaml` defines the package identity, source, build beha
 
 ```yaml
 package:
-    name: <package-name>
-    version: <package-version>
+  name: <package-name>
+  version: <package-version>
 
 source:
-    path: <source-path>
+  path: <source-path>
 
 build:
-    number: <build-number>
-    script: <build-command>
+  number: <build-number> # e.g. 0
+  string: <build-string> # e.g. py312_0
+  noarch: <noarch-kind> # e.g. python
+  entry_points:
+    - <command-name> = <module-path>:<callable> # Example: image-processor = image_processor.main:main
+  script: |
+    <build-command-1>
+    <build-command-2>
 
 requirements:
-    host:
-        - <build-dependency>
-    run:
-        - <runtime-dependency>
+  host:
+    - <host-dependency> # e.g. python >=3.12
+  run:
+    - <runtime-dependency> # Example: python >=3.12
+    - pywin32              # [win]
+    - xorg-libx11          # [linux]
+
+test:
+  imports:
+    - <import-name> # Example: image_processor
+  commands:
+    - <test-command> # Example: image-processor --help
 
 about:
-    summary: <package-summary>
-    license: <license-identifier>
+  summary: <package-summary>
+  license: <license-identifier>
 ```
 
-- `package`: Defines the package name and version.
-- `source`: Specifies the local directory or source archive used during the build.
-- `build`: Defines the build number and commands that assemble the package.
-- `requirements`: Separates build-time (`host`) dependencies from runtime (`run`) dependencies.
-- `about`: Provides descriptive metadata such as the package summary and license.
+- `package`: Defines the package name and version, which form the core of the package identity.
+- `source`: Specifies the local directory, Git repository, or source archive used during the build.
+- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; use `noarch` for OS-independent packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform.
+- `requirements`: Separates build-machine tools (`build`), host target environment dependencies (`host`), and runtime (`run`) dependencies, which are recorded in the package metadata and used during dependency resolution.
+- `test`: Verifies that the package was constructed properly by running automated sanity checks, such as importing Python modules, immediately after building.
+- `about`: Provides descriptive metadata such as the package summary and license identifier.
 
 ### Package Layout
 
-A modern Conda package is a ZIP container with a `.conda` extension. It contains two compressed TAR archives: one stores package metadata and one stores the installable payload.
+A modern Conda package is a ZIP container with a `.conda` extension. It contains two compressed TAR archives: one stores package metadata and one stores the installable payload. The package filename combines the package name, version, build string, and target platform, and Conda uses this metadata together with package indexes (`repodata.json`) from configured channels to select compatible packages when creating or updating an environment.
 
 ```text
 {name}-{version}-{build}.conda
@@ -105,8 +120,6 @@ A modern Conda package is a ZIP container with a `.conda` extension. It contains
 - `info-*.tar.zst`: Stores package metadata, dependency information, file records, licenses, and the original recipe.
 - `pkg-*.tar.zst`: Stores the files installed into the Conda environment, including Python modules, executables, shared libraries, and other resources.
 
-The package filename combines the package name, version, build string, and target platform. Conda uses this metadata together with package indexes from configured channels to select compatible packages when creating or updating an environment.
-
 ## Packaging Workflow
 
 !!! info
@@ -122,10 +135,10 @@ From the `projects/` directory, open the dedicated Conda packaging container and
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
-Inside the running container, build the package from the project root using the `recipe/` directory and the `conda-forge` channel:
+Inside the running container, build the package from the project root using the `recipe/` directory and the `conda-forge` channel. Add the optional `--target-platform` argument when you need to build for a platform other than the current container platform.
 
 ```bash
-conda build recipe/ --channel conda-forge
+conda build recipe/ --channel conda-forge [--target-platform <platform>]
 ```
 
 > The output artifact is written to the local Conda build cache, typically under a platform-specific directory such as `noarch`, `linux-64`, `osx-64`, or `win-64`.

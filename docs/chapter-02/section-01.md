@@ -182,7 +182,7 @@ curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/pygu
 
 ### Install The Package
 
-After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment. `uv` can read package indexes directly from `pyproject.toml`, so the project can describe both the public PyPI index and the proprietary Cloudsmith index in one place. `pip` does not read package indexes from `pyproject.toml`, so its install command still needs an explicit `--extra-index-url` argument.
+After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment.
 
 Create a new working directory for a small consumer project.
 
@@ -237,7 +237,7 @@ Install the dependency and run the script.
 
 === "uv"
 
-    Sync the project environment with `uv`. It reads the package indexes from `pyproject.toml` and resolves `pyguard` from the configured Cloudsmith repository.
+    Sync the project environment with `uv`, which reads the package indexes directly from `pyproject.toml`, resolves `pyguard` from the configured Cloudsmith repository, and lets the project describe both the public PyPI index and the proprietary Cloudsmith index in one place.
 
     ```bash
     uv sync
@@ -245,7 +245,7 @@ Install the dependency and run the script.
 
 === "pip"
 
-    Create a virtual environment and install `pyguard` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
+    Create a virtual environment and install `pyguard` with an explicit `--extra-index-url` argument, because `pip` does not read repository indexes from `pyproject.toml`.
 
     ```bash
     python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ pyguard

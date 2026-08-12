@@ -8,6 +8,7 @@ source:
 
 build:
   number: 0
+  string: py312
   noarch: python
   # conda-build generates the console-script wrapper for this entry point.
   entry_points:
