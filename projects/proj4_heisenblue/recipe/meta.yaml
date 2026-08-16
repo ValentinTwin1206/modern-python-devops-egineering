@@ -1,0 +1,39 @@
+package:
+  name: heisenblue
+  version: 1.0.0
+
+source:
+  path: ..
+
+build:
+  number: 0
+  script: "{{ PYTHON }} -m pip install . --no-deps -vv"
+
+requirements:
+  build:
+    - "{{ compiler('cxx') }}"
+    - cmake
+    - ninja
+  host:
+    - python >=3.12
+    - pip
+    - scikit-build-core >=0.10
+    - pybind11 >=2.12
+    - rdkit
+    - pillow
+  run:
+    - python >=3.12
+    - rdkit
+    - pillow
+
+test:
+  imports:
+    - heisenblue
+    - heisenblue._native
+  commands:
+    - heisenblue --help
+
+about:
+  home: https://github.com/ValentinTwin1206/modern-python-engineering
+  summary: RDKit and pybind11 sample library packaged as a platform-specific Conda artifact.
+  license: Apache-2.0

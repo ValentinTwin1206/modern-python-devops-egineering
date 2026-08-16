@@ -1,16 +1,16 @@
 # Conda Packages
 
-Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This makes them especially useful for projects that depend on scientific libraries, native code, GPU toolkits, or platform-specific binaries.
+Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This advanced packaging capability is similar to [Python Containers](./section-03.md), although the typical target environment is different. Containers are more often used for cloud-native application deployment into controlled runtime platforms, whereas Conda packages more often target user-managed scientific or engineering environments.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is a small image-processing pipeline called `Image Processor Project`. It is built on [OpenCV](https://opencv.org/) and [NumPy](https://numpy.org/), making it a good fit for Conda because the workflow combines Python packages with native libraries that are easier to distribute and manage together in a single Conda environment.
+The applied project is a small chemistry analysis library called `HeisenBlue`. It is built on [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), and a native [pybind11](https://pybind11.readthedocs.io/) extension, making it a good fit for Conda because the workflow combines Python packages, native libraries, and a compiled extension in one distributable environment.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_image_processor/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md).
 
 ## Building Blocks
 
@@ -33,19 +33,25 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 
 ```text
 {project_root}/
+├── cpp/
+│   ├── CMakeLists.txt
+│   └── heisenblue.cpp
+├── pyproject.toml
 ├── recipe/
 │   └── meta.yaml
 ├── src/
-│   └── image_processor/
+│   └── heisenblue/
 │       ├── __init__.py
-│       └── main.py
+│       ├── analysis.py
+│       └── cli.py
 ├── tests/
 ├── environment.yml
-├── LICENSE
 └── README.md
 ```
 
 - `recipe/meta.yaml`: Defines package metadata, source locations, build instructions, dependencies, and tests.
+- `cpp/`: Contains the native C++ scoring component that is compiled into the Python package.
+- `pyproject.toml`: Defines the Python package metadata and the `scikit-build-core` build backend.
 - `src/`: Contains the application source code.
 - `environment.yml`: Defines a reproducible development or testing environment, including channels and dependencies.
 
@@ -66,7 +72,7 @@ build:
   string: <build-string> # e.g. py312_0
   noarch: <noarch-kind> # e.g. python
   entry_points:
-    - <command-name> = <module-path>:<callable> # Example: image-processor = image_processor.main:main
+    - <command-name> = <module-path>:<callable> # Example: heisenblue = heisenblue.cli:main
   script: |
     <build-command-1>
     <build-command-2>
@@ -81,9 +87,9 @@ requirements:
 
 test:
   imports:
-    - <import-name> # Example: image_processor
+    - <import-name> # Example: heisenblue
   commands:
-    - <test-command> # Example: image-processor --help
+    - <test-command> # Example: heisenblue --help
 
 about:
   summary: <package-summary>
@@ -92,7 +98,7 @@ about:
 
 - `package`: Defines the package name and version, which form the core of the package identity.
 - `source`: Specifies the local directory, Git repository, or source archive used during the build.
-- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; use `noarch` for OS-independent packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform.
+- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; compiled projects such as `heisenblue` produce platform-specific artifacts rather than `noarch` packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform.
 - `requirements`: Separates build-machine tools (`build`), host target environment dependencies (`host`), and runtime (`run`) dependencies, which are recorded in the package metadata and used during dependency resolution.
 - `test`: Verifies that the package was constructed properly by running automated sanity checks, such as importing Python modules, immediately after building.
 - `about`: Provides descriptive metadata such as the package summary and license identifier.
@@ -130,7 +136,7 @@ A modern Conda package is a ZIP container with a `.conda` extension. It contains
 From the `projects/` directory, open the dedicated Conda packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
-../build.sh build --path proj4_image_processor/Dockerfile.devEnv \
+../build.sh build --path proj4_heisenblue/Dockerfile.devEnv \
     --cloudsmith-workspace "<cloudsmith-repo>" \
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
@@ -141,66 +147,72 @@ Inside the running container, build the package from the project root using the 
 conda build recipe/ --channel conda-forge [--target-platform <platform>]
 ```
 
-> The output artifact is written to the local Conda build cache, typically under a platform-specific directory such as `noarch`, `linux-64`, `osx-64`, or `win-64`.
+> The output artifact is written to the local Conda build cache under a platform-specific directory such as `linux-64`, `osx-arm64`, or `win-64`. Because `heisenblue` ships a compiled extension, the package is not `noarch`.
 
 ### Inspect The Package
 
 A modern Conda package (`.conda`) is a ZIP container that stores two compressed TAR archives: an `info` archive containing package metadata and a `pkg` archive containing the installable payload. Older Conda packages use a single `.tar.bz2` archive, but both formats can be inspected with `conda-package-handling`.
 
+Resolve the exact artifact path that `conda build` produced:
+
+```bash
+PACKAGE="$(conda build recipe/ --channel conda-forge --output)"
+```
+
 List all paths stored inside the package.
 
 ```bash
-cph list "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cph list "$PACKAGE"
 ```
 
 List only the metadata component.
 
 ```bash
-cph list --components info "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cph list --components info "$PACKAGE"
 ```
 
 Extract only the metadata archive.
 
 ```bash
-cph extract --info --dest /tmp/image-processor-info "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cph extract --info --dest /tmp/heisenblue-info "$PACKAGE"
 ```
 
 Read the generated package metadata.
 
 ```bash
-cat /tmp/image-processor-info/info/index.json
+cat /tmp/heisenblue-info/info/index.json
 ```
 
 ### Publish The Package
 
-Conda repositories organize packages by platform directory and expose each directory through a generated `repodata.json` index. A `noarch` package such as `image-processor` is stored under `noarch/`, while compiled packages are stored under platform-specific directories such as `linux-64/`, `osx-arm64/`, or `win-64/`. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching `repodata.json` file so Conda clients can discover and resolve the package before downloading the artifact.
+Conda repositories organize packages by platform directory and expose each directory through a generated `repodata.json` index. A compiled package such as `heisenblue` is stored under a platform-specific directory such as `linux-64/`, `osx-arm64/`, or `win-64/`. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching `repodata.json` file so Conda clients can discover and resolve the package before downloading the artifact.
 
 ```text
 repository-root/
-└── noarch/
+└── linux-64/
     ├── repodata.json
-    └── image-processor-1.0.0-py_0.conda
+    └── heisenblue-1.0.0-<build-string>.conda
 ```
 
-When a user later installs `image-processor`, Conda first downloads the lightweight `noarch/repodata.json` index, solves dependencies locally, and only then downloads the selected `.conda` artifact.
+When a user later installs `heisenblue`, Conda first downloads the lightweight platform index such as `linux-64/repodata.json`, solves dependencies locally, and only then downloads the selected `.conda` artifact.
 
 Upload the built package to the Cloudsmith Conda repository.
 
 ```bash
-cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$CONDA_DIR/conda-bld/noarch/image-processor-1.0.0-py_0.conda"
+cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
 ```
 
 Check that Cloudsmith received and processed the package.
 
 ```bash
-cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "image-processor"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "heisenblue"
 ```
 
 ## Consumer Workflow
 
 ### Configure the Package Manager
 
-When Conda creates or updates an environment, it consults the configured `channels` list to locate packages and resolve compatible dependency versions. The proprietary channel should appear before `conda-forge` so Conda can find `image-processor` in the proprietary repository, then resolve public runtime dependencies such as Python, NumPy, and OpenCV from `conda-forge`.
+When Conda creates or updates an environment, it consults the configured `channels` list to locate packages and resolve compatible dependency versions. The proprietary channel should appear before `conda-forge` so Conda can find `heisenblue` in the proprietary repository, then resolve public runtime dependencies such as Python, RDKit, and Pillow from `conda-forge`.
 
 Keep authenticated URLs out of `environment.yml`, source control, and shell history. For one user, configure the authenticated channel in `~/.condarc`, while for a managed Debian-based system, use `/etc/conda/.condarc`. Cloudsmith authenticates private Conda repositories through the channel URL itself. For Cloudsmith, prefer an *Entitlement Token URL* like `https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/`, although HTTP Basic authentication also works.
 
@@ -230,32 +242,84 @@ export CONDARC="$HOME/.config/conda/cloudsmith.condarc"
 
 ### Install The Package
 
-After publication, users can create a small consumer project that records the runtime dependency in `environment.yml`. The package source comes from the Conda channels configured in [Configure the Package Manager](#configure-the-package-manager).
+For consumers, a Conda environment removes much of the setup work that advanced projects usually push onto the host machine. Instead of asking users to match a Python version, install native runtime libraries, find compatible RDKit builds, provide image-rendering dependencies, and keep those pieces aligned with the package, the Conda solver installs a compatible environment from one dependency declaration.
 
-Create a new working directory for a small consumer project.
+=== "With Conda"
 
-```bash
-mkdir imageprocessor-consumer && cd imageprocessor-consumer
-```
+    After publication, users can create a small consumer project that records the runtime dependency in `environment.yml`. The package source comes from the Conda channels configured in [Configure the Package Manager](#configure-the-package-manager).
 
-Add the project environment file.
+    Create a new working directory for a small consumer project.
 
-```yaml
-name: image-processor-demo
-dependencies:
-    - python=3.12
-    - image-processor
-```
+    ```bash
+    mkdir heisenblue-consumer && cd heisenblue-consumer
+    ```
 
-Create the environment from `environment.yml`.
+    Add the project environment file.
 
-```bash
-conda env create -f environment.yml
-```
+    ```yaml
+    name: heisenblue-demo
+    dependencies:
+      - python=3.12
+      - heisenblue
+    ```
 
-Activate the environment and run the installed command-line application.
+    Create the environment from `environment.yml`.
 
-```bash
-conda activate image-processor-demo
-image-processor --output edges.png
-```
+    ```bash
+    conda env create -f environment.yml
+    ```
+
+    Activate the environment and run the installed command-line application.
+
+    ```bash
+    conda activate heisenblue-demo
+    heisenblue "CCO" --output ethanol.png --show-molecule
+    ```
+
+=== "Without Conda"
+
+    Here we assume that `heisenblue` is delivered as a Python package (`.whl`) including its C/C++ component; this is technically possible through a platform-specific wheel. The workflow below shows how to install the remaining host dependencies, but unlike Conda-managed dependencies, these libraries and tools are **installed system-wide** by the OS package manager. Hence, they are shared across projects and can clash when different projects need different native dependency versions.
+
+    ```bash
+    sudo apt-get update && sudo apt-get install -y \
+      python3.12 \
+      python3.12-venv \
+      build-essential \
+      cmake \
+      ninja-build \
+      fonts-dejavu-core \
+      libxrender1 \
+      libxext6
+    ```
+
+    Create a consumer project file that depends on the published Python package.
+
+    ```toml
+    [project]
+    name = "heisenblue-consumer"
+    version = "0.1.0"
+    requires-python = ">=3.12"
+    dependencies = [ "heisenblue" ]
+
+    [tool.uv]
+
+    [[tool.uv.index]]
+    name = "pypi"
+    url = "https://pypi.org/simple"
+
+    [[tool.uv.index]]
+    name = "modern-python-engineering"
+    url = "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/"
+    ```
+
+    Sync the project environment with `uv`.
+
+    ```bash
+    uv sync
+    ```
+
+    Run the installed command-line application.
+
+    ```bash
+    uv run heisenblue "CCO" --output ethanol.png --show-molecule
+    ```

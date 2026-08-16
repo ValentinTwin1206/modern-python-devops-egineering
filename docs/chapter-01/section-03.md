@@ -6,11 +6,11 @@ This page covers Conda, both as a package manager and as an environment manager.
 
 ### Project Setup
 
-The applied project is a small image-processing pipeline called `Image Processor Project`. It is built on [OpenCV](https://opencv.org/) and [NumPy](https://numpy.org/). This makes it a good fit for Conda because the workflow combines Python packages with native libraries that are easier to manage together in one Conda environment.
+The applied project is a small chemistry analysis library called `HeisenBlue`. It is built on [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, and a compiled extension in one Conda environment.
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_image_processor/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md).
 
 ## Conda environment model
 
@@ -129,10 +129,10 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 
 #### Environment name and location
 
-Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `image-processor` instead of a generic name such as `venv` when creating a Conda environment:
+Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `heisenblue-demo` instead of a generic name such as `venv` when creating a Conda environment:
 
 ```bash
-conda create -y -n image-processor python=3.12 pip
+conda create -y -n heisenblue-demo -c conda-forge python=3.12 rdkit pillow pip
 ```
 
 By default, the environment is stored under `~/miniconda3` on Linux or macOS and `%UserProfile%\miniconda3` on Windows. 
@@ -144,9 +144,9 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
     ├── bin/
     │   └── conda
     ├── envs/
-    │   └── image-processor/
+    │   └── heisenblue-demo/
     │       ├── bin/
-    │       │   ├── pip
+    │       │   ├── heisenblue
     │       │   ├── python
     │       │   └── python3.12
     │       ├── conda-meta/
@@ -163,10 +163,10 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
     ├── condabin\
     │   └── conda.bat
     ├── envs\
-    │   └── image-processor\
+    │   └── heisenblue-demo\
     │       ├── python.exe
     │       ├── Scripts\
-    │       │   ├── pip.exe
+    │       │   ├── heisenblue.exe
     │       │   └── activate.bat
     │       ├── Lib\site-packages\
     │       ├── Library\bin\
@@ -181,9 +181,9 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
     ├── bin/
     │   └── conda
     ├── envs/
-    │   └── image-processor/
+    │   └── heisenblue-demo/
     │       ├── bin/
-    │       │   ├── pip
+    │       │   ├── heisenblue
     │       │   ├── python
     │       │   └── python3.12
     │       ├── conda-meta/
@@ -214,30 +214,31 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 The `environment.yml` file describes the [respective Conda environment](#environment-layout) from outside and is stored **within the project tree** next to the source code and other project files.
 
 ```yaml
-name: image-processor
+name: heisenblue-demo
 channels:
   - conda-forge
   # - defaults  # Served from repo.anaconda.com and added by default, so it usually does not need to be listed explicitly.
 dependencies:
   - python=3.12
-  - numpy=2.1.3
-  - opencv=4.10.0
+    - rdkit
+    - pillow
+    - pybind11
+    - cmake
+    - ninja
   - pip
-  - pip:
-      - ruff>=0.15.12
-      - karva>=0.0.1a5
+    - pytest
+    - karva
 ```
 
-- `name`: sets the Conda environment name to `image-processor`.
+- `name`: sets the Conda environment name to `heisenblue-demo`.
 - `channels`: tells Conda from where to resolve Conda-managed packages.
 
     | Source | Kind | Examples |
     | ------ | ---- | -------- |
-    | `conda-forge` | Community Conda channel | `numpy`, `opencv`, `python` |
+        | `conda-forge` | Community Conda channel | `python`, `rdkit`, `pillow`, `pybind11` |
     | `defaults` | Anaconda-hosted Conda channel set, served from `repo.anaconda.com` | `python`, `numpy`, `pandas` |
 
-- `dependencies`: lists the Conda-managed packages to install, including Python, NumPy, OpenCV, and `pip` itself.
-- `dependencies.pip`: lists the PyPI-only project tools to install through the nested `pip:` block. PyPI sources, including proprietary ones, do not belong in `channels:`; configure them through `pip`, for example with `--index-url` or `--extra-index-url` entries inside the nested `pip:` list or through standard `pip` configuration.
+- `dependencies`: lists the Conda-managed packages to install, including Python, RDKit, Pillow, the C++ build tools, and the project test tooling.
 
 ## Workflow
 
@@ -258,24 +259,25 @@ The examples below show three ways to get to a working project setup. The Conda-
     Activate the environment:
 
     ```bash
-    conda activate image-processor
+    conda activate heisenblue-demo
     ```
 
     Filesystem excerpt:
 
     ```text
     ~/
-    ├── miniconda3/envs/image-processor/    # environment, managed by conda
+    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
     │   ├── bin/python
     │   ├── lib/python3.12/site-packages/
-    │   │   ├── cv2/
-    │   │   ├── numpy/
-    │   │   ├── ruff/
-    │   │   └── karva/
-    │   └── lib/libopencv_*.so
-    └── image-processor/                    # project
+    │   │   ├── heisenblue/
+    │   │   ├── heisenblue/_native*.so
+    │   │   ├── PIL/
+    │   │   └── rdkit/
+    │   └── lib/libRDKit*.so
+    └── heisenblue/                         # project
         ├── environment.yml
-        └── src/image_processor/
+        ├── cpp/
+        └── src/heisenblue/
     ```
     
 === "Create from scratch"
@@ -283,46 +285,52 @@ The examples below show three ways to get to a working project setup. The Conda-
     Create the same Conda-managed environment defined in `environment.yml`:
 
     ```bash
-    conda create -y -n image-processor -c conda-forge \
+    conda create -y -n heisenblue-demo -c conda-forge \
         python=3.12 \
-        numpy=2.1.3 \
-        opencv=4.10.0 \
-        pip
+        rdkit \
+        pillow \
+        pybind11 \
+        cmake \
+        ninja \
+        pip \
+        pytest \
+        karva
     ```
 
     Activate the environment:
 
     ```bash
-    conda activate image-processor
+    conda activate heisenblue-demo
     ```
 
-    Install the PyPI-only tools:
+    Install the project itself in editable mode:
 
     ```bash
-    (image-processor) $ python -m pip install "ruff>=0.15.12" "karva>=0.0.1a5"
+    (heisenblue-demo) $ python -m pip install -e .
     ```
 
     Snapshot the environment requirements back to YAML:
 
     ```bash
-    (image-processor) $ conda env export --from-history > environment.yml
+    (heisenblue-demo) $ conda env export --from-history > environment.yml
     ```
 
     Filesystem excerpt:
 
     ```text
     ~/
-    ├── miniconda3/envs/image-processor/    # environment, managed by conda
+    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
     │   ├── bin/python
     │   ├── lib/python3.12/site-packages/
-    │   │   ├── cv2/
-    │   │   ├── numpy/
-    │   │   ├── ruff/
-    │   │   └── karva/
-    │   └── lib/libopencv_*.so
-    └── image-processor/                    # project
+    │   │   ├── heisenblue/
+    │   │   ├── heisenblue/_native*.so
+    │   │   ├── PIL/
+    │   │   └── rdkit/
+    │   └── lib/libRDKit*.so
+    └── heisenblue/                         # project
         ├── environment.yml
-        └── src/image_processor/
+        ├── cpp/
+        └── src/heisenblue/
     ```
 
 === "Without `conda`"
@@ -335,16 +343,15 @@ The examples below show three ways to get to a working project setup. The Conda-
     sudo apt-get update
     ```
 
-    Install Python 3.12, `venv` support, and the system libraries OpenCV depends on:
+    Install Python 3.12, `venv` support, and the native build tools the project needs:
 
     ```bash
     sudo apt-get install -y \
         python3.12 \
         python3.12-venv \
-        libopencv-dev \
-        libjpeg-dev \
-        libpng-dev \
-        libtiff-dev
+        build-essential \
+        cmake \
+        ninja-build
     ```
 
     Create and activate a virtual environment:
@@ -353,29 +360,30 @@ The examples below show three ways to get to a working project setup. The Conda-
     python3.12 -m venv .venv && source .venv/bin/activate
     ```
 
-    Install the Python bindings from PyPI:
+    Install the Python-side tooling into the virtual environment:
 
     ```bash
-    pip install opencv-python
+    pip install pillow pybind11 scikit-build-core pytest karva
     ```
 
-    This split workflow leaves Python packages in `.venv/` while the native libraries stay under `/usr/`.
+    A separate RDKit installation still has to come from outside the virtual environment, which is one reason Conda is the easier and more reproducible workflow for this project.
 
     Filesystem excerpt:
 
     ```text
     ~/
-    └── image-processor/                     # project
+    └── heisenblue/                          # project
         ├── .venv/                           # project environment, managed by venv/pip
         │   ├── bin/python
         │   └── lib/python3.12/site-packages/
-        │       └── cv2/
-        └── src/image_processor/
+        │       └── heisenblue/
+        ├── cpp/
+        └── src/heisenblue/
 
     /usr/                                 # OS filesystem
     ├── bin/python3.12
-    ├── include/opencv4/
-    └── lib/x86_64-linux-gnu/libopencv_*.so*
+    ├── bin/cmake
+    └── bin/c++
     ```
 
 ### Add packages
@@ -385,13 +393,13 @@ Ensure that the dedicated Conda environment is active (see [Create and activate]
 Add a package from a Conda channel:
 
 ```bash
-(image-processor) $ conda install -c conda-forge <package>
+(heisenblue-demo) $ conda install -c conda-forge <package>
 ```
 
 Add a package from PyPI when it is not available from your chosen Conda channels:
 
 ```bash
-(image-processor) $ python -m pip install <package>
+(heisenblue-demo) $ python -m pip install <package>
 ```
 
 ## Inspection
@@ -411,5 +419,5 @@ conda env list
 After activation, the environment's Python becomes the first interpreter on `PATH`, and imports resolve from the environment-specific package directory under the [Conda prefix](#environment-layout) instead of from the [project tree](#environment-definition-environmentyml). Show the active interpreter inside the Conda environment:
 
 ```bash
-(image-processor) $ python -c "import sys; print(sys.prefix); print(sys.executable)"
+(heisenblue-demo) $ python -c "import sys; print(sys.prefix); print(sys.executable)"
 ```

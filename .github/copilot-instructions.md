@@ -21,7 +21,7 @@ This repository contains teaching material for modern Python engineering. When e
 
 ## Chapter 01 Layout
 
-- Start each Chapter 01 section page with a concise introduction, then a level-two example-project section. Sections 01 and 02 use `Tiny Webserver Project`. Section 03 (Conda) uses `Image Processor Project` (OpenCV + NumPy showcase). Section 04 (Pipenv) uses `FastAPI CRUD Project` (FastAPI + Pydantic + uvicorn showcase). Section 05 (Dev Containers) uses `Pixelpack Project` (Pillow + Click + Nuitka showcase). Use the matching project name as the level-two heading on each page.
+- Start each Chapter 01 section page with a concise introduction, then a level-two example-project section. Sections 01 and 02 use `Tiny Webserver Project`. Section 03 (Conda) uses `HeisenBlue` (RDKit + pybind11 showcase). Section 04 (Pipenv) uses `FastAPI CRUD Project` (FastAPI + Pydantic + uvicorn showcase). Section 05 (Dev Containers) uses `Pixelpack Project` (Pillow + Click + Nuitka showcase). Use the matching project name as the level-two heading on each page.
 - In Chapter 01, split that example-project section into level-three `Used DevTools` and `Project Files` subsections.
 - Start each of those subsections with a short sentence that explains what the table covers.
 - In Chapter 01, both tables should use the columns `Component` and `Description`.

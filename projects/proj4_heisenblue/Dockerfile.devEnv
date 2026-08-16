@@ -1,0 +1,54 @@
+FROM continuumio/miniconda3
+
+ENV CONDA_DIR=/opt/conda \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    CLOUDSMITH_REPOSITORY=""
+ENV PATH=$CONDA_DIR/bin:$PATH
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash --groups sudo snake \
+    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
+    && chmod 0440 /etc/sudoers.d/snake
+
+RUN pip install --no-cache-dir cloudsmith-cli
+
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+RUN conda install -n base -c conda-forge -y conda-build conda-package-handling \
+    && conda clean --all --yes
+
+COPY environment.yml ./
+
+RUN conda env create -f environment.yml \
+    && conda clean --all --yes
+
+ENV PATH=$CONDA_DIR/envs/heisenblue-demo/bin:$PATH
+ENV CONDA_DEFAULT_ENV=heisenblue-demo
+
+COPY src ./src
+COPY cpp ./cpp
+COPY tests ./tests
+COPY recipe ./recipe
+COPY pyproject.toml ./pyproject.toml
+COPY README.md ./README.md
+
+ENV PYTHONPATH=/app/src
+
+RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/snake/.bashrc \
+    && echo 'conda activate heisenblue-demo' >> /home/snake/.bashrc \
+    && echo 'cd /app' >> /home/snake/.bashrc \
+    && chown -R snake:snake /app /home/snake /opt/conda
+
+USER snake
+
+CMD ["/bin/bash"]
