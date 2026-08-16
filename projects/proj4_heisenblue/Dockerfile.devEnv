@@ -19,7 +19,7 @@ RUN apt-get update \
     && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
     && chmod 0440 /etc/sudoers.d/snake
 
-RUN pip install --no-cache-dir cloudsmith-cli
+RUN pip install --no-cache-dir cloudsmith-cli uv
 
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
