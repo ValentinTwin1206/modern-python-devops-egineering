@@ -16,7 +16,7 @@ Application, test, lint, package-build, and shell-exit commands are documented i
 
 ### Overview
 
-Conda packages are built distributions that can contain Python modules, native libraries, command-line tools, and software from multiple language ecosystems. Modern packages use the `.conda` format, while older releases may use `.tar.bz2`; both contain a pre-built payload together with package metadata so installation does not require compiling software on the target machine. Conda packages are commonly used for data science, machine learning, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes.
+Conda packages are built distributions that can contain Python modules, native libraries, command-line tools, and software from multiple language ecosystems. Modern packages use the `.conda` format, while older releases may use `.tar.bz2`; both contain a pre-built payload together with package metadata so installation does not require compiling software on the target machine. Conda packages are commonly used for data science, machine learning, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes. This is especially helpful as system dependencies can be managed as first-class environment dependencies instead of hidden system prerequisites, which reduces missing-library failures during installation.
 
 Conda distribution consists of four primary building blocks. A **package format** stores the application files and generated metadata, a **recipe** describes how the package is built and which dependencies it requires, a **package manager** resolves dependencies and creates isolated environments, and a **channel** stores packages together with searchable package indexes. Build tools such as `conda-build` and `rattler-build` transform a `meta.yaml` or `recipe.yaml` recipe into one or more platform-specific Conda packages before they are published to a channel. Because all packages in a channel include dependency metadata, Conda can automatically resolve compatible package versions across the entire environment rather than installing packages individually.
 
@@ -36,7 +36,6 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 ├── cpp/
 │   ├── CMakeLists.txt
 │   └── heisenblue.cpp
-├── pyproject.toml
 ├── recipe/
 │   └── meta.yaml
 ├── src/
@@ -46,13 +45,14 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 │       └── cli.py
 ├── tests/
 ├── environment.yml
+├── pyproject.toml
 └── README.md
 ```
 
 - `recipe/meta.yaml`: Defines package metadata, source locations, build instructions, dependencies, and tests.
 - `cpp/`: Contains the native C++ scoring component that is compiled into the Python package.
-- `pyproject.toml`: Defines the Python package metadata and the `scikit-build-core` build backend.
 - `src/`: Contains the application source code.
+- `pyproject.toml`: Defines the Python package metadata and the `scikit-build-core` build backend.
 - `environment.yml`: Defines a reproducible development or testing environment, including channels and dependencies.
 
 ### Package Manifest
@@ -98,33 +98,74 @@ about:
 
 - `package`: Defines the package name and version, which form the core of the package identity.
 - `source`: Specifies the local directory, Git repository, or source archive used during the build.
-- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; compiled projects such as `heisenblue` produce platform-specific artifacts rather than `noarch` packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform.
-- `requirements`: Separates build-machine tools (`build`), host target environment dependencies (`host`), and runtime (`run`) dependencies, which are recorded in the package metadata and used during dependency resolution.
+- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; compiled projects such as `heisenblue` produce platform-specific artifacts rather than `noarch` packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform. In contrast to a typical wheel workflow, the Conda recipe does not need a separate binary-repair phase to explain where native dependencies belong; the package recipe and channel metadata carry that information directly.
+- `requirements`: Separates build-machine tools (`build`), host target environment dependencies (`host`), and runtime (`run`) dependencies, which are recorded in the package metadata and used during dependency resolution. This is where Conda is especially strong for C/C++ projects: compilers, C++ libraries, and platform-specific runtime packages can be declared as normal dependencies instead of being hidden in host setup scripts or manually bundled into wheel artifacts.
 - `test`: Verifies that the package was constructed properly by running automated sanity checks, such as importing Python modules, immediately after building.
 - `about`: Provides descriptive metadata such as the package summary and license identifier.
 
 ### Package Layout
 
-A modern Conda package is a ZIP container with a `.conda` extension. It contains two compressed TAR archives: one stores package metadata and one stores the installable payload. The package filename combines the package name, version, build string, and target platform, and Conda uses this metadata together with package indexes (`repodata.json`) from configured channels to select compatible packages when creating or updating an environment.
+The following section shows the inner layout of a typical Conda package and compares it with the already known [Python wheel structure](./section-01.md#package-layout). Both formats can distribute Python package files and compiled extension modules, but they organize metadata, entry points, installable files, and dependency expectations differently.
 
-```text
-{name}-{version}-{build}.conda
-├── metadata.json
-├── info-{checksum}.tar.zst
-│   └── info/
-│       ├── index.json
-│       ├── paths.json
-│       ├── about.json
-│       └── recipe/
-└── pkg-{checksum}.tar.zst
-    ├── bin/ or Scripts/
-    ├── lib/ or Library/
-    └── site-packages/
-```
+=== "Conda Package"
 
-- `metadata.json`: Describes the package format and references the contained archives.
-- `info-*.tar.zst`: Stores package metadata, dependency information, file records, licenses, and the original recipe.
-- `pkg-*.tar.zst`: Stores the files installed into the Conda environment, including Python modules, executables, shared libraries, and other resources.
+    A modern Conda package is a ZIP container with a `.conda` extension that separates package metadata from the installable payload into two compressed TAR archives.
+
+    ```text
+    heisenblue-1.0.0-py314h2bc3f7f_0.conda
+    ├── metadata.json
+    ├── info-heisenblue-1.0.0-py314h2bc3f7f_0.tar.zst
+    │   └── info/
+    │       ├── about.json
+    │       ├── ...
+    │       ├── recipe/
+    │       │   ├── conda_build_config.yaml
+    │       │   ├── meta.yaml
+    │       │   └── meta.yaml.template
+    │       └── test/
+    │           ├── run_test.py
+    │           └── run_test.sh
+    └── pkg-heisenblue-1.0.0-py314h2bc3f7f_0.tar.zst
+      ├── bin/
+      │   └── heisenblue
+      └── lib/
+          └── python3.14/
+              └── site-packages/
+                  ├── heisenblue/
+                  │   ├── __init__.py
+                  │   ├── analysis.py
+                  │   ├── ...
+                  │   └── _native.cpython-314-x86_64-linux-gnu.so
+                  └── heisenblue-1.0.0.dist-info/
+                      ├── ...
+                      └── entry_points.txt
+    ```
+
+    - `metadata.json`: Describes the Conda package format and references the contained archives.
+    - `info-*.tar.zst`: Stores package metadata, dependency information, file records, licenses, tests, and the original recipe.
+        - `recipe/`: Contains the embedded `meta.yaml` recipe, including the declared **runtime and system dependencies** that Conda installs into the target environment before the package is activated there.
+    - `pkg-*.tar.zst`: Stores the installable payload copied into the Conda environment.
+        - `bin/`: Contains command-line entry points such as the generated `heisenblue` script.
+        - `lib/python3.14/site-packages/`: Contains the installed Python package, Python package metadata, and `_native`, a pybind11 C++ extension module loaded by Python.
+
+=== "Python Wheel"
+
+    A Python wheel is also a ZIP archive, but its import package and `.dist-info` metadata sit directly at the archive root. It can bundle the compiled C extension, yet host dependencies such as RDKit or platform libraries may still be missing and must be installed separately before use, as shown in [Consumer Workflow](#install-the-package). The wheel also does not contain a preinstalled `bin/heisenblue` script; the installer generates that launcher from `entry_points.txt` during installation.
+
+    ```text
+    heisenblue-1.0.0-cp314-cp314-linux_x86_64.whl
+    ├── heisenblue/
+    │   ├── __init__.py
+    │   ├── analysis.py
+    │   ├── ...
+    │   └── _native.cpython-314-x86_64-linux-gnu.so
+    └── heisenblue-1.0.0.dist-info/
+      ├── ...
+      └── entry_points.txt
+    ```
+
+    - `heisenblue/`: Contains the Python source files and `_native`, a pybind11 C++ extension module loaded by Python rather than a standalone executable or static library.
+    - `heisenblue-1.0.0.dist-info/`: Contains package metadata, dependency declarations, file records, and console-script entry points.
 
 ## Packaging Workflow
 
@@ -133,12 +174,12 @@ A modern Conda package is a ZIP container with a `.conda` extension. It contains
 
 ### Create The Package
 
-From the `projects/` directory, open the dedicated Conda packaging container and forward the Cloudsmith configuration into the container session.
+From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session.
 
 ```bash
 ../build.sh build --path proj4_heisenblue/Dockerfile.devEnv \
-    --cloudsmith-workspace "<cloudsmith-repo>" \
-    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+  --cloudsmith-workspace "<cloudsmith-repo>" \
+  --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
 Inside the running container, build the package from the project root using the `recipe/` directory and the `conda-forge` channel. Add the optional `--target-platform` argument when you need to build for a platform other than the current container platform.
@@ -147,7 +188,7 @@ Inside the running container, build the package from the project root using the 
 conda build recipe/ --channel conda-forge [--target-platform <platform>]
 ```
 
-> The output artifact is written to the local Conda build cache under a platform-specific directory such as `linux-64`, `osx-arm64`, or `win-64`. Because `heisenblue` ships a compiled extension, the package is not `noarch`.
+> The output artifact is written to the local Conda build cache under a platform-specific directory such as `linux-64`, `osx-arm64`, or `win-64`. Because `heisenblue` ships a compiled extension, the package is not `noarch`; each supported platform gets its own `.conda` artifact.
 
 ### Inspect The Package
 
@@ -185,16 +226,24 @@ cat /tmp/heisenblue-info/info/index.json
 
 ### Publish The Package
 
-Conda repositories organize packages by platform directory and expose each directory through a generated `repodata.json` index. A compiled package such as `heisenblue` is stored under a platform-specific directory such as `linux-64/`, `osx-arm64/`, or `win-64/`. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching `repodata.json` file so Conda clients can discover and resolve the package before downloading the artifact.
+A compiled Conda package such as `heisenblue` is still built once per target platform, but the Conda channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching index so Conda clients can resolve the right artifact for the current platform.
 
 ```text
 repository-root/
-└── linux-64/
-    ├── repodata.json
-    └── heisenblue-1.0.0-<build-string>.conda
+├── linux-64/
+│   ├── repodata.json
+│   └── heisenblue-1.0.0-<linux-build>.conda
+├── osx-arm64/
+│   ├── repodata.json
+│   └── heisenblue-1.0.0-<macos-build>.conda
+└── win-64/
+  ├── repodata.json
+  └── heisenblue-1.0.0-<windows-build>.conda
 ```
 
-When a user later installs `heisenblue`, Conda first downloads the lightweight platform index such as `linux-64/repodata.json`, solves dependencies locally, and only then downloads the selected `.conda` artifact.
+> The [Package create workflow](#create-the-package) above builds only the `linux-64` artifact; `osx-arm64` and `win-64` are shown for illustration.
+
+When a user later installs `heisenblue`, Conda first downloads the lightweight platform index such as `linux-64/repodata.json`, solves dependencies locally, and only then downloads the selected `.conda` artifact. The advantage is not a single multi-platform archive; it is that the package, RDKit, Pillow, native runtime expectations, and platform metadata are solved together in the same Conda ecosystem.
 
 Upload the built package to the Cloudsmith Conda repository.
 
@@ -207,6 +256,16 @@ Check that Cloudsmith received and processed the package.
 ```bash
 cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "heisenblue"
 ```
+
+!!! info "Python Wheels"
+    With a wheel workflow, the equivalent release usually means publishing multiple files under one project name in a Python package index:
+      
+      - `heisenblue-1.0.0-cp312-cp312-manylinux_2_28_x86_64.whl` (Linux)
+      - `heisenblue-1.0.0-cp312-cp312-macosx_14_0_arm64.whl` (MacOS)
+      - `heisenblue-1.0.0-cp312-cp312-win_amd64.whl` (WIndows)
+      
+    Package managers such as `uv` or `pip` then resolve the current platform automatically and download the compatible wheel; for example, `uv tool install heisenblue` selects the matching wheel for the current machine. That works, but the Python index does not solve non-Python runtime libraries in the same way a Conda channel does. Even when the package manager selects the correct wheel for Linux, macOS, or Windows, the host system may still be missing required native dependencies, so more compatibility responsibility stays with the package producer and the consumer's environment.
+
 
 ## Consumer Workflow
 
@@ -234,15 +293,17 @@ Keep authenticated URLs out of `environment.yml`, source control, and shell hist
     channel_priority: strict
     ```
 
-For CI or ephemeral machines, prefer an untracked Conda config file and point Conda to it with `CONDARC` instead of exposing the full authenticated channel through `CONDA_CHANNELS`.
+=== "CI or ephemeral machines"
 
-```bash
-export CONDARC="$HOME/.config/conda/cloudsmith.condarc"
-```
+    For CI or ephemeral machines, prefer an untracked Conda config file and point Conda to it with `CONDARC` instead of exposing the full authenticated channel through `CONDA_CHANNELS`.
+
+    ```bash
+    export CONDARC="$HOME/.config/conda/cloudsmith.condarc"
+    ```
 
 ### Install The Package
 
-For consumers, a Conda environment removes much of the setup work that advanced projects usually push onto the host machine. Instead of asking users to match a Python version, install native runtime libraries, find compatible RDKit builds, provide image-rendering dependencies, and keep those pieces aligned with the package, the Conda solver installs a compatible environment from one dependency declaration.
+For consumers, Conda provides **zero system-dependency setup** for advanced packages. Junior developers can run `conda env create` and get a working environment with Python, C++ runtimes, RDKit, Pillow, and system assets without using `sudo`, `apt-get`, `brew`, or manual native-library installation.
 
 === "With Conda"
 
@@ -278,7 +339,7 @@ For consumers, a Conda environment removes much of the setup work that advanced 
 
 === "Without Conda"
 
-    Here we assume that `heisenblue` is delivered as a Python package (`.whl`) including its C/C++ component; this is technically possible through a platform-specific wheel. The workflow below shows how to install the remaining host dependencies, but unlike Conda-managed dependencies, these libraries and tools are **installed system-wide** by the OS package manager. Hence, they are shared across projects and can clash when different projects need different native dependency versions.
+    Here we assume that `heisenblue` is delivered as a Python package (`.whl`) including its C/C++ component; this is technically possible through a platform-specific wheel. The workflow below shows how to install the remaining host dependencies, but unlike Conda-managed dependencies, these libraries and tools are **installed system-wide** by the OS package manager. That means the setup requires elevated permissions and the installed components are shared across projects, which can cause clashes when different projects need different native dependency versions. By contrast, once Conda itself is installed, `conda env create` typically runs as a normal user without additional root or `sudo` access.
 
     ```bash
     sudo apt-get update && sudo apt-get install -y \
