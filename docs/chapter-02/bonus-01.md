@@ -48,28 +48,48 @@ A typical Python binary project is structured to separate application code, pack
 * `README.md`: Project documentation and usage instructions.
 * `LICENSE`: Defines the legal terms under which the project can be used and distributed.
 
-### Package Manifest
+### Build Configuration
 
-A PyInstaller `.spec` file is an executable Python manifest that defines the application entry point, bundled data, hidden imports, and executable settings.
+`Pixelpack` does not use a separate binary manifest file. The project metadata lives in `pyproject.toml`, while the packaging workflow passes Nuitka build flags on the command line. The configuration below shows the real project manifest and commented placeholders for binary-specific options that teams may choose to move into project-local configuration.
 
-```python
-analysis = Analysis(
-    ["<entry-point.py>"],
-    datas=[("<source-data>", "<destination-directory>")],
-    hiddenimports=["<hidden-import>"],
-)
+```toml
+[project]
+name = "pixelpack"
+version = "1.0.0"
+description = "Pillow + Click image-processing CLI distributed as a Nuitka-compiled standalone binary"
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1.7",
+    "pillow>=10.4.0",
+]
 
-executable = EXE(
-    PYZ(analysis.pure),
-    analysis.scripts,
-    name="<executable-name>",
-    console=<true-or-false>,
-)
+[dependency-groups]
+dev = [
+    "karva>=0.0.1a5",
+    "nuitka>=2.4",
+    "ruff>=0.15.12",
+]
+
+[tool.uv]
+package = false
+
+# Optional project-local binary-build settings could be tracked separately.
+# [tool.nuitka]
+# onefile = true
+# output-dir = "dist"
+# output-filename = "pixelpack"
+# include-package = ["PIL", "click"]
 ```
 
-- `Analysis`: Discovers imported modules and declares additional files or imports that static analysis cannot find.
-- `PYZ`: Packages discovered pure-Python modules into the bundled Python archive.
-- `EXE`: Defines the executable name, startup scripts, and console behavior.
+- `[project]`: Defines the application identity, Python version support, and runtime dependencies that the build command installs into the build environment.
+- `[dependency-groups]`: Records development-only tooling such as Nuitka and Ruff.
+- `[tool.uv]`: Marks that `uv` should manage the environment but not treat the project itself as a wheel-built package.
+- `[tool.nuitka]`: Illustrates where a team could centralize additional binary-build settings if it wanted to move them out of the CLI invocation.
 
 !!! note
     Nuitka can store project options in `pyproject.toml`. Chapter 04 covers [`pyproject.toml` project configuration](../chapter-04/section-01.md) in more detail.

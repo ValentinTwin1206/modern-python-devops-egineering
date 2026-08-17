@@ -51,30 +51,35 @@ The WiX `Product.wxs` file defines the MSI product identity, install location, u
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
   <Product Id="*"
-        Name="{product-name}"
-        Language="{language-code}"
-        Version="{product-version}"
-        Manufacturer="{manufacturer-name}"
-        UpgradeCode="{stable-upgrade-guid}">
+                     Name="Simply Journal Admin"
+                     Language="1033"
+                     Version="$(var.ProductVersion)"
+                     Manufacturer="Modern Python Engineering"
+                     UpgradeCode="6B6F2C2E-2C2A-4E2E-9D0E-7A2C9B5D1A20">
 
-    <Package InstallerVersion="{installer-version}"
+        <Package InstallerVersion="500"
              Compressed="yes"
-          InstallScope="{install-scope}"
-          Description="{package-description}"
-          Manufacturer="{manufacturer-name}" />
+                         InstallScope="perMachine"
+                         Description="Simply Journal Admin $(var.ProductVersion) installer"
+                         Manufacturer="Modern Python Engineering" />
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
     <MediaTemplate EmbedCab="yes" />
+        <Property Id="ARPURLINFOABOUT" Value="https://github.com/ValentinTwin1206/modern-python-devops-egineering" />
+        <!-- <Property Id="ARPCONTACT" Value="support@example.com" /> -->
 
-        <Feature Id="MainFeature" Title="{feature-name}" Level="1">
-            <ComponentGroupRef Id="{component-group-id}" />
+        <Feature Id="MainFeature" Title="Simply Journal Admin" Level="1">
+            <ComponentGroupRef Id="StagedPayload" />
+            <ComponentRef Id="LauncherAndPath" />
     </Feature>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-                <Directory Id="INSTALLFOLDER" Name="{install-directory-name}" />
+                <Directory Id="INSTALLFOLDER" Name="SimplyJournalAdmin" />
       </Directory>
     </Directory>
+
+        <!-- Optional shortcuts or file associations can be added as extra components. -->
   </Product>
 </Wix>
 ```

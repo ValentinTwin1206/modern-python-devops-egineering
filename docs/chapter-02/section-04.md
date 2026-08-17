@@ -1,6 +1,6 @@
 # Conda Packages
 
-Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This advanced packaging capability is similar to [Python Containers](./section-03.md), although the typical target environment is different. Containers are more often used for cloud-native application deployment into controlled runtime platforms, whereas Conda packages more often target user-managed scientific or engineering environments.
+Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This advanced packaging capability is similar to [Python Containers](./section-03.md).
 
 ## Applied Project
 
@@ -49,51 +49,65 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 └── README.md
 ```
 
-- `recipe/meta.yaml`: Defines package metadata, source locations, build instructions, dependencies, and tests.
+- `recipe/meta.yaml`: Stores the project's [YAML-based Conda recipe](#package-recipe), which defines package metadata, source locations, build instructions, dependencies, and tests.
 - `cpp/`: Contains the native C++ scoring component that is compiled into the Python package.
 - `src/`: Contains the application source code.
 - `pyproject.toml`: Defines the Python package metadata and the `scikit-build-core` build backend.
 - `environment.yml`: Defines a reproducible development or testing environment, including channels and dependencies.
 
-### Package Manifest
+### Package Recipe
 
-The Conda recipe in `meta.yaml` defines the package identity, source, build behavior, dependencies, tests, and descriptive metadata used to create a Conda package.
+A Conda package is defined by a YAML-based recipe file, commonly `meta.yaml` or `recipe.yaml`, which declares the package identity, source, build behavior, dependencies, tests, and descriptive metadata used to create the Conda artifact.
 
 ```yaml
 package:
-  name: <package-name>
-  version: <package-version>
+  name: heisenblue
+  version: 1.0.0
 
 source:
-  path: <source-path>
+  path: ..
+  # url: https://example.com/heisenblue-1.0.0.tar.gz
+  # sha256: <source-archive-checksum>
 
 build:
-  number: <build-number> # e.g. 0
-  string: <build-string> # e.g. py312_0
-  noarch: <noarch-kind> # e.g. python
-  entry_points:
-    - <command-name> = <module-path>:<callable> # Example: heisenblue = heisenblue.cli:main
-  script: |
-    <build-command-1>
-    <build-command-2>
+  number: 0
+  script: "{{ PYTHON }} -m pip install . --no-deps -vv"
+  # string: py312_0
+  # noarch: python
+  # entry_points:
+  #   - heisenblue = heisenblue.cli:main
 
 requirements:
+  build:
+    - "{{ compiler('cxx') }}"
+    - cmake
+    - ninja
   host:
-    - <host-dependency> # e.g. python >=3.12
+    - python >=3.12
+    - pip
+    - scikit-build-core >=0.10
+    - pybind11 >=2.12
+    - rdkit
+    - pillow
   run:
-    - <runtime-dependency> # Example: python >=3.12
-    - pywin32              # [win]
-    - xorg-libx11          # [linux]
+    - python >=3.12
+    - rdkit
+    - pillow
+    # - pywin32            # [win]
+    # - xorg-libx11        # [linux]
 
 test:
   imports:
-    - <import-name> # Example: heisenblue
+    - heisenblue
+    - heisenblue._native
   commands:
-    - <test-command> # Example: heisenblue --help
+    - heisenblue --help
+    # - pytest -q
 
 about:
-  summary: <package-summary>
-  license: <license-identifier>
+  home: https://github.com/ValentinTwin1206/modern-python-engineering
+  summary: RDKit and pybind11 sample library packaged as a platform-specific Conda artifact.
+  license: Apache-2.0
 ```
 
 - `package`: Defines the package name and version, which form the core of the package identity.
@@ -109,7 +123,7 @@ The following section shows the inner layout of a typical Conda package and comp
 
 === "Conda Package"
 
-    A modern Conda package is a ZIP container with a `.conda` extension that separates package metadata from the installable payload into two compressed TAR archives.
+    A modern Conda package is a ZIP container with a `.conda` extension that separates package metadata from the installable payload into two compressed TAR archives. Technically, a maintainer could also vendor native dependencies such as RDKit directly into the package payload instead of declaring them as separate Conda dependencies.However, this approach is atypical, as the maintainer would then also own ABI compatibility, rebuild coordination, security updates, and conflict management that the Conda ecosystem normally handles through dependency metadata and shared packages.
 
     ```text
     heisenblue-1.0.0-py314h2bc3f7f_0.conda
@@ -150,7 +164,7 @@ The following section shows the inner layout of a typical Conda package and comp
 
 === "Python Wheel"
 
-    A Python wheel is also a ZIP archive, but its import package and `.dist-info` metadata sit directly at the archive root. It can bundle the compiled C extension, yet host dependencies such as RDKit or platform libraries may still be missing and must be installed separately before use, as shown in [Consumer Workflow](#install-the-package). The wheel also does not contain a preinstalled `bin/heisenblue` script; the installer generates that launcher from `entry_points.txt` during installation.
+    A Python wheel can also bundle the compiled C extension, yet host dependencies such as RDKit or platform libraries may still be missing and must be installed separately before use, as shown in [Consumer Workflow](#install-the-package). The wheel also does not contain a preinstalled `bin/heisenblue` script; the installer generates that launcher from `entry_points.txt` during installation.
 
     ```text
     heisenblue-1.0.0-cp314-cp314-linux_x86_64.whl

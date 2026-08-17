@@ -1,6 +1,6 @@
 # Python Containers
 
-Python containers package an application together with the runtime files it needs to run. They help teams deploy the same application image across local machines, CI pipelines, and production platforms.
+Python containers package an application together with the runtime files it needs to run. They help teams deploy the same application image across local machines, CI pipelines, and controlled runtime platforms in production.
 
 ## Applied Project
 
@@ -53,19 +53,37 @@ A typical Python container project is structured to separate application code, b
 - `.dockerignore`: Defines files and directories excluded from the build context to reduce image size and improve build speed.
 - `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build system configuration.
 
-### Package Manifest
+### Build Recipe
 
-The `Dockerfile` is not the package manifest itself. It is the build recipe and the single source of truth that project maintainers work with. During the build, the container manager reads that recipe and turns it into image layers, runtime configuration, and manifest data such as `manifest.json`. The `Dockerfile` tells the builder what to do: select a base image, copy application files, install dependencies, and define the process that starts when a container runs.
+An OCI image is defined by a build recipe, commonly `Dockerfile` or `Containerfile`. In this project, the `Dockerfile` is the maintainer-edited source of truth. During the build, the container manager reads that recipe and turns it into image layers, runtime configuration, and manifest data such as `manifest.json`.
 
 ```dockerfile
-FROM <base-image>:<tag>
+FROM python:3.12 AS builder
 
-WORKDIR <application-directory>
-COPY <source-path> <destination-path>
-RUN <dependency-install-command>
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ENTRYPOINT ["<executable>"]
-CMD ["<default-argument>"]
+WORKDIR /build
+COPY pyproject.toml ./
+COPY src ./src
+RUN uv build --wheel
+
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+RUN python -m venv /opt/venv
+
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY --from=builder /build/dist /tmp/dist
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir cloudsmith-cli \
+    && pip install --no-cache-dir /tmp/dist/tiny_webserver-*.whl \
+    && rm -rf /tmp/dist
+
+EXPOSE 8080
+ENTRYPOINT ["tiny-webserver"]
+# CMD ["--help"]
 ```
 
 - `FROM`: Selects the base image and its version.
@@ -78,7 +96,7 @@ CMD ["<default-argument>"]
 
 OCI container images follow the [OCI Image Format Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how image manifests, metadata, configuration, and filesystem layers are structured and exchanged. Because they follow an open standard, OCI images can be created, stored, and consumed by different container tools such as *Docker*, *Podman*, etc.
 
-On a host machine, an OCI image is not stored as one ordinary project file. It is persisted through the container manager's internal storage logic, which manages image metadata, shared filesystem layers, and writable container layers. To inspect or move that content as a file, use a dedicated export format such as the [**OCI image-layout TAR archive**](#inspect-the-package), [**Docker image TAR archive**](inspect-the-package) or as a flat filesystem archive from a container (`docker export`).
+On a host machine, an OCI image is not stored as one ordinary project file. It is persisted through the container manager's internal storage logic, which manages image metadata, shared filesystem layers, and writable container layers. To inspect or move that content as a file, use a dedicated export format such as the [**OCI image-layout TAR archive**](#inspect-the-package), [**Docker image TAR archive**](#inspect-the-package) or as a flat filesystem archive from a container (`docker export`).
 
 ## Packaging Workflow
 

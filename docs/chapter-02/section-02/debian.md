@@ -53,23 +53,32 @@ The Debian packaging layout centers on the maintainer files under `debian/`:
 The Debian `control` file defines the package identity, build requirements, runtime dependencies, and end-user package description.
 
 ```text
-Source: <source-package-name>
-Section: <archive-section>
-Priority: <package-priority>
-Maintainer: <maintainer-name-and-email>
-Build-Depends: <build-dependencies>
-Standards-Version: <debian-policy-version>
-Rules-Requires-Root: <yes-or-no>
-Homepage: <project-url>
+Source: simply-journal-admin
+Section: admin
+Priority: optional
+Maintainer: Modern Python Engineering
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
 
-Package: <binary-package-name>
-Architecture: <target-architecture>
+Package: simply-journal-admin
+Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
- <runtime-dependencies>
-Description: <short-package-description>
- <long-package-description>
+ python3-systemd
+# Recommends: <recommended-runtime-package>
+# Suggests: <optional-runtime-package>
+Description: cross-platform admin CLI for reading systemd journal entries
+ simply-journal-admin is a command-line tool that reads recent systemd journal
+ entries (Linux) through the APT-managed python3-systemd binding. The same code
+ base also supports the Windows Event Log when installed from the MSI package.
+ .
+ The Debian package ships a fully offline runtime under
+ /opt/simply-journal-admin: an embedded Python interpreter, the unpacked
+ project wheel, and a thin wrapper at /usr/bin/simply-journal-admin. No pip,
+ virtualenv creation, or internet access is needed on the target host.
 ```
 
 - `Source`: Declares the source package name used by Debian packaging tools.

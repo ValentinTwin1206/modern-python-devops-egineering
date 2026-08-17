@@ -56,16 +56,27 @@ A wheel is built from the project files, source code, and packaging metadata alr
 The `pyproject.toml` file defines the project metadata, Python requirements, dependencies, command-line entry points, and build backend used to create the wheel.
 
 ```toml
-[project]
-name = "<package-name>"
-version = "<package-version>"
-description = "<package-description>"
-requires-python = ">=<minimum-python-version>"
-dependencies = ["<runtime-dependency>"]
-
 [build-system]
-requires = ["<build-backend-package>"]
-build-backend = "<build-backend-module>"
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "pyguard"
+version = "0.1.0"
+description = "Lightweight security middleware for Python web applications."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
+dependencies = []
+
+# [project.scripts]
+# pyguard = "pyguard.cli:main"
+# [project.urls]
+# Homepage = "https://example.com/project"
 ```
 
 - `name`: Defines the distribution name used in package indexes and wheel filenames.
