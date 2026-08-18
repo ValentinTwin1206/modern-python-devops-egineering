@@ -2,6 +2,8 @@
 
 Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This advanced packaging capability is similar to [Python Containers](./section-03.md).
 
+What sets Conda apart is that the recipe, the package format, the channel, and the local environment all speak the same dependency language. A recipe declares Python modules and native system libraries with the same syntax; the built `.conda` artifact carries that dependency graph in its metadata; the channel exposes the metadata through a platform-specific index so the solver can reason about it before any download; and the resulting local environment installs Python packages and native system packages side-by-side into a single prefix. This streamlined path, from the recipe over the repository to a local environment where Python and native system packages coexist, is the property that makes Conda a good fit for projects that combine Python with C, C++, R, CUDA, or other runtimes.
+
 ## Applied Project
 
 ### Project Setup
@@ -57,129 +59,99 @@ A Conda package is built using a dedicated recipe directory that exists alongsid
 
 ### Package Recipe
 
-A Conda package is defined by a YAML-based recipe file, commonly `meta.yaml` or `recipe.yaml`, which declares the package identity, source, build behavior, dependencies, tests, and descriptive metadata used to create the Conda artifact.
+A Conda package is defined by a YAML-based recipe file, commonly `meta.yaml` or `recipe.yaml`, which declares the package identity, source, build behavior, dependencies, tests, and descriptive metadata used to create the Conda artifact. The excerpt below focuses on the entries that make Conda a strong fit for language-agnostic packages; project boilerplate such as `package`, `source`, and `about` is omitted.
 
 ```yaml
-package:
-  name: heisenblue
-  version: 1.0.0
-
-source:
-  path: ..
-  # url: https://example.com/heisenblue-1.0.0.tar.gz
-  # sha256: <source-archive-checksum>
-
-build:
-  number: 0
-  script: "{{ PYTHON }} -m pip install . --no-deps -vv"
-  # string: py312_0
-  # noarch: python
-  # entry_points:
-  #   - heisenblue = heisenblue.cli:main
-
 requirements:
   build:
-    - "{{ compiler('cxx') }}"
+    - "{{ compiler('cxx') }}"          # C/C++ toolchain resolved by Conda
     - cmake
     - ninja
   host:
-    - python >=3.12
-    - pip
-    - scikit-build-core >=0.10
-    - pybind11 >=2.12
-    - rdkit
-    - pillow
+    - python >=3.12                    # Python interpreter
+    - pybind11 >=2.12                  # C++/Python binding headers
+    - rdkit                            # native C++ chemistry library
   run:
     - python >=3.12
-    - rdkit
-    - pillow
-    # - pywin32            # [win]
-    # - xorg-libx11        # [linux]
+    - rdkit                            # same native lib at runtime
+    - pillow                           # pure-Python dependency
+    - xorg-libx11                      # [linux]  system library
+    - vc14_runtime                     # [win]    system runtime
 
 test:
   imports:
-    - heisenblue
-    - heisenblue._native
+    - heisenblue._native               # verifies the C++ extension loads
   commands:
-    - heisenblue --help
-    # - pytest -q
-
-about:
-  home: https://github.com/ValentinTwin1206/modern-python-engineering
-  summary: RDKit and pybind11 sample library packaged as a platform-specific Conda artifact.
-  license: Apache-2.0
+    - heisenblue --help                # verifies the CLI entry point
 ```
 
-- `package`: Defines the package name and version, which form the core of the package identity.
-- `source`: Specifies the local directory, Git repository, or source archive used during the build.
-- `build`: Defines how Conda assembles the package. The build number and optional build string help form the generated filename, such as `<name>-<version>-<build-string>.conda`, while scripts run the build steps. Target architecture directories, such as `linux-64` or `win-64`, are not hardcoded in `meta.yaml`; compiled projects such as `heisenblue` produce platform-specific artifacts rather than `noarch` packages. Expressions such as `# [win]` and `# [linux]` are Conda selectors written in comment position, so Conda evaluates them before normal YAML parsing and keeps or removes the matching line for the target platform. In contrast to a typical wheel workflow, the Conda recipe does not need a separate binary-repair phase to explain where native dependencies belong; the package recipe and channel metadata carry that information directly.
-- `requirements`: Separates build-machine tools (`build`), host target environment dependencies (`host`), and runtime (`run`) dependencies, which are recorded in the package metadata and used during dependency resolution. This is where Conda is especially strong for C/C++ projects: compilers, C++ libraries, and platform-specific runtime packages can be declared as normal dependencies instead of being hidden in host setup scripts or manually bundled into wheel artifacts.
-- `test`: Verifies that the package was constructed properly by running automated sanity checks, such as importing Python modules, immediately after building.
-- `about`: Provides descriptive metadata such as the package summary and license identifier.
+- `requirements.build`: Lists tools that run on the build machine. The `{{ compiler('cxx') }}` Jinja placeholder is the key language-agnostic move: Conda selects a matching C/C++ toolchain from the channel for the target platform, so the recipe does not hardcode `gcc`, `clang`, or MSVC, and the toolchain itself becomes a resolvable Conda package rather than a system prerequisite.
+- `requirements.host`: Declares what must be present in the target-shaped environment while the package is built. Python, a C++ binding layer, and a native C++ library sit next to each other as equal citizens; there is no separation between a Python package index and a system package manager.
+- `requirements.run`: Declares runtime dependencies that Conda records in the package metadata and later uses to solve the consumer environment. Pure Python packages (`pillow`), native libraries (`rdkit`), and OS-level system libraries (`xorg-libx11`, `vc14_runtime`) share one dependency list. The `# [linux]` and `# [win]` selectors are Conda-specific comments evaluated before YAML parsing, so a single recipe can express platform-specific system dependencies without a separate binary-repair or wheel-repair phase.
+- `test`: Runs immediately after the build and can mix Python-level checks (`imports`) with CLI or shell checks (`commands`), which mirrors the multi-runtime nature of the package itself.
 
 ### Package Layout
 
-The following section shows the inner layout of a typical Conda package and compares it with the already known [Python wheel structure](./section-01.md#package-layout). Both formats can distribute Python package files and compiled extension modules, but they organize metadata, entry points, installable files, and dependency expectations differently.
+A modern Conda package is a ZIP container with a `.conda` extension that separates package metadata from the installable payload into two compressed TAR archives. In the usual Conda model, native packages such as RDKit are declared as first-class dependencies in the recipe and resolved through channel metadata instead of being hidden inside the package payload. A Python wheel can technically vendor the same native libraries, but installers treat them as opaque wheel content rather than separately solvable dependencies that `pip` or `uv` can resolve through the environment graph. That pushes ABI compatibility, rebuild coordination, security updates, and conflict management back to the package maintainer. Conda avoids that trade-off by carrying the same dependency metadata from the recipe to the package, channel index, and local environment, where Python modules and native system libraries are installed side-by-side into one solved prefix.
 
-=== "Conda Package"
+HeisenBlue applies this model by shipping two Conda outputs from a single multi-output recipe: `libheisenblue`, the standalone C++ shared library and its public header, and `heisenblue-tools`, the Python package whose `_native` pybind11 extension declares a run-time dependency on `libheisenblue` instead of vendoring it. The two archives shown below are produced side-by-side and installed side-by-side into the same environment prefix.
 
-    A modern Conda package is a ZIP container with a `.conda` extension that separates package metadata from the installable payload into two compressed TAR archives. Technically, a maintainer could also vendor native dependencies such as RDKit directly into the package payload instead of declaring them as separate Conda dependencies.However, this approach is atypical, as the maintainer would then also own ABI compatibility, rebuild coordination, security updates, and conflict management that the Conda ecosystem normally handles through dependency metadata and shared packages.
+=== "`libheisenblue` — C/C++ payload"
 
     ```text
-    heisenblue-1.0.0-py314h2bc3f7f_0.conda
+    libheisenblue-1.0.0-h2bc3f7f_0.conda
     ├── metadata.json
-    ├── info-heisenblue-1.0.0-py314h2bc3f7f_0.tar.zst
+    ├── info-libheisenblue-1.0.0-h2bc3f7f_0.tar.zst
     │   └── info/
     │       ├── about.json
+    │       ├── index.json                 # depends: []       run_exports: libheisenblue 1.0.*
     │       ├── ...
-    │       ├── recipe/
-    │       │   ├── conda_build_config.yaml
-    │       │   ├── meta.yaml
-    │       │   └── meta.yaml.template
-    │       └── test/
-    │           ├── run_test.py
-    │           └── run_test.sh
-    └── pkg-heisenblue-1.0.0-py314h2bc3f7f_0.tar.zst
-      ├── bin/
-      │   └── heisenblue
-      └── lib/
-          └── python3.14/
-              └── site-packages/
-                  ├── heisenblue/
-                  │   ├── __init__.py
-                  │   ├── analysis.py
-                  │   ├── ...
-                  │   └── _native.cpython-314-x86_64-linux-gnu.so
-                  └── heisenblue-1.0.0.dist-info/
-                      ├── ...
-                      └── entry_points.txt
+    │       └── recipe/
+    │           └── meta.yaml
+    └── pkg-libheisenblue-1.0.0-h2bc3f7f_0.tar.zst
+        ├── include/
+        │   └── heisenblue.hpp             # public C++ header
+        └── lib/
+            ├── libheisenblue.so
+            ├── ...
     ```
 
-    - `metadata.json`: Describes the Conda package format and references the contained archives.
-    - `info-*.tar.zst`: Stores package metadata, dependency information, file records, licenses, tests, and the original recipe.
-        - `recipe/`: Contains the embedded `meta.yaml` recipe, including the declared **runtime and system dependencies** that Conda installs into the target environment before the package is activated there.
-    - `pkg-*.tar.zst`: Stores the installable payload copied into the Conda environment.
-        - `bin/`: Contains command-line entry points such as the generated `heisenblue` script.
-        - `lib/python3.14/site-packages/`: Contains the installed Python package, Python package metadata, and `_native`, a pybind11 C++ extension module loaded by Python.
-
-=== "Python Wheel"
-
-    A Python wheel can also bundle the compiled C extension, yet host dependencies such as RDKit or platform libraries may still be missing and must be installed separately before use, as shown in [Consumer Workflow](#install-the-package). The wheel also does not contain a preinstalled `bin/heisenblue` script; the installer generates that launcher from `entry_points.txt` during installation.
+=== "`heisenblue-tools` — Python payload"
 
     ```text
-    heisenblue-1.0.0-cp314-cp314-linux_x86_64.whl
-    ├── heisenblue/
-    │   ├── __init__.py
-    │   ├── analysis.py
-    │   ├── ...
-    │   └── _native.cpython-314-x86_64-linux-gnu.so
-    └── heisenblue-1.0.0.dist-info/
-      ├── ...
-      └── entry_points.txt
+    heisenblue-tools-1.0.0-py314h2bc3f7f_0.conda
+    ├── metadata.json
+    ├── info-heisenblue-tools-1.0.0-py314h2bc3f7f_0.tar.zst
+    │   └── info/
+    │       ├── index.json                 # depends: [libheisenblue ==1.0.0 h2bc3f7f_0, rdkit, pillow, python >=3.12]
+    │       ├── ...
+    │       └── recipe/
+    │           └── meta.yaml
+    └── pkg-heisenblue-tools-1.0.0-py314h2bc3f7f_0.tar.zst
+        ├── bin/
+        │   └── heisenblue                 # CLI entry point
+        └── lib/
+            └── python3.14/
+                └── site-packages/
+                    ├── heisenblue/
+                    │   ├── __init__.py
+                    │   ├── analysis.py
+                    │   ├── ...
+                    │   └── _native.cpython-314-x86_64-linux-gnu.so   # NEEDS libheisenblue.so.1
+                    └── heisenblue_tools-1.0.0.dist-info/
+                        ├── ...
+                        └── entry_points.txt
     ```
 
-    - `heisenblue/`: Contains the Python source files and `_native`, a pybind11 C++ extension module loaded by Python rather than a standalone executable or static library.
-    - `heisenblue-1.0.0.dist-info/`: Contains package metadata, dependency declarations, file records, and console-script entry points.
+- `libheisenblue`: Contains only the C/C++ payload plus metadata that makes the package reusable outside Python.
+    - `info/index.json`: Keeps `depends: []` and a `run_exports` pin of `libheisenblue 1.0.*`, which propagates the compatible shared-library version to downstream packages.
+    - `include/`: Installs the public `heisenblue.hpp` header for C/C++ consumers.
+    - `lib/`: Installs the versioned `libheisenblue.so*` chain.
+- `heisenblue-tools`: Contains only the Python payload and declares a run-time dependency on the matching `libheisenblue` build.
+    - `info/index.json`: Declares the exact `libheisenblue` dependency via `pin_subpackage(..., exact=True)`.
+    - `bin/`: Installs the `heisenblue` CLI entry point.
+    - `site-packages/`: Installs the `heisenblue` package and the `_native` pybind11 extension, whose `NEEDS libheisenblue.so.1` link is satisfied by the sibling package rather than vendored files.
+- Together, the two `.conda` archives carry a single dependency graph from the recipe to the channel index to the installed environment. A C/C++ consumer installs `libheisenblue` alone; a Python consumer installs `heisenblue-tools` and Conda pulls in `libheisenblue` automatically. Neither audience pays for the other's runtime, and both share the same solved native library on disk.
 
 ## Packaging Workflow
 
@@ -196,80 +168,135 @@ From the `projects/` directory, open the dedicated packaging container and forwa
   --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
-Inside the running container, build the package from the project root using the `recipe/` directory and the `conda-forge` channel. Add the optional `--target-platform` argument when you need to build for a platform other than the current container platform.
+Inside the running container, build the packages from the project root using the `recipe/` directory. The recipe is a **multi-output** recipe, so a single `conda build` invocation resolves the shared build environment once and then produces both `libheisenblue` and `heisenblue-tools` in dependency order. The `libheisenblue` package is built first as `heisenblue-tools` declares it as a host dependency through `pin_subpackage(..., exact=True)`. The `--channel conda-forge` flag is still part of the command because the public build and runtime dependencies in this course, such as compilers, CMake, Python, RDKit, and Pillow, are resolved from `conda-forge`; Cloudsmith is used later as the publish target.
 
 ```bash
-conda build recipe/ --channel conda-forge [--target-platform <platform>]
+conda build recipe/ --channel conda-forge
 ```
 
-> The output artifact is written to the local Conda build cache under a platform-specific directory such as `linux-64`, `osx-arm64`, or `win-64`. Because `heisenblue` ships a compiled extension, the package is not `noarch`; each supported platform gets its own `.conda` artifact.
+> In this Linux-based container, Conda writes the built `.conda` packages to its local build cache under `~/miniconda3/conda-bld/linux-64/`.
 
 ### Inspect The Package
 
 A modern Conda package (`.conda`) is a ZIP container that stores two compressed TAR archives: an `info` archive containing package metadata and a `pkg` archive containing the installable payload. Older Conda packages use a single `.tar.bz2` archive, but both formats can be inspected with `conda-package-handling`.
 
-Resolve the exact artifact path that `conda build` produced:
+The two archives carry different payloads and different `depends` metadata, so it is worth inspecting them individually. The `libheisenblue` archive should contain only C/C++ artifacts with an empty `depends` list plus a `run_exports` entry, while the `heisenblue-tools` archive should contain the Python payload and declare an exact pin on the matching `libheisenblue` build.
 
-```bash
-PACKAGE="$(conda build recipe/ --channel conda-forge --output)"
-```
+=== "libheisenblue"
 
-List all paths stored inside the package.
+    Resolve the shared-library package path.
 
-```bash
-cph list "$PACKAGE"
-```
+    ```bash
+    LIBHEISENBLUE_PKG="$(conda build recipe/ --channel conda-forge --output | grep '/libheisenblue-')"
+    ```
 
-List only the metadata component.
+    List all paths stored inside the package.
 
-```bash
-cph list --components info "$PACKAGE"
-```
+    ```bash
+    cph list "$LIBHEISENBLUE_PKG"
+    ```
 
-Extract only the metadata archive.
+    List only the metadata component.
 
-```bash
-cph extract --info --dest /tmp/heisenblue-info "$PACKAGE"
-```
+    ```bash
+    cph list --components info "$LIBHEISENBLUE_PKG"
+    ```
 
-Read the generated package metadata.
+    Extract the metadata archive.
 
-```bash
-cat /tmp/heisenblue-info/info/index.json
-```
+    ```bash
+    cph extract --info --dest /tmp/libheisenblue-info "$LIBHEISENBLUE_PKG"
+    ```
+
+    Read the generated package metadata and confirm `depends: []` plus the `run_exports` pin.
+
+    ```bash
+    cat /tmp/libheisenblue-info/info/index.json
+    ```
+
+=== "heisenblue-tools"
+
+    Resolve the Python package path.
+
+    ```bash
+    HEISENBLUE_TOOLS_PKG="$(conda build recipe/ --channel conda-forge --output | grep '/heisenblue-tools-')"
+    ```
+
+    List all paths stored inside the package.
+
+    ```bash
+    cph list "$HEISENBLUE_TOOLS_PKG"
+    ```
+
+    List only the metadata component.
+
+    ```bash
+    cph list --components info "$HEISENBLUE_TOOLS_PKG"
+    ```
+
+    Extract the metadata archive.
+
+    ```bash
+    cph extract --info --dest /tmp/heisenblue-tools-info "$HEISENBLUE_TOOLS_PKG"
+    ```
+
+    Read the generated package metadata and confirm the exact `libheisenblue ==1.0.0 <build>` pin in `depends`.
+
+    ```bash
+    cat /tmp/heisenblue-tools-info/info/index.json
+    ```
 
 ### Publish The Package
 
-A compiled Conda package such as `heisenblue` is still built once per target platform, but the Conda channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching index so Conda clients can resolve the right artifact for the current platform.
+A compiled Conda package is built once per target platform, but the Conda channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. After upload, the repository extracts package metadata, including the name, version, build number, dependency rules, and checksum, then updates the matching index so Conda clients can resolve the right artifact for the current platform. Because the recipe emits two outputs, each platform directory receives **both** a `libheisenblue-*.conda` and a `heisenblue-tools-*.conda`.
 
 ```text
 repository-root/
 ├── linux-64/
 │   ├── repodata.json
-│   └── heisenblue-1.0.0-<linux-build>.conda
+│   ├── libheisenblue-1.0.0-<linux-build>.conda
+│   └── heisenblue-tools-1.0.0-<linux-build>.conda
 ├── osx-arm64/
 │   ├── repodata.json
-│   └── heisenblue-1.0.0-<macos-build>.conda
+│   ├── libheisenblue-1.0.0-<macos-build>.conda
+│   └── heisenblue-tools-1.0.0-<macos-build>.conda
 └── win-64/
-  ├── repodata.json
-  └── heisenblue-1.0.0-<windows-build>.conda
+    ├── repodata.json
+    ├── libheisenblue-1.0.0-<windows-build>.conda
+    └── heisenblue-tools-1.0.0-<windows-build>.conda
 ```
 
-> The [Package create workflow](#create-the-package) above builds only the `linux-64` artifact; `osx-arm64` and `win-64` are shown for illustration.
+> The [Package create workflow](#create-the-package) above builds only the `linux-64` artifacts; `osx-arm64` and `win-64` are shown for illustration.
 
-When a user later installs `heisenblue`, Conda first downloads the lightweight platform index such as `linux-64/repodata.json`, solves dependencies locally, and only then downloads the selected `.conda` artifact. The advantage is not a single multi-platform archive; it is that the package, RDKit, Pillow, native runtime expectations, and platform metadata are solved together in the same Conda ecosystem.
+Upload each built package to the Cloudsmith Conda repository. The two packages must both be pushed so the exact pin in `heisenblue-tools` can be satisfied at install time.
 
-Upload the built package to the Cloudsmith Conda repository.
+=== "libheisenblue"
 
-```bash
-cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
-```
+    Upload the shared-library package.
 
-Check that Cloudsmith received and processed the package.
+    ```bash
+    cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$LIBHEISENBLUE_PKG"
+    ```
 
-```bash
-cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "heisenblue"
-```
+    Check that Cloudsmith received and processed the package.
+
+    ```bash
+    cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libheisenblue"
+    ```
+
+=== "heisenblue-tools"
+
+    Upload the Python package.
+
+    ```bash
+    cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$HEISENBLUE_TOOLS_PKG"
+    ```
+
+    Check that Cloudsmith received and processed the package.
+
+    ```bash
+    cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "heisenblue-tools"
+    ```
 
 !!! info "Python Wheels"
     With a wheel workflow, the equivalent release usually means publishing multiple files under one project name in a Python package index:
@@ -317,84 +344,34 @@ Keep authenticated URLs out of `environment.yml`, source control, and shell hist
 
 ### Install The Package
 
-For consumers, Conda provides **zero system-dependency setup** for advanced packages. Junior developers can run `conda env create` and get a working environment with Python, C++ runtimes, RDKit, Pillow, and system assets without using `sudo`, `apt-get`, `brew`, or manual native-library installation.
+After publication, users can create a small consumer project that records the runtime dependency in `environment.yml`. The package source comes from the Conda channels configured in [Configure the Package Manager](#configure-the-package-manager).
 
-=== "With Conda"
+Create a new working directory for a small consumer project.
 
-    After publication, users can create a small consumer project that records the runtime dependency in `environment.yml`. The package source comes from the Conda channels configured in [Configure the Package Manager](#configure-the-package-manager).
+```bash
+mkdir heisenblue-consumer && cd heisenblue-consumer
+```
 
-    Create a new working directory for a small consumer project.
+Add the project environment file.
 
-    ```bash
-    mkdir heisenblue-consumer && cd heisenblue-consumer
-    ```
+```yaml
+name: heisenblue-demo
+dependencies:
+  - python=3.12
+  - heisenblue-tools
+```
 
-    Add the project environment file.
+When `conda env create` reads `heisenblue-tools` from `environment.yml`, Conda first reads the platform index, such as `linux-64/repodata.json`, solves the full dependency set locally, and then downloads the selected `.conda` artifacts. This installs Python, C++ runtimes, RDKit, Pillow, system assets, `heisenblue-tools`, and its exact `libheisenblue` pin into one project environment without `sudo apt-get ...` or manual native-library setup.
 
-    ```yaml
-    name: heisenblue-demo
-    dependencies:
-      - python=3.12
-      - heisenblue
-    ```
+Create the environment from `environment.yml`.
 
-    Create the environment from `environment.yml`.
+```bash
+conda env create -f environment.yml
+```
 
-    ```bash
-    conda env create -f environment.yml
-    ```
+Activate the environment and run the installed command-line application.
 
-    Activate the environment and run the installed command-line application.
-
-    ```bash
-    conda activate heisenblue-demo
-    heisenblue "CCO" --output ethanol.png --show-molecule
-    ```
-
-=== "Without Conda"
-
-    Here we assume that `heisenblue` is delivered as a Python package (`.whl`) including its C/C++ component; this is technically possible through a platform-specific wheel. The workflow below shows how to install the remaining host dependencies, but unlike Conda-managed dependencies, these libraries and tools are **installed system-wide** by the OS package manager. That means the setup requires elevated permissions and the installed components are shared across projects, which can cause clashes when different projects need different native dependency versions. By contrast, once Conda itself is installed, `conda env create` typically runs as a normal user without additional root or `sudo` access.
-
-    ```bash
-    sudo apt-get update && sudo apt-get install -y \
-      python3.12 \
-      python3.12-venv \
-      build-essential \
-      cmake \
-      ninja-build \
-      fonts-dejavu-core \
-      libxrender1 \
-      libxext6
-    ```
-
-    Create a consumer project file that depends on the published Python package.
-
-    ```toml
-    [project]
-    name = "heisenblue-consumer"
-    version = "0.1.0"
-    requires-python = ">=3.12"
-    dependencies = [ "heisenblue" ]
-
-    [tool.uv]
-
-    [[tool.uv.index]]
-    name = "pypi"
-    url = "https://pypi.org/simple"
-
-    [[tool.uv.index]]
-    name = "modern-python-engineering"
-    url = "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/"
-    ```
-
-    Sync the project environment with `uv`.
-
-    ```bash
-    uv sync
-    ```
-
-    Run the installed command-line application.
-
-    ```bash
-    uv run heisenblue "CCO" --output ethanol.png --show-molecule
-    ```
+```bash
+conda activate heisenblue-demo
+heisenblue "CCO" --output ethanol.png --show-molecule
+```

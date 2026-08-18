@@ -1,39 +1,86 @@
+{% set version = "1.0.0" %}
+
 package:
-  name: heisenblue
-  version: 1.0.0
+  name: heisenblue-split
+  version: {{ version }}
 
 source:
   path: ..
 
 build:
   number: 0
-  script: "{{ PYTHON }} -m pip install . --no-deps -vv"
 
 requirements:
   build:
     - "{{ compiler('cxx') }}"
     - cmake
     - ninja
-  host:
-    - python >=3.12
-    - pip
-    - scikit-build-core >=0.10
-    - pybind11 >=2.12
-    - rdkit
-    - pillow
-  run:
-    - python >=3.12
-    - rdkit
-    - pillow
 
-test:
-  imports:
-    - heisenblue
-    - heisenblue._native
-  commands:
-    - heisenblue --help
+outputs:
+  # -------------------------------------------------------------------------
+  # libheisenblue: standalone C++ shared library and headers.
+  # -------------------------------------------------------------------------
+  - name: libheisenblue
+    version: {{ version }}
+    script: build-libheisenblue.sh   # [unix]
+    script: build-libheisenblue.bat  # [win]
+    build:
+      run_exports:
+        - {{ pin_subpackage('libheisenblue', max_pin='x.x') }}
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
+      host: []
+      run: []
+    test:
+      commands:
+        - test -f $PREFIX/lib/libheisenblue${SHLIB_EXT}                      # [unix]
+        - test -f $PREFIX/include/heisenblue.hpp                             # [unix]
+        - if not exist %LIBRARY_BIN%\\heisenblue.dll exit 1                  # [win]
+        - if not exist %LIBRARY_INC%\\heisenblue.hpp exit 1                  # [win]
+
+  # -------------------------------------------------------------------------
+  # heisenblue-tools: Python package (CLI + pybind11 extension _native).
+  # Runtime-depends on libheisenblue via pin_subpackage.
+  # -------------------------------------------------------------------------
+  - name: heisenblue-tools
+    version: {{ version }}
+    script: build-heisenblue-tools.sh   # [unix]
+    script: build-heisenblue-tools.bat  # [win]
+    build:
+      entry_points:
+        - heisenblue = heisenblue.cli:main
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
+      host:
+        - python >=3.12
+        - pip
+        - scikit-build-core >=0.10
+        - pybind11 >=2.12
+        - {{ pin_subpackage('libheisenblue', exact=True) }}
+      run:
+        - python >=3.12
+        - rdkit
+        - pillow
+        - {{ pin_subpackage('libheisenblue', exact=True) }}
+    test:
+      imports:
+        - heisenblue
+        - heisenblue._native
+      commands:
+        - heisenblue --help
 
 about:
   home: https://github.com/ValentinTwin1206/modern-python-engineering
-  summary: RDKit and pybind11 sample library packaged as a platform-specific Conda artifact.
+  summary: RDKit and pybind11 sample library packaged as platform-specific Conda artifacts.
+  description: |
+    HeisenBlue ships as two Conda packages:
+      * libheisenblue    - the standalone C++ shared library and headers.
+      * heisenblue-tools - the Python API, CLI, and pybind11 bindings that
+                           link against libheisenblue.
   license: Apache-2.0
