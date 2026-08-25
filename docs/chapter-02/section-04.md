@@ -1,8 +1,8 @@
 # Conda Packages
 
-Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems. This advanced packaging capability is similar to [Python Containers](./section-03.md).
+Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems.
 
-What sets Conda apart is that the recipe, the package format, the channel, and the local environment all speak the same dependency language. A recipe declares Python modules and native system libraries with the same syntax; the built `.conda` artifact carries that dependency graph in its metadata; the channel exposes the metadata through a platform-specific index so the solver can reason about it before any download; and the resulting local environment installs Python packages and native system packages side-by-side into a single prefix. This streamlined path, from the recipe over the repository to a local environment where Python and native system packages coexist, is the property that makes Conda a good fit for projects that combine Python with C, C++, R, CUDA, or other runtimes.
+The Conda ecosystem applies a streamlined path from project definition through multi-language dependency resolution, package build, and package hosting to local installation. A recipe declares Python modules and native system libraries with the same syntax; the built `.conda` artifact carries that dependency graph in its metadata; the channel exposes the metadata through a platform-specific index; and the resulting local environment installs Python packages and native system packages side-by-side into a single prefix.
 
 ## Applied Project
 
@@ -18,7 +18,7 @@ Application, test, lint, package-build, and shell-exit commands are documented i
 
 ### Overview
 
-Conda packages are built distributions that can contain Python modules, native libraries, command-line tools, and software from multiple language ecosystems. Modern packages use the `.conda` format, while older releases may use `.tar.bz2`; both contain a pre-built payload together with package metadata so installation does not require compiling software on the target machine. Conda packages are commonly used for data science, machine learning, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes. This is especially helpful as system dependencies can be managed as first-class environment dependencies instead of hidden system prerequisites, which reduces missing-library failures during installation.
+Conda packages are built distributions for multi-language software. Modern Conda packages use the `.conda` format, while older releases may use `.tar.bz2`; both contain a pre-built payload together with package metadata so installation does not require compiling software on the target machine. Conda packages are commonly used for data science, machine learning, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes. This is especially helpful as system dependencies can be managed as first-class environment dependencies instead of hidden system prerequisites, which reduces missing-library failures during installation.
 
 Conda distribution consists of four primary building blocks. A **package format** stores the application files and generated metadata, a **recipe** describes how the package is built and which dependencies it requires, a **package manager** resolves dependencies and creates isolated environments, and a **channel** stores packages together with searchable package indexes. Build tools such as `conda-build` and `rattler-build` transform a `meta.yaml` or `recipe.yaml` recipe into one or more platform-specific Conda packages before they are published to a channel. Because all packages in a channel include dependency metadata, Conda can automatically resolve compatible package versions across the entire environment rather than installing packages individually.
 
@@ -67,28 +67,56 @@ requirements:
     - "{{ compiler('cxx') }}"          # C/C++ toolchain resolved by Conda
     - cmake
     - ninja
-  host:
-    - python >=3.12                    # Python interpreter
-    - pybind11 >=2.12                  # C++/Python binding headers
-    - rdkit                            # native C++ chemistry library
-  run:
-    - python >=3.12
-    - rdkit                            # same native lib at runtime
-    - pillow                           # pure-Python dependency
-    - xorg-libx11                      # [linux]  system library
-    - vc14_runtime                     # [win]    system runtime
 
-test:
-  imports:
-    - heisenblue._native               # verifies the C++ extension loads
-  commands:
-    - heisenblue --help                # verifies the CLI entry point
+outputs:
+    - name: libheisenblue
+      script: build-libheisenblue.sh     # builds the C/C++ library
+      build:
+        run_exports:
+          - {{ pin_subpackage('libheisenblue', max_pin='x.x') }}
+      requirements:
+        build:
+          - "{{ compiler('cxx') }}"
+          - cmake
+          - ninja
+
+    - name: heisenblue-tools
+      script: "{{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv"
+      build:
+        entry_points:
+          - heisenblue = heisenblue.cli:main
+      requirements:
+        host:
+          - python >=3.12
+          - scikit-build-core >=0.10
+          - pybind11 >=2.12
+          - {{ pin_subpackage('libheisenblue', exact=True) }}
+        run:
+          - python >=3.12
+          - rdkit
+          - pillow
+          - {{ pin_subpackage('libheisenblue', exact=True) }}
+      test:
+        imports:
+          - heisenblue._native
+        commands:
+          - heisenblue --help
 ```
 
-- `requirements.build`: Lists tools that run on the build machine. The `{{ compiler('cxx') }}` Jinja placeholder is the key language-agnostic move: Conda selects a matching C/C++ toolchain from the channel for the target platform, so the recipe does not hardcode `gcc`, `clang`, or MSVC, and the toolchain itself becomes a resolvable Conda package rather than a system prerequisite.
-- `requirements.host`: Declares what must be present in the target-shaped environment while the package is built. Python, a C++ binding layer, and a native C++ library sit next to each other as equal citizens; there is no separation between a Python package index and a system package manager.
-- `requirements.run`: Declares runtime dependencies that Conda records in the package metadata and later uses to solve the consumer environment. Pure Python packages (`pillow`), native libraries (`rdkit`), and OS-level system libraries (`xorg-libx11`, `vc14_runtime`) share one dependency list. The `# [linux]` and `# [win]` selectors are Conda-specific comments evaluated before YAML parsing, so a single recipe can express platform-specific system dependencies without a separate binary-repair or wheel-repair phase.
-- `test`: Runs immediately after the build and can mix Python-level checks (`imports`) with CLI or shell checks (`commands`), which mirrors the multi-runtime nature of the package itself.
+- `requirements.build`: Lists tools that run on the build machine.
+  - `{{ compiler('cxx') }}`: Lets Conda select the C/C++ toolchain from the channel instead of relying on a system compiler.
+  - `cmake` and `ninja`: Build the native C/C++ component.
+- `outputs`: Defines a multi-output recipe, which is Conda's mechanism for chained project builds. Here the native C/C++ package is built first, then the Python package builds against it.
+  - `libheisenblue`: Builds the native C/C++ package.
+    - `script`: Runs `build-libheisenblue.sh`, which configures CMake, builds with Ninja, and installs the shared library and public header into the Conda prefix.
+    - `build.run_exports`: Exports a compatible `libheisenblue` pin for downstream packages.
+    - `requirements.build`: Reuses the compiler, CMake, and Ninja for this output.
+  - `heisenblue-tools`: Builds the Python package and pybind11 extension.
+    - `script`: Runs the inline `{{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv` command because the Python package build is a single step.
+    - `build.entry_points`: Generates the `heisenblue` CLI entry point.
+    - `requirements.host`: Provides Python build tools and pins the exact `libheisenblue` build during compilation.
+    - `requirements.run`: Records Python, RDKit, Pillow, and the exact `libheisenblue` pin for the consumer environment.
+    - `test`: Verifies the compiled extension import and generated CLI entry point.
 
 ### Package Layout
 

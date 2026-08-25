@@ -47,8 +47,7 @@ outputs:
   # -------------------------------------------------------------------------
   - name: heisenblue-tools
     version: {{ version }}
-    script: build-heisenblue-tools.sh   # [unix]
-    script: build-heisenblue-tools.bat  # [win]
+    script: "{{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv"
     build:
       entry_points:
         - heisenblue = heisenblue.cli:main
