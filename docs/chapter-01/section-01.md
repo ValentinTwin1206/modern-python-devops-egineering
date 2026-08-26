@@ -1,6 +1,6 @@
-# Python system environment
+# Python System Environment
 
-This page explains how Python is installed on common operating systems and where packages land.
+This page explains how Python is installed on common operating systems and where Python packages are live.
 
 ## Applied Project
 
@@ -14,25 +14,36 @@ Application, test, lint, and shell-exit commands are documented in the [section 
 
 ## Python System Setup
 
-### When to use the system environment?
+### When to Use the System Environment?
 
-Use the system environment when Python is part of the operating system or container base image rather than a per-project setup. Common examples include distribution-managed tools, administrator-provided utilities, and very small runtime containers where the image itself is the isolation boundary.
+Generally, do not use the Python system environment for application development. Prefer a project-specific virtual environment to isolate dependencies, and only use the system environment when Python is intentionally provided and managed by the operating system, container image, or platform.
 
-### Tradeoffs
+Typical exceptions include:
 
-#### Pros
+- **OS-managed tools** — Python is maintained by the operating system.
+- **Dependency-free scripts** — Scripts use only the Python standard library.
+- **System automation** — Scripts run via `systemd`, cron, or other OS services.
+- **Restricted environments** — `pip`, `venv`, or package downloads are unavailable or prohibited, e.g. zero-trust environments.
+- **Minimal containers** — The container image provides the complete runtime and defines the isolation boundary.
+- **Centrally managed utilities** — Administrators provide and maintain a shared Python runtime.
 
-- ✅ Works well in containers with one interpreter to manage.
-- ✅ APT packages follow the base operating system lifecycle.
-- ✅ User installs avoid administrator permissions for one account.
+## Tradeoffs
 
-#### Cons
+### Pros
 
-- ⚠️ Risky on developer machines because upgrades can affect system tools.
-- ⚠️ Local administrator installs add a package layer outside APT.
-- ⚠️ User installs still share one package directory across projects.
-- ⚠️ Shared targets can make projects affect each other.
-- ⚠️ Poor fit for normal per-project development.
+- ✅ **No environment setup** — Run scripts directly with the system interpreter.
+- ✅ **OS lifecycle integration** — Python and packages follow the distribution's package management.
+- ✅ **Works in restricted environments** — No dependency tooling is required.
+- ✅ **Simple container runtime** — Dependencies can be baked into the image.
+
+### Cons
+
+- ⚠️ **Not isolated** — Changes can affect the OS, users, or other projects.
+- ⚠️ **Version conflicts** — Different projects may require incompatible dependencies.
+- ⚠️ **Less reproducible** — Shared environments can drift over time.
+- ⚠️ **Risk to OS tooling** — Modifying OS-managed Python can break system utilities.
+- ⚠️ **Poor fit for development** — Project dependencies should normally live in a virtual environment.
+
 
 ### Install Python
 
@@ -68,7 +79,7 @@ Python can be installed by the operating system, by a language-specific installe
 
         On Ventura, Sonoma, and Sequoia, `python3` may be missing, may point to an Apple-managed `/usr/bin/python3` stub, or may come from Xcode Command Line Tools. Do not treat that interpreter as a stable project dependency.
 
-#### Install another version
+#### Install Another Version
 
 === "Linux (Debian-based)"
 
@@ -138,7 +149,7 @@ Python can be installed by the operating system, by a language-specific installe
     python3.13 -m venv .venv
     ```
 
-### Installation footprint
+### Installation Footprint
 
 A Python installation includes the CPython interpreter, standard library modules, package directories, native extension headers, build configuration, and integration with the operating system shell through `PATH` entries or launchers.
 
@@ -185,60 +196,67 @@ A Python installation includes the CPython interpreter, standard library modules
 
 - **Header files:** development headers are needed when packages compile C or C++ extension modules against the current interpreter. On Debian-based Linux, they come from packages such as `python3-dev` or `python3.13-dev`; python.org installers for Windows and macOS include the development files needed for common extension builds.
 
-### Package installation targets
+### Package Installation Targets
 
-Python packages can land in [operating-system](#system-target), [administrator](#local-administrator-target), or [user](#user-target) locations. A package can be used with an `import` statement when it is installed into a directory that the active interpreter searches on `sys.path`, and Python resolves that import from the first matching package directory on that search path. The target therefore decides who can import the package and which projects are affected by future upgrades. The [PATH and import path](#path-and-import-path) inspection commands show how to inspect that search path.
+Python packages can land in [operating-system](#system-target), [administrator](#local-administrator-target), or [user](#user-target) locations. In this section, the operating-system-backed system target is a Debian-based Linux concept; Windows and macOS do not provide the same kind of OS-managed Python package target for importable libraries. A package can be used with an `import` statement when it is installed into a directory that the active interpreter searches on `sys.path`, and Python resolves that import from the first matching package directory on that search path. The target therefore decides who can import the package and which projects are affected by future upgrades. The [PATH and import path](#path-and-import-path) inspection commands show how to inspect that search path.
+
+The following diagram shows how the different installation targets affect permissions and package visibility on a Linux host.
+
+```mermaid
+graph LR
+    subgraph OS
+        direction TB
+
+        subgraph SYS["System packages · APT"]
+            PY_SYS["python3-systemd"]
+            LIB["libsystemd0"]
+            C["libc6"]
+            PY_SYS --> LIB
+            PY_SYS --> C
+        end
+
+        subgraph ADMIN["Administrator / Global"]
+            PY_ADMIN["Python packages"]
+        end
+
+        subgraph USER["User"]
+            PY_USER["Python packages"]
+        end
+
+        subgraph PROJECT["Project Environment · venv"]
+            VENV[".venv site-packages"]
+        end
+    end
 
 
-#### System target
+    PY_SYS -->|visible to| APP_SYS["System-wide"]
+    PY_ADMIN -->|visible to| ADMIN_APP["Applications"]
+    PY_USER -->|visible to| USER_APP["User projects"]
+    VENV -->|visible to| PROJECT_APP["Selected project"]
+```
 
-=== "Linux (Debian-based)"
+#### System Target
 
-    The system target is owned by APT. Importable Python packages typically land under `/usr/lib/python3/dist-packages/`. This exists because Linux distributions package Python libraries for operating-system tools and stable release updates.
+On Debian-based Linux, the system target is owned and managed by APT, and importable Python packages typically land under `/usr/lib/python3/dist-packages/`. Unlike a Python-only package manager, APT resolves both Python and native system dependencies as part of the operating system, which makes it appropriate for distribution-managed tools, system services, and Python bindings to OS libraries. For a precise explanation of how OS packages integrate native components into the dependency graph, see [Chapter 02, Section 02](../chapter-02/section-02/index.md).
 
-    Use APT for Python libraries that support system services, distribution-managed automation, or operating-system integration. The `simply_journal_admin` project in this section is a concrete example: it imports `systemd.journal`, which is part of the APT package `python3-systemd` and binds to `libsystemd` shipped with the operating system. There is no equivalent wheel on PyPI that works without that system library, so APT is the right install path. Avoid APT for normal project dependencies like `python3-requests`, as APT packages follow the operating-system release cycle and can be older or patched differently than the versions on PyPI.
+For example, `python3-systemd` provides Python bindings for `systemd`, and installing it with APT also pulls in the required native `libsystemd` library; those dependencies on system packages are illustrated in the Mermaid chart above.
 
-    Install the distribution-managed Python binding with the distribution package manager:
+Install the distribution-managed Python binding with the distribution package manager:
 
-    ```bash
-    sudo apt install python3-systemd
-    ```
+```bash
+sudo apt install python3-systemd
+```
 
-    Import it with the system interpreter:
+Import it with the system interpreter:
 
-    ```bash
-    python3 -c "import systemd.journal; print(systemd.journal.__file__)"
-    ```
+```bash
+python3 -c "import systemd.journal; print(systemd.journal.__file__)"
+```
 
-=== "Windows"
+!!! info "Windows and macOS"
+    Windows and macOS do not have an APT-like Python system target for importable Python libraries. Package managers such as WinGet and Homebrew can install Python, applications, and global tools such as `uv`, but Python libraries for `import` statements usually belong in a [local administrator target](#local-administrator-target), [user target](#user-target), or virtual environment.
 
-    Windows does not have an APT-like Python package target that is part of the operating system. 
-
-    !!! info
-
-        WinGet is useful for installing Python, applications, and tools such as `uv`, but Python libraries for `import` statements usually come from [Local administrator targets](#local-administrator-target), [User targets](#user-target), or a virtual environment.
-
-        Install `uv` with Windows Package Manager:
-
-        ```powershell
-        winget install astral-sh.uv
-        ```
-
-=== "macOS"
-
-    Apple-managed Python paths are for operating-system or developer-tool use.
-
-    !!! info
-
-        Homebrew can install Python-based tools such as `uv`, but those packages live in Homebrew's own prefix, not in an Apple-managed system Python target. Python libraries for `import` statements usually come from [Local administrator targets](#local-administrator-target), [User targets](#user-target), or a virtual environment.
-
-        Install `uv` with Homebrew:
-
-        ```bash
-        brew install uv
-        ```
-
-#### Local administrator target
+#### Local Administrator Target
 
 === "Linux (Debian-based)"
 
@@ -300,7 +318,7 @@ Python packages can land in [operating-system](#system-target), [administrator](
         python3.13 -m pip install --break-system-packages requests
         ```
 
-#### User target
+#### User Target
 
 === "Linux (Debian-based)"
 
