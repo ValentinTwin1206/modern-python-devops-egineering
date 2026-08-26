@@ -1,30 +1,67 @@
 import uvicorn
-from fastapi import Depends, FastAPI
+
+from fastapi  import Depends, FastAPI, HTTPException, responses, Request as FastAPIRequest
 from pydantic import BaseModel
 
-# TODO: import the database and helpers modules
+from database import create_database
+from helpers  import generate_license_key, require_admin
 
 
-# TODO: create the database instance
-database = None
-
+# ==========================================
+# Create the database instance and application instance
+database = create_database()
 
 app = FastAPI(
     title="License Service",
     description="Small example service for generating and validating license keys.",
 )
 
+# ==========================================
+# PyGuard Middleware
 
-# TODO: Create a pydantic LicenseResponse Model that contains
-# the license_key and user fields.
+from pyguard import PyGuardMiddleware, Request, RequestBlocked
+
+PROTECTED_PATHS = {
+    ("POST", "/licenses")
+}
+
+guard = PyGuardMiddleware(
+    protected_paths=PROTECTED_PATHS,
+)
+
+@app.middleware("http")
+async def security_middleware(
+    request: FastAPIRequest,
+    call_next,
+):
+    guard_request = Request(
+        method=request.method,
+        path=request.url.path,
+        query=request.url.query,
+        source=request.client.host,
+    )
+
+    try:
+        guard.before_request(guard_request)
+    except RequestBlocked as exc:
+        return responses.JSONResponse(
+            status_code=429,
+            content={"detail": str(exc)},
+        )
+
+    return await call_next(request)
+
+
+# ==========================================
+# Pydantic Models
 class LicenseResponse(BaseModel):
-    ...
+    license_key: str
+    user: str
 
 
-# TODO: Create a pydantic LicenseCheckResponse Model that contains
-# the valid and user fields. The user field should be optional.
 class LicenseCheckResponse(BaseModel):
-    ...
+    valid: bool
+    user: str | None = None
 
 
 @app.get("/")
@@ -36,23 +73,14 @@ def root():
     }
 
 
-# TODO: Add the LicenseResponse model as the response_model for this endpoint and
-# require the require_admin dependency.
 @app.post(
     "/licenses",
-    response_model=None,
-    dependencies=[None],
+    response_model=LicenseResponse,
+    dependencies=[Depends(require_admin)],
 )
 def create_license(user: str):
-    """ Create and store a new license for an authorized user.
-       Args:
-           user (str): The username for which to create a license.
-       Returns:
-           LicenseResponse: The response containing the license key and user.
-    """
-    
-    # TODO: generate a license Key (check the helpers.py)
-    license_key = None
+    """Create and store a new license for an authorized user."""
+    license_key = generate_license_key()
 
     db = database.get_connection()
 
@@ -69,21 +97,15 @@ def create_license(user: str):
     finally:
         db.close()
 
-    # TODO: return a LicenseResponse object with the license_key and user
-    return None
+    return LicenseResponse(
+        license_key=license_key,
+        user=user,
+    )
 
 
-# TODO: 
-#   - define the fastapi signatures for the GET /licenses/{license_key} endpoint
-#   - add the LicenseCheckResponse model as the response_model for this endpoint.
+@app.get("/licenses/{license_key}", response_model=LicenseCheckResponse)
 def check_license(license_key: str):
-    """ Check whether a license exists and is currently active.
-        Args:
-            license_key (str): The license key to check.
-        Returns:
-            LicenseCheckResponse: The response indicating whether the license is valid and the associated user.
-    """
-    
+    """Check whether a license exists and is currently active."""
     db = database.get_connection()
 
     try:
@@ -101,9 +123,10 @@ def check_license(license_key: str):
     if license is None or not license["active"]:
         return LicenseCheckResponse(valid=False)
 
-    # TODO: return a LicenseCheckResponse object with 
-    # valid set to True and the user field set to the associated user.
-    return None
+    return LicenseCheckResponse(
+        valid=True,
+        user=license["user"],
+    )
 
 
 def main():

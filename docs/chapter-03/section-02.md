@@ -204,6 +204,10 @@ Before running the command, `uv` ensures the project is ready: it creates the `.
 !!! note "Command invocation"
     The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
 
+
+
+## Build and Publishing Packages
+
 ### Build distributions
 
 The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
@@ -225,8 +229,6 @@ The `uv publish` command uploads the distribution files from `dist/` to PyPI usi
 ```shell
 uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
 ```
-
-## Build and Publishing Packages
 
 ## Handling multiple projects with uv
 

@@ -7,6 +7,7 @@ class Request:
     path: str
     query: str = ""
     body: str = ""
+    source: str = ""
 
 
 @dataclass
