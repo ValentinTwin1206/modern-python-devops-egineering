@@ -12,13 +12,38 @@ The applied project is a small chemistry analysis library called `HeisenBlue`. I
 
 Application, test, lint, package-build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md).
 
-## Conda environment model
+## Conda Environment Model
 
-Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. Unlike `venv`, it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels, so one Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
+Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. Unlike [`venv` Environments](./section-02.md), it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels, so one Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
 
-### When to use Conda?
+Conda is therefore more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and shared conventions for publishing binary scientific software. That ecosystem is a major reason projects such as [RDKit](https://github.com/rdkit/rdkit) recommend Conda for Python users, and it matters especially for scientists, analysts, and notebook users who need reliable tools without first becoming operating-system packaging experts.
 
-Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. The later [Environment layout](#environment-layout) and [Workflow](#workflow) sections show that structure in more detail.
+The simplified diagram below compares how a plain `venv` workflow and a Conda workflow collect the HeisenBlue dependencies from different package sources.
+
+```mermaid
+graph TB
+    PYPI["pypi.org"]
+    DEBIAN["Debian package repository"]
+    CONDA_INSTALLER["Miniconda / Miniforge installer"]
+    CONDA_FORGE["conda-forge"]
+
+    PYPI --> VENV["venv + pip"]
+    DEBIAN --> VENV_PY["Python 3.12"]
+    VENV_PY --> VENV
+    VENV --> VENV_DEPS["Python packages/<br/>Pillow, pybind11, scikit-build-core, ..."]
+    DEBIAN --> HOST_DEPS["Host packages<br/>RDKit, CMake, C++ toolchain, ..."]
+    VENV_DEPS --> VENV_APP["HeisenBlue"]
+    HOST_DEPS --> VENV_APP
+
+    CONDA_INSTALLER --> CONDA["Conda"]
+    CONDA_FORGE --> CONDA
+    CONDA --> CONDA_DEPS["One environment prefix<br/>Python 3.12, RDKit, scikit-build-core, ..."]
+    CONDA_DEPS --> CONDA_APP["HeisenBlue"]
+```
+
+### When to Use Conda?
+
+Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. Popular workflow tools reflect this pattern, including [MLflow](https://github.com/mlflow/mlflow) Projects for data preprocessing, feature engineering, and training steps from a declared Conda environment, and [Snakemake](https://github.com/snakemake/snakemake) or [Nextflow](https://github.com/nextflow-io/nextflow) for provisioning dependencies in reproducible pipeline tasks.
 
 ### Tradeoffs
 
@@ -32,7 +57,7 @@ Because it can keep Python, native dependencies, and interpreter version constra
 
 #### Cons
 
-- ⚠️ Heavier than `venv` in tooling footprint and environment size.
+- ⚠️ Significantly heavier than `venv` in tooling footprint and environment size.
 - ⚠️ Uses a separate ecosystem alongside PyPI, so you often need both `conda` and `pip`.
 - ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
 - ⚠️ Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
@@ -125,9 +150,9 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 
         This edits your shell startup file and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
 
-### Environment layout
+### Environment Layout
 
-#### Environment name and location
+#### Environment Name and Location
 
 Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `heisenblue-demo` instead of a generic name such as `venv` when creating a Conda environment:
 
@@ -193,7 +218,7 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
     └── pkgs/
     ```
 
-#### Key directories and files
+#### Key Directories and Files
 
 - **Top-level Conda executable:** the main Conda command lives under the installation prefix, such as `~/miniconda3/bin/conda` on Linux or macOS, or `%UserProfile%\miniconda3\condabin\conda.bat` on Windows.
 
@@ -209,7 +234,7 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 
 - **`pkgs/`:** stores the shared package cache for the Conda installation prefix.
 
-#### Environment definition (`environment.yml`)
+#### Environment Definition (`environment.yml`)
 
 The `environment.yml` file describes the [respective Conda environment](#environment-layout) from outside and is stored **within the project tree** next to the source code and other project files.
 
@@ -242,7 +267,7 @@ dependencies:
 
 ## Workflow
 
-### Create and activate
+### Create and Activate
 
 The examples below show three ways to get to a working project setup. The Conda-based paths keep the Python bindings and native binaries inside the environment, while the non-Conda path splits Python packages and system libraries across different locations.
 
@@ -386,7 +411,7 @@ The examples below show three ways to get to a working project setup. The Conda-
     └── bin/c++
     ```
 
-### Add packages
+### Add Packages
 
 Ensure that the dedicated Conda environment is active (see [Create and activate](#create-and-activate)).
 

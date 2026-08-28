@@ -14,6 +14,8 @@ Application, test, lint, and shell-exit commands are documented in the [section 
 
 ## Python System Setup
 
+The Python system environment is often called the **system Python** or **system Python interpreter**. That name is useful, but Python is still installed software, not just a single `python3` command. On most machines, the interpreter executable is [CPython](https://www.python.org/), the standard Python implementation, and it is installed together with the standard library, package directories, native-extension headers, and shell integration such as `PATH` entries or launchers. The system environment is the shared Python installation that the operating system, administrators, users, and sometimes projects may all rely on.
+
 ### When to Use the System Environment?
 
 Generally, do not use the Python system environment for application development. Prefer a project-specific virtual environment to isolate dependencies, and only use the system environment when Python is intentionally provided and managed by the operating system, container image, or platform.

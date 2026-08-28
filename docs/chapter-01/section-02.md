@@ -1,4 +1,4 @@
-# Python `venv` environments
+# Python `venv` Environments
 
 This page covers Python's standard-library `venv` module.
 
@@ -12,11 +12,11 @@ The applied project is a small utility library called `PyGuard Project`. It bloc
 
 Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
 
-## `venv` environment model
+## `venv` Environment Model
 
-`venv` has shipped with Python since Python 3.3 in 2012, when it was introduced to give Python a standard built-in tool for project-level isolation. It creates a project-local directory with a private interpreter, `pip`, a package directory, console scripts, and a `pyvenv.cfg` file, while activation is mostly a `PATH` change so the environment-local interpreter resolves first even though the standard library still comes from the base Python installation.
+`venv` has shipped with Python since Python 3.3 in 2012, when it was introduced to give Python a standard built-in tool for project-level isolation. It creates a project-local directory with a private interpreter, `pip`, a package directory, console scripts, and a `pyvenv.cfg` file, while activation is mostly a `PATH` change so the environment-local interpreter resolves first even though the standard library still comes from the base Python installation. Treat that `.venv/` directory as disposable rather than movable: virtual environments often record absolute paths, so rebuilding from dependency files is safer than relocating the environment directory byte-for-byte.
 
-### When to use `venv`?
+### When to Use `venv`?
 
 Because it is built in, lightweight, and close to standard Python packaging, `venv` is a good default for small web services, command-line tools, tutorials, libraries, and scripts whose dependencies come cleanly from PyPI. It is also a good fit when you want to inspect Python's environment mechanics directly.
 
@@ -56,7 +56,7 @@ Because it is built in, lightweight, and close to standard Python packaging, `ve
 
     If Python is not installed yet, follow [Install Python](section-01.md#install-python).
 
-### Environment layout
+### Environment Layout
 
 The exact directory names vary by operating system, but each `venv` still contains an environment-local interpreter, console scripts, a package directory, headers, and `pyvenv.cfg`.
 
@@ -127,7 +127,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     └── pyvenv.cfg
     ```
 
-### Key directories and files
+### Key Directories and Files
 
 - **Executable directory:** on Linux and macOS, `.venv/bin/` contains the virtual environment's Python executables, `pip`, and shell activation scripts. On Windows, the equivalent directory is `.venv\Scripts\`, which holds `python.exe`, `pip.exe`, and activation scripts such as `Activate.ps1` and `activate.bat`. On Linux, a fresh `venv` commonly uses symlinks for the Python executables, so the environment-local `python3` can still point back to the base interpreter while the surrounding environment changes where packages and scripts are installed.
 
@@ -156,7 +156,7 @@ The exact directory names vary by operating system, but each `venv` still contai
 
 - **`lib64/`:** is a platform-specific library alias that appears on some Linux systems.
 
-- **`pyvenv.cfg`:** stores the base interpreter reference and flags such as whether system site-packages are visible. When you run the environment-local `python3`, CPython reads this file early during startup. The `home` key points back to the base Python installation that owns the standard library, while `sys.prefix` and `sys.exec_prefix` are redirected to the local `.venv/` directory.
+- **`pyvenv.cfg`:** stores the base interpreter reference and flags such as whether system site-packages are visible. When you run the environment-local `python3`, CPython reads this file early during startup. The `home` key points back to the base Python installation that owns the standard library, while `sys.prefix` and `sys.exec_prefix` are redirected to the local `.venv/` directory. The `command` entry can also record the path used when the environment was created, which is one reason a copied or renamed `.venv/` can keep pointing at the original project location.
 
     A fresh `pyvenv.cfg` looks like this:
 
@@ -168,7 +168,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     command = /usr/bin/python3 -m venv /path/to/projects/proj1_pyguard/.venv
     ```
 
-### Activation and import path
+### Activation and Import Path
 
 - **Environment-local interpreter:** activation puts the virtual environment's executable directory at the front of `PATH`. On Linux and macOS that means `.venv/bin/`; on Windows it means `.venv\Scripts\`. It does not change Python itself; it changes which executable the shell finds first when you run `python`, `python3`, `py`, or `pip`.
 
@@ -194,15 +194,9 @@ The exact directory names vary by operating system, but each `venv` still contai
     print(sys.base_prefix)
     ```
 
-### Technical Note: Why **`.venv/`** is not portable
-
-You should treat the **`.venv/`** directory as disposable rather than movable. Virtual environments often contain absolute paths in **`pyvenv.cfg`**, console scripts under **`bin/`**, and shebang lines that point at the original interpreter location, so renaming or moving the directory can leave the environment pointing at paths that no longer exist.
-
-In practice, rebuilding is safer than relocating. If the project moves, the usual fix is to remove **`.venv/`** and recreate it from the dependency files instead of trying to preserve the old directory byte-for-byte.
-
 ## Workflow
 
-### Create and activate
+### Create and Activate
 
 Create the environment from the section folder:
 
@@ -244,7 +238,7 @@ The new environment starts with the `pip` version supplied by the Python install
 	uv pip install --upgrade pip
 	```
 
-### Install the project
+### Install the Project
 
 === "pip"
 
