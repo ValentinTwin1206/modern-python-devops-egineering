@@ -16,7 +16,7 @@ The notebook progressively demonstrates three solutions:
 
 | Path | Description |
 | --- | --- |
-| `.devcontainer/Dockerfile` | Ubuntu 26.04 image with Python 3, `pip`, `venv`, JupyterLab, ipywidgets, `sudo`, and Bob's legacy dependency `requests==2.0.0` pre-installed system-wide. Creates two real Linux users, `bob` (sudo) and `alice` (no sudo). |
+| `.devcontainer/Dockerfile` | Ubuntu 26.04 image with Python 3, `pip`, `venv`, JupyterLab, ipywidgets, `sudo`, and Bob's legacy dependency `requests==2.0.0` pre-installed system-wide. It also seeds Alice's `--user` site with her app-level dependencies while keeping `requests` out of her user site. Creates two real Linux users, `bob` (sudo) and `alice` (no sudo). |
 | `.devcontainer/devcontainer.json` | VS Code Dev Container config. Default user is `bob`. Installs the Python and Jupyter extensions and pins the default interpreter to `/usr/bin/python3`. |
 | `system_interpreter.ipynb` | Everything else. The three demo applications are embedded in the notebook as Python strings and written to disk from a cell. |
 

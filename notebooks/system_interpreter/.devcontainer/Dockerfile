@@ -31,21 +31,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # the system interpreter, so we allow that behaviour system-wide.
 RUN printf '[global]\nbreak-system-packages = true\n' > /etc/pip.conf
 
-# Notebook stack for the system Python interpreter.
+# Notebook stack for the system Python interpreter plus Bob's legacy
+# dependency. Everything is installed system-wide on purpose so the
+# notebook can demonstrate conflicts later.
 RUN python3 -m pip install --no-cache-dir \
-        jupyterlab \
-        notebook \
-        ipykernel \
-        ipywidgets
-
-# Bob's legacy project depends on this exact ancient release.
-# It is installed system-wide, on purpose, so we can show the conflict later.
-RUN python3 -m pip install --no-cache-dir "requests==2.0.0"
+    jupyterlab \
+    notebook \
+    ipykernel \
+    ipywidgets \
+    "requests==2.0.0"
 
 # Register a clearly named kernel that targets /usr/bin/python3.
 RUN python3 -m ipykernel install \
-        --name system-python3 \
-        --display-name "Python 3 — Ubuntu System"
+    --name system-python3 \
+    --display-name "Python 3 — Ubuntu System"
 
 # Bob: administrator, passwordless sudo so the notebook can demonstrate
 # elevated actions without ever surfacing his password.
@@ -57,6 +56,11 @@ RUN useradd --create-home --shell /bin/bash --groups sudo bob \
 # Alice: unprivileged user with her own home directory.
 RUN useradd --create-home --shell /bin/bash alice \
     && echo 'alice:foo' | chpasswd
+
+# Seed Alice's user site with application-level dependencies only. Requests
+# stays untouched here so the shared system copy remains the source of the
+# cross-user conflict demonstrated in the notebook.
+RUN su - alice -c 'python3 -m pip install --user "fastapi==0.68.2" "pydantic<2"'
 
 # Alice needs to be able to shell in via `su` from Bob's sessions for
 # ipywidgets demos. `su` itself only asks for a password when the caller

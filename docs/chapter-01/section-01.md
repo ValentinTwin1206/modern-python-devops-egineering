@@ -6,11 +6,11 @@ This page explains how Python is installed on common operating systems and where
 
 ### Project Setup
 
-The applied project is a small admin CLI called `simply_journal_admin`, exposed as the `simply-journal-admin` command, that reads recent `systemd` journal entries. It imports [`systemd.journal`](https://www.freedesktop.org/software/systemd/python-systemd/journal.html) from the APT package [`python3-systemd`](https://packages.ubuntu.com/noble/python3-systemd) and declares no PyPI runtime dependencies because the binding comes from the distribution package manager and links against `libsystemd` in `/usr/lib`. This makes it a good fit for the system environment because the runtime dependency is intentionally owned by the operating system package manager instead of a project-local environment.
+See [notebooks/system_interpreter/system_interpreter.ipynb](../../notebooks/system_interpreter/system_interpreter.ipynb).
 
 ### Run the Project
 
-Application, test, lint, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md).
+Setup and usage details are documented in [notebooks/system_interpreter/README.md](../../notebooks/system_interpreter/README.md).
 
 ## Python System Setup
 
