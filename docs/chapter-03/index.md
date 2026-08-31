@@ -12,8 +12,8 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
-| [Section 01](./section-01.md) | Modern Python Standard | |
-| [Section 02](./section-02.md) | Project Scaffolding uv | |
-| [Section 03](./section-03.md) | Dependency Management with uv | |
+| [Section 01](./section-01.md) | Modern Python Standard | [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb)|
+| [Section 02](./section-02.md) | Project Scaffolding uv | [Bob's Server](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) |
+| [Section 03](./section-03.md) | Dependency Management with uv | [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) |
 | [Section 04](./section-04.md) | Dependency Caching with uv | |
 | [Section 05](./section-05.md) | uv in Comparison | |
