@@ -4,9 +4,9 @@
 # Alice is an unprivileged user.
 #
 # The system Python interpreter deliberately contains Bob's legacy
-# dependency (requests==2.0.0) so the notebook can demonstrate
+# dependency (requests==2.25.1) so the notebook can demonstrate
 # dependency conflicts and progressively solve them.
-FROM ubuntu:26.04
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -28,6 +28,7 @@ RUN apt-get update \
         python3 \
         python3-dev \
         python3-pip \
+        python3-systemd \
         python3-venv \
         sudo \
         util-linux \
@@ -62,22 +63,25 @@ RUN useradd \
 # ----------------------------------------------------------------------
 # System Python
 #
-# The teaching scenario deliberately modifies the externally-managed
-# system interpreter. Keep --break-system-packages explicit so that
-# every intentional system-level pip installation is visible.
+# Ubuntu 22.04 ships an older pip than the notebook demonstration uses.
+# Upgrade pip first so later cells can keep --break-system-packages
+# explicit when they intentionally modify the shared interpreter.
 # ----------------------------------------------------------------------
 RUN python3 -m pip install \
-        --break-system-packages \
-        --no-cache-dir \
-        jupyterlab \
-        notebook \
-        ipykernel \
-        ipywidgets \
-        "requests==2.0.0"
+    --no-cache-dir \
+    --upgrade pip \
+    && python3 -m pip install \
+    --break-system-packages \
+    --no-cache-dir \
+    jupyterlab \
+    notebook \
+    ipykernel \
+    ipywidgets \
+    "requests==2.25.1"
 
 # Register the system Python as a clearly named Jupyter kernel.
 RUN python3 -m ipykernel install \
-        --system \
+        --sys-prefix \
         --name system-python3 \
         --display-name "Python 3 — Ubuntu System"
 
@@ -88,20 +92,15 @@ RUN python3 -m ipykernel install \
 # They do not modify the system Python installation.
 #
 # Keep requests out of this installation initially: the notebook should
-# demonstrate the conflict with Bob's system-level requests==2.0.0.
+# demonstrate the conflict with Bob's system-level requests==2.25.1.
 # ----------------------------------------------------------------------
 RUN su - alice -c \
-    'python3 -m pip install \
-        --user \
-        --no-cache-dir \
-        "fastapi==0.68.2" \
-        "pydantic<2"'
+    'python3 -m pip install --user --no-cache-dir fastapi==0.68.2 "pydantic<2"'
 
 # ----------------------------------------------------------------------
 # Workspace
 # ----------------------------------------------------------------------
-RUN mkdir -p /workspace \
-    && chown bob:bob /workspace
+RUN install -d -o bob -g bob /workspace
 
 USER bob
 

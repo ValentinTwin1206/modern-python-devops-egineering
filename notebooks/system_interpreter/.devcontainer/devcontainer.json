@@ -1,5 +1,5 @@
 {
-    "name": "System Interpreter Teaching Container",
+    "name": "System Interpreter Teaching",
     "build": {
         "context": "..",
         "dockerfile": "Dockerfile"
