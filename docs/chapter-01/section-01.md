@@ -190,7 +190,7 @@ A Python installation includes the CPython interpreter, standard library modules
 
 - **Standard library:** built-in modules such as `os`, `pathlib`, `json`, and `subprocess` ship with Python itself.
 
-- **Interpreter installation packages:** in this section, the concrete example is the Debian [system target](#system-target), where a package such as `python3-systemd` lands under `/usr/lib/python3/dist-packages/`.
+- **Interpreter installation packages:** in this section, the concrete example is the Debian [system target](#system-target), where a package such as `python3-psutil` lands under `/usr/lib/python3/dist-packages/`.
 
 - **System-wide administrator-installed packages:** packages installed into the administrator-controlled prefix affect every project that uses that interpreter. They are covered in [Local administrator target](#local-administrator-target).
 
@@ -210,10 +210,8 @@ graph LR
         direction TB
 
         subgraph SYS["System packages · APT"]
-            PY_SYS["python3-systemd"]
-            LIB["libsystemd0"]
+            PY_SYS["python3-psutil"]
             C["libc6"]
-            PY_SYS --> LIB
             PY_SYS --> C
         end
 
@@ -241,18 +239,18 @@ graph LR
 
 On Debian-based Linux, the system target is owned and managed by APT, and importable Python packages typically land under `/usr/lib/python3/dist-packages/`. Unlike a Python-only package manager, APT resolves both Python and native system dependencies as part of the operating system, which makes it appropriate for distribution-managed tools, system services, and Python bindings to OS libraries. For a precise explanation of how OS packages integrate native components into the dependency graph, see [Chapter 02, Section 02](../chapter-02/section-02/index.md).
 
-For example, `python3-systemd` provides Python bindings for `systemd`, and installing it with APT also pulls in the required native `libsystemd` library; those dependencies on system packages are illustrated in the Mermaid chart above.
+For example, `python3-psutil` provides Python bindings for OS-level process and system metrics, and installing it with APT also pulls in the required native `libc6` library; those dependencies on system packages are illustrated in the Mermaid chart above.
 
 Install the distribution-managed Python binding with the distribution package manager:
 
 ```bash
-sudo apt install python3-systemd
+sudo apt install python3-psutil
 ```
 
 Import it with the system interpreter:
 
 ```bash
-python3 -c "import systemd.journal; print(systemd.journal.__file__)"
+python3 -c "import psutil; print(psutil.__file__)"
 ```
 
 !!! info "Windows and macOS"
@@ -269,7 +267,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the local administrator target with `uv`:
 
         ```bash
-        uv pip install --system --break-system-packages requests
+        uv pip install --system --break-system-packages requests==2.25.1
         ```
 
     === "pip"
@@ -277,7 +275,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the local administrator target with `pip`:
 
         ```bash
-        pip3 install --break-system-packages requests
+        pip3 install --break-system-packages requests==2.25.1
         ```
 
 === "Windows"
@@ -289,7 +287,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the selected all-users interpreter with `uv`:
 
         ```powershell
-        uv pip install --python "C:\Program Files\Python313\python.exe" requests
+        uv pip install --python "C:\Program Files\Python313\python.exe" requests==2.25.1
         ```
 
     === "pip"
@@ -297,7 +295,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the selected all-users interpreter with `pip`:
 
         ```powershell
-        py -3.13 -m pip install requests
+        py -3.13 -m pip install requests==2.25.1
         ```
 
 === "macOS"
@@ -309,7 +307,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the selected interpreter prefix with `uv`:
 
         ```bash
-        uv pip install --python /opt/homebrew/bin/python3.13 --break-system-packages requests
+        uv pip install --python /opt/homebrew/bin/python3.13 --break-system-packages requests==2.25.1
         ```
 
     === "pip"
@@ -317,7 +315,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
         Install a package into the selected interpreter prefix with `pip`:
 
         ```bash
-        python3.13 -m pip install --break-system-packages requests
+        python3.13 -m pip install --break-system-packages requests==2.25.1
         ```
 
 #### User Target
@@ -327,7 +325,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
     The user target keeps packages inside the current user's home directory, usually under `~/.local/lib/python3.x/site-packages/`.
 
     ```bash
-    uv pip install --user karva ruff
+    uv pip install --user fastapi==0.68.1
     ```
 
 === "Windows"
@@ -335,7 +333,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
     Install user-level tools without administrator permissions:
 
     ```powershell
-    uv pip install --user karva ruff
+    uv pip install --user fastapi==0.68.1
     ```
 
     User packages usually land under `%AppData%\Python\Python313\site-packages`.
@@ -345,7 +343,7 @@ python3 -c "import systemd.journal; print(systemd.journal.__file__)"
     Install user-level tools without writing into the interpreter prefix:
 
     ```bash
-    uv pip install --user karva ruff
+    uv pip install --user fastapi==0.68.1
     ```
 
     User packages usually land under `~/Library/Python/3.13/lib/python/site-packages`.
@@ -376,10 +374,10 @@ python3 -m site
 
 ### Inspecting installed packages
 
-Show where the APT-managed `systemd.journal` binding lives:
+Show where the APT-managed `psutil` binding lives:
 
 ```bash
-python3 -c "import systemd.journal; print(systemd.journal.__file__)"
+python3 -c "import psutil; print(psutil.__file__)"
 ```
 
 Show where user-installed packages and their console scripts live:
@@ -391,5 +389,5 @@ python3 -c "import karva, ruff; print(karva.__file__); print(ruff.__file__)"
 Show the files owned by an APT-managed Python package:
 
 ```bash
-dpkg -L python3-systemd | grep -E '/dist-packages/systemd(/|$)' | head
+dpkg -L python3-psutil | grep -E '/dist-packages/psutil(/|$)' | head
 ```

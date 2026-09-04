@@ -17,6 +17,8 @@ app = FastAPI(
 
 # TODO: Create a pydantic LicenseResponse Model that contains
 # the license_key and user fields.
+# - license_key: str
+# - user: str
 class LicenseResponse(BaseModel):
     ...
 

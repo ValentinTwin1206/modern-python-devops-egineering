@@ -36,7 +36,7 @@ ${BLUE}${BOLD}COMMANDS${RESET}
 
 ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
-                              ${DIM}(e.g. proj3_tiny_webserver/Dockerfile).${RESET}
+                              ${DIM}(e.g. proj3_license_service/Dockerfile).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).

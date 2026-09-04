@@ -6,11 +6,11 @@ Python containers package an application together with the runtime files it need
 
 ### Project Setup
 
-The applied project is a small HTTP server called `Tiny Webserver Project`. It serves a single route with [Bottle](https://bottlepy.org/) and starts from a console entry point. This makes it a good fit for containers because the application, its Python runtime, and its dependencies can be packaged into one image that behaves the same on every host with a container engine.
+The applied project is a small FastAPI service called `License Service`. It generates and validates license keys, stores them in a local SQLite database, and rate-limits its write endpoint with [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware installed from a Cloudsmith package index. This makes it a good fit for containers because the application, its Python runtime, and its dependencies can be packaged into one image that behaves the same on every host with a container engine.
 
 ### Run the Project
 
-Application, test, lint, and build commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_tiny_webserver/README.md).
+Application, install, and test commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md).
 
 ## Building Blocks
 
@@ -36,61 +36,57 @@ At a high level, container distribution consists of five building blocks: a **bu
 
 ### Project Layout
 
-A typical Python container project is structured to separate application code, build configuration, and container-specific instructions:
+A typical Python container project is structured to separate application code, dependency metadata, and build configuration:
 
 ```text
 {project_root}/
-├── src/
+├── main.py
+├── database.py
+├── helpers.py
 ├── Dockerfile
-├── .dockerignore
-├── LICENSE
 ├── pyproject.toml
+├── uv.lock
 └── README.md
 ```
 
-- `src/`: Contains the application source code.
+- `main.py`: The FastAPI application, its routes, the PyGuard middleware wiring, and the `uvicorn` entrypoint that the container runs on startup.
+- `database.py` and `helpers.py`: Supporting application modules copied into the image alongside `main.py`.
 - `Dockerfile`: The **central build recipe** that defines how the container image is constructed. It describes the full build and deployment pipeline inside the image itself, including dependencies, build steps, and runtime configuration. It can also implement multi-stage builds, where the application is first built (for example as a Python wheel) and then packaged into a minimal runtime image that contains only the installed artifact and its runtime dependencies.
-- `.dockerignore`: Defines files and directories excluded from the build context to reduce image size and improve build speed.
-- `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build system configuration.
+- `pyproject.toml` and `uv.lock`: The dependency metadata and lockfile that `uv sync` reads to install `fastapi`, `uvicorn`, and `pyguard` inside the image.
 
 ### Build Recipe
 
 An OCI image is defined by a build recipe, commonly `Dockerfile` or `Containerfile`. In this project, the `Dockerfile` is the maintainer-edited source of truth. During the build, the container manager reads that recipe and turns it into image layers, runtime configuration, and manifest data such as `manifest.json`.
 
 ```dockerfile
-FROM python:3.12 AS builder
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-WORKDIR /build
-COPY pyproject.toml ./
-COPY src ./src
-RUN uv build --wheel
-
-FROM python:3.12-slim AS runtime
+FROM python:3.12-slim
 
 WORKDIR /app
-RUN python -m venv /opt/venv
 
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-COPY --from=builder /build/dist /tmp/dist
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir cloudsmith-cli \
-    && pip install --no-cache-dir /tmp/dist/tiny_webserver-*.whl \
-    && rm -rf /tmp/dist
+# Copy dependency metadata
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies into a project-local virtual environment
+RUN uv sync --frozen --no-dev
+ENV PATH="/app/.venv/bin:${PATH}"
+
+# Copy application source
+COPY main.py database.py helpers.py ./
 
 EXPOSE 8080
-ENTRYPOINT ["tiny-webserver"]
-# CMD ["--help"]
+
+CMD ["python", "main.py"]
 ```
 
 - `FROM`: Selects the base image and its version.
 - `WORKDIR`: Sets the default directory for later build steps and container startup.
-- `COPY`: Adds the application or built artifacts to the image filesystem.
-- `RUN`: Executes build-time installation or configuration commands.
-- `ENTRYPOINT` and `CMD`: Define the executable and default arguments used at runtime.
+- `COPY`: Adds dependency metadata and application source to the image filesystem.
+- `RUN`: Executes the `uv sync` install step, which resolves `pyguard` from the Cloudsmith package index declared in `pyproject.toml` and creates a project-local virtual environment at `/app/.venv`.
+- `ENV`: Puts that virtual environment's `bin/` directory first on `PATH`, so the plain `python` command used by `CMD` resolves the packages `uv sync` installed.
+- `CMD`: Defines the default command used at runtime. This Dockerfile has no separate `ENTRYPOINT`.
 
 ### Package Layout
 
@@ -103,11 +99,7 @@ On a host machine, an OCI image is not stored as one ordinary project file. It i
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and access to its Docker registry. Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`, before you publish.
 
-The development environment for this section is a Dev Container that uses *Docker outside of Docker*. The commands below run inside the Dev Container, while image builds are handled by the host Docker daemon.
-
-### Swtup the Development Environment
-
-#### Install Development Tools
+### Setup the Local Environment
 
 First, confirm that Docker is installed and running on the host machine:
 
@@ -115,22 +107,10 @@ First, confirm that Docker is installed and running on the host machine:
 docker version
 ```
 
-Install Node.js and npm if the host does not already have them:
+Move into the License Service project directory:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y nodejs npm
-```
-
-Install the Dev Container CLI with npm:
-
-```bash
-sudo npm install -g @devcontainers/cli
-```
-
-Move into the Tiny Webserver project directory:
-
-```bash
-cd projects/proj3_tiny_webserver
+cd projects/proj3_license_service
 ```
 
 Set the Cloudsmith repository that will receive the published image:
@@ -139,38 +119,16 @@ Set the Cloudsmith repository that will receive the published image:
 export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
 ```
 
-#### Boot Dev Container
-
-Build and start the Dev Container workspace:
-
-```bash
-devcontainer up --workspace-folder .
-```
-
-Open an interactive shell inside the running Dev Container:
-
-```bash
-devcontainer exec --workspace-folder . bash
-```
-
-Inside that shell, confirm that the Docker CLI can reach the host Docker daemon:
-
-```bash
-docker version
-```
-
-Run the remaining workflow commands from inside this Dev Container shell.
-
 ### Create the Container
 
 The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
 
 === "Classical container image"
 
-    This command builds the image from the `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `tiny-webserver:1.0.0`. The image can then be inspected, run, tagged for a registry, or pushed from the local Docker host.
+    This command builds the image from the `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `license-service:1.0.0`. The image can then be inspected, run, tagged for a registry, or pushed from the local Docker host.
 
     ```bash
-    docker build -t tiny-webserver:1.0.0 .
+    docker build -t license-service:1.0.0 .
     ```
 
     
@@ -186,7 +144,7 @@ The same `Dockerfile` can produce different output formats depending on the buil
 
     ```bash
     docker buildx build \
-      --output type=oci,dest=tiny-webserver-1.0.0.tar \
+      --output type=oci,dest=license-service-1.0.0.tar \
       .
     ```
 
@@ -199,7 +157,7 @@ The inspection command depends on the output format created in the previous step
     Inspect the metadata that Docker stores for the local image tag:
 
     ```bash
-    docker inspect tiny-webserver:1.0.0
+    docker inspect license-service:1.0.0
     ```
 
     The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
@@ -207,7 +165,7 @@ The inspection command depends on the output format created in the previous step
     Show the image layer history and the Dockerfile instruction associated with each layer:
 
     ```bash
-    docker history tiny-webserver:1.0.0
+    docker history license-service:1.0.0
     ```
 
 === "OCI image archive"
@@ -215,13 +173,13 @@ The inspection command depends on the output format created in the previous step
     Inspect the archive created by `docker buildx build --output type=oci` by listing the files inside the TAR archive:
 
     ```bash
-    tar -tf tiny-webserver-1.0.0.tar
+    tar -tf license-service-1.0.0.tar
     ```
 
     The exported OCI archive has a structure similar to this:
 
     ```text
-    tiny-webserver-1.0.0.tar
+    license-service-1.0.0.tar
     ├── blobs/
     │   └── sha256/
     │       ├── <digest> (manifest JSON)
@@ -255,13 +213,13 @@ docker login docker.cloudsmith.io
 Tag the local image with the Cloudsmith registry path:
 
 ```bash
-docker tag tiny-webserver:1.0.0 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
+docker tag license-service:1.0.0 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
 ```
 
 Then upload the tagged image:
 
 ```bash
-docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
+docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
 ```
 
 ## Consumer Workflow
@@ -271,11 +229,17 @@ docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
 Once published, the image can be downloaded from Cloudsmith:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
+docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
 ```
 
-To run the packaged web server, you can leverage the `run` command:
+To run the packaged service, you can leverage the `run` command:
 
 ```bash
-docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/tiny-webserver:1.0.0"
+docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
+```
+
+Confirm that the service responds:
+
+```bash
+curl http://127.0.0.1:8080/
 ```

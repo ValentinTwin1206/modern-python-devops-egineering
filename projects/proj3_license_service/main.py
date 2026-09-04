@@ -138,8 +138,8 @@ def main():
 
     uvicorn.run(
         app,
-        host="127.0.0.1",
-        port=8800,
+        host="0.0.0.0",
+        port=8080,
     )
 
 
