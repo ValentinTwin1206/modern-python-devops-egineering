@@ -16,6 +16,10 @@ Application, test, lint, container startup, and shell-exit commands are document
 
 Dev Containers emerged in VS Code workflows in 2019 to make full development machines reproducible, not just Python package sets. A `venv` isolates a project-local Python interpreter and its Python packages, and Conda can extend that boundary to non-Python runtime packages as well. By contrast, a Dev Container declares the operating system image, system packages, language runtimes, editor extensions, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one project environment to the entire development machine.
 
+Inside the container, VS Code installs a `~/.vscode-server/` component that enables VS Code to work remotely with the container. It provides the remote VS Code environment and allows extensions to be installed and run directly inside the container, giving them access to the container's files, runtimes, and tools.
+
+![DevContainer Architecture](../assets/images/devcontainer.drawio.svg)
+
 ### When to use Dev Containers?
 
 As described in the [Dev Containers environment model](#dev-containers-environment-model), Dev Containers are a strong fit for projects that need more than Python package isolation. Examples include projects with native extensions that need a C toolchain and matching system libraries, compilation steps such as Nuitka or Cython, database clients, browser tooling, or multiple language runtimes.
