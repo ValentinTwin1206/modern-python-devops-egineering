@@ -40,7 +40,27 @@ pip install uv
 
 This might be more convenient for many developers, however, when installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
 
-## Managing a Python Project
+## Managing legacy Python Projects with the pip interface
+
+Not every code base is a modern, `pyproject.toml`-based project. Legacy projects often still rely on a `requirements.txt` together with `pip` and `venv`. For these cases `uv` exposes a **pip-compatible interface** that mirrors the familiar commands while keeping uv's speed.
+
+Take [*Bob's server*](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md), a small internal web service whose dependencies are pinned in a `requirements.txt`. Setting it up with uv only takes two commands:
+
+```shell
+uv venv                            # create a virtual environment (.venv)
+uv pip install -r requirements.txt # install the pinned dependencies
+```
+
+The service can then be started through uv:
+
+```shell
+uv run main.py
+```
+
+!!! warning "The pip interface does not manage dependencies"
+    `uv pip install` installs packages **into the environment only** — it does not touch `pyproject.toml` or `uv.lock`. uv therefore keeps no record of what was installed and cannot resolve, lock, or verify these dependencies. Installing another package later (for example `uv pip install requests==2.0.0`) can silently downgrade or break an already-installed dependency, and uv has no way to detect the drift. The pip interface is meant for *interacting* with legacy projects, not for *managing* them.
+
+## Managing a modern Python Project
 
 The following commands cover usual tasks during the lifecycle of a Python project.
 
@@ -204,6 +224,30 @@ Before running the command, `uv` ensures the project is ready: it creates the `.
 !!! note "Command invocation"
     The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
 
+### Execute third party tools
+
+During development you frequently reach for command-line tools such as `ruff`, `black`, or `httpie`. Installing them into the project environment would mix tool dependencies with the project's own dependencies and lead to exactly the conflicts described above. To keep them isolated, `uv` provides a dedicated **tool interface**.
+
+To test Bob's server endpoints with `httpie`, install it once as a globally available tool:
+
+```shell
+uv tool install httpie
+```
+
+uv installs the tool into its own isolated environment under `~/.local/share/uv/tools` and exposes the executable on the `PATH`, completely separate from any project `.venv`.
+
+If a tool is only needed once, `uvx` (an alias for `uv tool run`) runs it ephemerally without a permanent installation:
+
+```shell
+uvx --from httpie http GET http://127.0.0.1:8000/health
+```
+
+!!! note "`uv tool` vs. `uvx`"
+    Use `uv tool install` for tools you rely on regularly and `uvx` for one-off invocations that should leave no trace on the system.
+
+
+## Build and Publishing Packages
+
 ### Build distributions
 
 The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
@@ -226,8 +270,6 @@ The `uv publish` command uploads the distribution files from `dist/` to PyPI usi
 uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
 ```
 
-## Build and Publishing Packages
-
 ## Handling multiple projects with uv
 
 ### Introduction into uv workspaces
@@ -236,31 +278,33 @@ When multiple related projects must be developed and tested together, a consiste
 
 ### Structure and Members
 
-A workspace consists of a root project that defines the workspace itself and one or more workspace members. In the following example, the plugin is the workspace root and the `depsight-dependency-manager` framework lives as a workspace member beneath it:
+A workspace consists of a *root project* that defines the workspace itself and one or more *workspace members*. There is no single correct layout: members may live side by side in a dedicated `packages/` directory underneath a standalone root, or a library can simply be nested inside the application that consumes it. What actually turns a set of folders into a workspace is not the directory layout but the referencing inside the `pyproject.toml` files.
+
+Take the [license service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) and the [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware. The license service is the application that depends on `PyGuard`, so it becomes the workspace root and `PyGuard` is nested underneath it as a member:
 
 ```text
-depsight-third-party-plugin/
-├── pyproject.toml
-├── uv.lock
-├── src/
-│   └── depsight_third_party_plugin
-│
-└── depsight-dependency-manager/
-    ├── pyproject.toml
-    └── src/
-        └── depsight_dependency_manager
+license-service/
+├── pyproject.toml          ← workspace root
+├── uv.lock                 ← shared lock file
+├── main.py
+└── packages/
+    └── pyguard/
+        └── pyproject.toml  ← member, keeps its own metadata
 ```
 
-The workspace root (`depsight-third-party-plugin`) owns the shared `uv.lock` and a `pyproject.toml` that both declares the framework as a workspace member and pins it as a local source, so `uv` resolves it from the workspace instead of PyPI.
+The root `pyproject.toml` does two things: it declares which folders are members via `[tool.uv.workspace]`, and it pins `pyguard` as a workspace source so that `uv` resolves it from the workspace instead of PyPI:
 
 ```toml
 [tool.uv.workspace]
-members = [
-    "depsight-dependency-manager",
-]
+members = ["packages/*"]
 
 [tool.uv.sources]
-depsight-dependency-manager = { workspace = true }
+pyguard = { workspace = true }
 ```
 
-To invoke dedicated workspace members such as the `depsight-dependency-manager` framework you can simply use the `uv run --package depsight-dependency-manager` command. 
+The member (`packages/pyguard/pyproject.toml`) needs no workspace-specific configuration at all — it stays a normal package with its own dependencies and metadata.
+
+!!! note "The layout is flexible, the referencing is not"
+    You are free to organise members however you like — nested under the root as shown above, or side by side in a dedicated `packages/` directory with a standalone root. Regardless of the chosen layout, a workspace only comes to life through the `[tool.uv.workspace]` members and the `{ workspace = true }` sources declared in the `pyproject.toml` files.
+
+To invoke a dedicated workspace member such as the `pyguard` package you can simply use the `uv run --package pyguard` command. 

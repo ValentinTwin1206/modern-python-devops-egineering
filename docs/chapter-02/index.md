@@ -11,7 +11,7 @@ Use the navigation on the left to move through the chapter's sections:
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
 | [Section 01](./section-01.md) | Python wheels           | [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) | |
-| [Section 02](./section-02/index.md) | OS packages             | [Simply Journal Admin](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md) | |
-| [Section 03](./section-03.md) | Python containers       | [Tiny Webserver](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_tiny_webserver/README.md) | |
+| [Section 02](./section-02/index.md) | OS packages       | [Simply Journal Admin](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md) | |
+| [Section 03](./section-03.md) | Python containers       | [Tiny Webserver](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) | |
 | [Section 04](./section-04.md) | Conda packages          | [HeisenBlue](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md)  | |
-| [Bonus 01](./bonus-01.md) | Python binaries     | [Pixelpack](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md) | |
+| [Bonus 01](./bonus-01.md) | Python binaries             | [Pixelpack](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md) | |

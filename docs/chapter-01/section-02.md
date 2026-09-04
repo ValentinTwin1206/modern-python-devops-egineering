@@ -256,6 +256,74 @@ The new environment starts with the `pip` version supplied by the Python install
 	uv pip install .
 	```
 
+### Install the project as an editable dependency
+
+As an alternative, the project can also be installed as a *editable* dependency quite easy:
+
+=== "pip"
+
+	Install the project and its declared dependencies with `pip`:
+
+	```bash
+	pip install -e .
+	```
+
+=== "uv"
+
+	Install the project and its declared dependencies with `uv` into the active virtual environment:
+
+	```bash
+	uv pip install -e .
+	```
+
+This creates a symlink within the ``lib`` folder of the virtual environment pointing to the implementation folder of the project.
+
+=== "Linux"
+
+    ```text
+    .venv/
+    ├── bin/
+    ├── include/
+    │   └── python3.x/
+    ├── lib/
+    │   └── python3.x/
+    │       └── site-packages/
+    │           ├── __editable__.pyguard-0.1.0.pth
+    │           ├── pip/
+    │           └── pip-*.dist-info/
+    ├── lib64/
+    └── pyvenv.cfg
+    ```
+
+=== "Windows"
+
+    ```text
+    .venv\
+    ├── Include\
+    ├── Lib\
+    │   └── site-packages\
+    │       ├── pip\
+    │       └── pip-*.dist-info\
+    ├── Scripts\
+    └── pyvenv.cfg
+    ```
+
+=== "macOS"
+
+    ```text
+    .venv/
+    ├── bin/
+    ├── include/
+    │   └── python3.x/
+    ├── lib/
+    │   └── python3.x/
+    │       └── site-packages/
+    │           ├── __editable__.pyguard-0.1.0.pth
+    │           ├── pip/
+    │           └── pip-*.dist-info/
+    └── pyvenv.cfg
+    ```
+
 ## Inspection
 
 Show the active prefixes:
@@ -270,3 +338,8 @@ Show where installed packages live:
 python3 -c "import pyguard; print(pyguard.__file__)"
 ```
 
+Show the folders where the interpreter imports the packages from
+
+```bash
+python3 -c "import sys; print(sys.path)"
+```
