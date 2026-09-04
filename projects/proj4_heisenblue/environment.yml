@@ -1,0 +1,13 @@
+name: heisenblue-demo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - rdkit
+  - pillow
+  - pybind11
+  - cmake
+  - ninja
+  - pip
+  - pytest
+  - karva

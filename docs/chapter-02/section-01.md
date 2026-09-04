@@ -56,16 +56,27 @@ A wheel is built from the project files, source code, and packaging metadata alr
 The `pyproject.toml` file defines the project metadata, Python requirements, dependencies, command-line entry points, and build backend used to create the wheel.
 
 ```toml
-[project]
-name = "<package-name>"
-version = "<package-version>"
-description = "<package-description>"
-requires-python = ">=<minimum-python-version>"
-dependencies = ["<runtime-dependency>"]
-
 [build-system]
-requires = ["<build-backend-package>"]
-build-backend = "<build-backend-module>"
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "pyguard"
+version = "0.1.0"
+description = "Lightweight security middleware for Python web applications."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
+dependencies = []
+
+# [project.scripts]
+# pyguard = "pyguard.cli:main"
+# [project.urls]
+# Homepage = "https://example.com/project"
 ```
 
 - `name`: Defines the distribution name used in package indexes and wheel filenames.
@@ -182,7 +193,7 @@ curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/pygu
 
 ### Install The Package
 
-After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment. `uv` can read package indexes directly from `pyproject.toml`, so the project can describe both the public PyPI index and the proprietary Cloudsmith index in one place. `pip` does not read package indexes from `pyproject.toml`, so its install command still needs an explicit `--extra-index-url` argument.
+After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment.
 
 Create a new working directory for a small consumer project.
 
@@ -237,7 +248,7 @@ Install the dependency and run the script.
 
 === "uv"
 
-    Sync the project environment with `uv`. It reads the package indexes from `pyproject.toml` and resolves `pyguard` from the configured Cloudsmith repository.
+    Sync the project environment with `uv`, which reads the package indexes directly from `pyproject.toml`, resolves `pyguard` from the configured Cloudsmith repository, and lets the project describe both the public PyPI index and the proprietary Cloudsmith index in one place.
 
     ```bash
     uv sync
@@ -245,7 +256,7 @@ Install the dependency and run the script.
 
 === "pip"
 
-    Create a virtual environment and install `pyguard` with an explicit extra index URL, because `pip` does not read repository indexes from `pyproject.toml`.
+    Create a virtual environment and install `pyguard` with an explicit `--extra-index-url` argument, because `pip` does not read repository indexes from `pyproject.toml`.
 
     ```bash
     python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ pyguard

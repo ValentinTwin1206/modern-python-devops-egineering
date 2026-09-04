@@ -55,7 +55,7 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
                               ${CYAN}"projects-.*"${RESET}.
 
 ${BLUE}${BOLD}EXAMPLES${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_image_processor/Dockerfile${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_heisenblue/Dockerfile.devEnv${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj1_pyguard/Dockerfile.devEnv${RESET} ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}_YOUR_CLOUDSMITH_REPO_${RESET} ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}_YOUR_API_KEY_${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}

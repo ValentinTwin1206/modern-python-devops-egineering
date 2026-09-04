@@ -1,0 +1,36 @@
+{
+    "name": "System Interpreter Teaching",
+    "build": {
+        "context": "..",
+        "dockerfile": "Dockerfile"
+    },
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "remoteUser": "bob",
+    "containerUser": "bob",
+    "updateRemoteUserUID": false,
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "ms-toolsai.jupyter-renderers"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "jupyter.kernels.filter": [],
+                "notebook.defaultKernel": "system-python3",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "forwardPorts": [
+        8888
+    ],
+    "portsAttributes": {
+        "8888": {
+            "label": "JupyterLab",
+            "onAutoForward": "notify"
+        }
+    }
+}
