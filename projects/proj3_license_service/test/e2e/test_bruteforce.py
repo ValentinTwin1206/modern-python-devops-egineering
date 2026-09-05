@@ -3,7 +3,7 @@
 import time
 import requests
 
-URL = "http://127.0.0.1:8800/licenses"
+URL = "http://127.0.0.1:8080/licenses"
 INVALID_KEY = "definitely-wrong-key"
 ATTEMPTS = 7
 

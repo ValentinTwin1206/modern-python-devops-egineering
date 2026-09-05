@@ -21,6 +21,9 @@ url = "https://pypi.org/simple"
 name = "modern-python-engineering"
 url = "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/"
 
+[tool.uv.sources]
+pyguard = { path = "../proj1_pyguard", editable = true }
+
 [dependency-groups]
 dev = [
     "httpx2>=2.0.0",

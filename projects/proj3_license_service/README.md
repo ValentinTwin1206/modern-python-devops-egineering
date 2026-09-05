@@ -44,6 +44,14 @@ Run the unit and end-to-end tests with `pytest`:
 uv run pytest
 ```
 
+## Container Build
+
+In case ``PyGuard`` should be installed from its local dependency
+
+```bash
+docker build --build-context pyguard=/home/fixcfhu/repos/ValentinTwin1206/modern-python-devops-egineering/projects/proj1_pyguard -t license-service-backend:latest /home/fixcfhu/repos/ValentinTwin1206/modern-python-devops-egineering/projects/proj3_license_service
+```
+
 ## API
 
 | Endpoint | Method | Auth | Description |

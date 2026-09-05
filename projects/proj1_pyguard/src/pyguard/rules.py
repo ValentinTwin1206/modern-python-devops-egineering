@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import time
 from collections import defaultdict, deque
-
+from . import logger
 
 class SecurityRule(ABC):
     @abstractmethod
@@ -69,6 +69,12 @@ class AuthBruteForceRule(SecurityRule):
 
         # If the number of attempts exceeds the maximum allowed, block the source
         if len(attempts) >= self.max_attempts:
+            logger.warning(
+                "!!! Blocking source %s due to too many attempts: %d attempts in the last %d seconds",
+                source,
+                len(attempts),
+                self.window_seconds,
+            )
             self.blocked_until[source] = now + self.block_seconds
             return True
 
@@ -87,10 +93,25 @@ class AuthBruteForceRule(SecurityRule):
         blocked_until = self.blocked_until.get(source)
 
         if blocked_until is None:
+            logger.info(
+                "Source %s is not currently blocked",
+                source,
+            )
             return False
 
         if time.monotonic() >= blocked_until:
+            logger.info(
+                "Unblocking source %s after block period expired",
+                source,
+            )
+
             del self.blocked_until[source]
             return False
 
+        logger.warning(
+            "Source %s is currently blocked until %f",
+            source,
+            blocked_until,
+        )
+        
         return True
