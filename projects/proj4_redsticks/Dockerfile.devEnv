@@ -21,9 +21,6 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir cloudsmith-cli uv
 
-RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
-    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-
 RUN conda install -n base -c conda-forge -y conda-build conda-package-handling \
     && conda clean --all --yes
 
@@ -32,20 +29,21 @@ COPY environment.yml ./
 RUN conda env create -f environment.yml \
     && conda clean --all --yes
 
-ENV PATH=$CONDA_DIR/envs/heisenblue-demo/bin:$PATH
-ENV CONDA_DEFAULT_ENV=heisenblue-demo
+ENV PATH=$CONDA_DIR/envs/redsticks-demo/bin:$PATH
+ENV CONDA_DEFAULT_ENV=redsticks-demo
 
 COPY src ./src
 COPY cpp ./cpp
 COPY tests ./tests
 COPY recipe ./recipe
-COPY pyproject.toml ./pyproject.toml
+COPY samples ./samples
+COPY pytest.ini ./pytest.ini
 COPY README.md ./README.md
 
 ENV PYTHONPATH=/app/src
 
 RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/snake/.bashrc \
-    && echo 'conda activate heisenblue-demo' >> /home/snake/.bashrc \
+    && echo 'conda activate redsticks-demo' >> /home/snake/.bashrc \
     && echo 'cd /app' >> /home/snake/.bashrc \
     && chown -R snake:snake /app /home/snake /opt/conda
 

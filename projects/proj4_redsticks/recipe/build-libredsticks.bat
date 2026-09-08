@@ -1,7 +1,7 @@
 setlocal EnableDelayedExpansion
 
-mkdir build-libheisenblue
-cd build-libheisenblue
+mkdir build-libredsticks
+cd build-libredsticks
 
 cmake "%SRC_DIR%\cpp" ^
     -G Ninja ^
@@ -9,7 +9,7 @@ cmake "%SRC_DIR%\cpp" ^
     -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%"
 if errorlevel 1 exit 1
 
-cmake --build . --target heisenblue --config Release
+cmake --build . --target redsticks --config Release
 if errorlevel 1 exit 1
 
 cmake --install .

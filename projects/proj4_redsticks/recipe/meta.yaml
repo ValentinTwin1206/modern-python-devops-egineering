@@ -1,0 +1,101 @@
+{% set version = "1.0.0" %}
+
+package:
+  name: redsticks-split
+  version: {{ version }}
+
+source:
+  path: ..
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - "{{ compiler('cxx') }}"
+    - cmake
+    - ninja
+
+outputs:
+  # -------------------------------------------------------------------------
+  # libredsticks: standalone C++ shared library and headers.
+  # -------------------------------------------------------------------------
+  - name: libredsticks
+    version: {{ version }}
+    script: build-libredsticks.sh   # [unix]
+    script: build-libredsticks.bat  # [win]
+    build:
+      run_exports:
+        - {{ pin_subpackage('libredsticks', max_pin='x.x') }}
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
+      host: []
+      run: []
+    test:
+      commands:
+        - test -f $PREFIX/lib/libredsticks${SHLIB_EXT}                      # [unix]
+        - test -f $PREFIX/include/redsticks.hpp                             # [unix]
+        - if not exist %LIBRARY_BIN%\\redsticks.dll exit 1                  # [win]
+        - if not exist %LIBRARY_INC%\\redsticks.hpp exit 1                  # [win]
+
+  # -------------------------------------------------------------------------
+  # redsticks-tools: Python package (CLI + pybind11 extension _native).
+  # Built inline with CMake (no pip / pyproject.toml).
+  # Runtime-depends on libredsticks via pin_subpackage.
+  # -------------------------------------------------------------------------
+  - name: redsticks-tools
+    version: {{ version }}
+    script: >-                                                          # [unix]
+      cmake -S "${SRC_DIR}/cpp" -B build-tools -G Ninja
+      -DCMAKE_BUILD_TYPE=Release -DREDSTICKS_BUILD_BINDINGS=ON
+      -DCMAKE_PREFIX_PATH="${PREFIX}"
+      && cmake --build build-tools
+      && mkdir -p "${SP_DIR}/redsticks"
+      && cp "${SRC_DIR}"/src/redsticks/*.py "${SP_DIR}/redsticks/"
+      && cp build-tools/_native*.so "${SP_DIR}/redsticks/"
+    script: >-                                                          # [win]
+      cmake -S "%SRC_DIR%\cpp" -B build-tools -G Ninja
+      -DCMAKE_BUILD_TYPE=Release -DREDSTICKS_BUILD_BINDINGS=ON
+      -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"
+      && cmake --build build-tools
+      && if not exist "%SP_DIR%\redsticks" mkdir "%SP_DIR%\redsticks"
+      && copy "%SRC_DIR%\src\redsticks\*.py" "%SP_DIR%\redsticks\"
+      && copy "build-tools\_native*.pyd" "%SP_DIR%\redsticks\"
+    build:
+      entry_points:
+        - redsticks = redsticks.cli:main
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
+      host:
+        - python >=3.12
+        - pybind11 >=2.12
+        - {{ pin_subpackage('libredsticks', exact=True) }}
+      run:
+        - python >=3.12
+        - click
+        - rdkit
+        - pillow
+        - rich
+        - {{ pin_subpackage('libredsticks', exact=True) }}
+    test:
+      imports:
+        - redsticks
+        - redsticks._native
+      commands:
+        - redsticks --help
+
+about:
+  home: https://github.com/ValentinTwin1206/modern-python-engineering
+  summary: RDKit and pybind11 sample library packaged as platform-specific Conda artifacts.
+  description: |
+    RedSticks ships as two Conda packages:
+      * libredsticks    - the standalone C++ shared library and headers.
+      * redsticks-tools - the Python API, CLI, and pybind11 bindings that
+                           link against libredsticks.
+  license: Apache-2.0

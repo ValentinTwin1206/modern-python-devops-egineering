@@ -1,13 +1,16 @@
-name: heisenblue-demo
+name: redsticks-demo
 channels:
   - conda-forge
 dependencies:
   - python=3.12
+  - click
   - rdkit
   - pillow
+  - rich
   - pybind11
   - cmake
   - ninja
   - pip
   - pytest
-  - karva
+  - pip:
+      - karva

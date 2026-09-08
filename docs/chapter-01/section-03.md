@@ -1,24 +1,24 @@
-# Python Conda environments
+# Python Conda Environments
 
-This page covers Conda, both as a package manager and as an environment manager. Conda can replace the usual `pip` plus `venv` workflow when you need one tool to manage Python, Python packages, and non-Python packages together.
+This page covers Conda as both a package manager and an environment manager. Conda can replace the usual `pip` plus `venv` workflow when one tool needs to manage Python, Python packages, native libraries, and other non-Python dependencies.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is a small chemistry analysis library called `HeisenBlue`. It is built on [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, and a compiled extension in one Conda environment.
+The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, and compiled C++ code in one environment.
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_redsticks/README.md).
 
 ## Conda Environment Model
 
-Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. Unlike [`venv` Environments](./section-02.md), it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels, so one Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
+Conda can manage the Python interpreter version itself and install non-Python dependencies from Conda channels. One Conda environment can therefore bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
 
-Conda is therefore more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and shared conventions for publishing binary scientific software. That ecosystem is a major reason projects such as [RDKit](https://github.com/rdkit/rdkit) recommend Conda for Python users, and it matters especially for scientists, analysts, and notebook users who need reliable tools without first becoming operating-system packaging experts.
+Conda is more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and conventions for publishing binary scientific software. This is especially useful for projects such as RedSticks that combine RDKit, image processing, and compiled C++ code.
 
-The simplified diagram below compares how a plain `venv` workflow and a Conda workflow collect the HeisenBlue dependencies from different package sources.
+The simplified diagram compares a plain `venv` workflow with a Conda workflow:
 
 ```mermaid
 graph TB
@@ -30,41 +30,40 @@ graph TB
     PYPI --> VENV["venv + pip"]
     DEBIAN --> VENV_PY["Python 3.12"]
     VENV_PY --> VENV
-    VENV --> VENV_DEPS["Python packages/<br/>Pillow, pybind11, scikit-build-core, ..."]
-    DEBIAN --> HOST_DEPS["Host packages<br/>RDKit, CMake, C++ toolchain, ..."]
-    VENV_DEPS --> VENV_APP["HeisenBlue"]
+    VENV --> VENV_DEPS["Python packages / Pillow, pybind11, pytest"]
+    DEBIAN --> HOST_DEPS["Host packages / RDKit, CMake, C++ toolchain"]
+    VENV_DEPS --> VENV_APP["RedSticks"]
     HOST_DEPS --> VENV_APP
 
     CONDA_INSTALLER --> CONDA["Conda"]
     CONDA_FORGE --> CONDA
-    CONDA --> CONDA_DEPS["One environment prefix<br/>Python 3.12, RDKit, scikit-build-core, ..."]
-    CONDA_DEPS --> CONDA_APP["HeisenBlue"]
+    CONDA --> CONDA_DEPS["One environment prefix / Python, RDKit, Pillow, CMake"]
+    CONDA_DEPS --> CONDA_APP["RedSticks"]
 ```
 
 ### When to Use Conda?
 
-Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. Popular workflow tools reflect this pattern, including [MLflow](https://github.com/mlflow/mlflow) Projects for data preprocessing, feature engineering, and training steps from a declared Conda environment, and [Snakemake](https://github.com/snakemake/snakemake) or [Nextflow](https://github.com/nextflow-io/nextflow) for provisioning dependencies in reproducible pipeline tasks.
+Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and scientific workflows that need reproducible environments with compiled packages. It is particularly useful when Python bindings and native binaries must be installed and upgraded together.
 
 ### Tradeoffs
 
 #### Pros
 
-- ✅ Manages the Python version as part of the environment.
-- ✅ Installs Python and non-Python packages together from Conda channels.
-- ✅ Keeps Python bindings and native binaries in one environment prefix.
-- ✅ Works well for scientific or compiled dependencies, including this OpenCV pipeline.
-- ✅ Fits teams already using Anaconda or other Conda-based tooling.
+- Manages the Python version as part of the environment.
+- Installs Python and non-Python packages together from Conda channels.
+- Keeps Python bindings and native binaries in one environment prefix.
+- Works well for scientific or compiled dependencies.
 
 #### Cons
 
-- ⚠️ Significantly heavier than `venv` in tooling footprint and environment size.
-- ⚠️ Uses a separate ecosystem alongside PyPI, so you often need both `conda` and `pip`.
-- ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
-- ⚠️ Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
+- Heavier than `venv` in tooling footprint and environment size.
+- Uses a separate ecosystem alongside PyPI, so some projects need both `conda` and `pip`.
+- Dependency solving can be slower than simpler PyPI-only workflows.
+- Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
 
 ### Install Conda
 
-On Linux, Windows, and macOS, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3` on Unix-like systems, while this section's Docker image is based on `continuumio/miniconda3` where Miniconda already lives at `/opt/conda`.
+On Linux, Windows, and macOS, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3` on Unix-like systems, while the project Docker image uses `/opt/conda`.
 
 === "Linux (Debian-based)"
 
@@ -74,27 +73,17 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
     curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     ```
 
-    Run the installer into a user-local prefix:
+    Install it into a user-local prefix:
 
     ```bash
     bash miniconda.sh -b -p "$HOME/miniconda3"
     ```
 
-    Put Conda on `PATH` for the current shell:
+    Add Conda to the current shell's `PATH`:
 
     ```bash
     export PATH="$HOME/miniconda3/bin:$PATH"
     ```
-
-    !!! warning
-
-        To make `conda activate` work in future Bash shells, you can run:
-
-        ```bash
-        conda init bash
-        ```
-
-        This edits `~/.bashrc`. In a clean Ubuntu test, a new Bash shell came back with the `base` environment already active. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
 
 === "Windows"
 
@@ -110,74 +99,46 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
     conda --version
     ```
 
-    !!! warning
-
-        To make `conda activate` work in future PowerShell sessions, you can run:
-
-        ```powershell
-        conda init powershell
-        ```
-
-        This changes future PowerShell startup behavior and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
-
 === "macOS"
 
-    Download the Miniconda installer for Apple Silicon:
+    Download and install the Apple Silicon Miniconda installer:
 
     ```bash
     curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
-    ```
-
-    Run the installer into a user-local prefix:
-
-    ```bash
     bash miniconda.sh -b -p "$HOME/miniconda3"
-    ```
-
-    Put Conda on `PATH` for the current shell:
-
-    ```bash
     export PATH="$HOME/miniconda3/bin:$PATH"
     ```
 
-    !!! warning
+!!! warning
+    Run `conda init bash`, `conda init powershell`, or `conda init zsh` only when you want Conda activation integrated into future shells. Initialization can leave the `base` environment active by default.
 
-        To make `conda activate` work in future Zsh shells, you can run:
+## Environment Layout
 
-        ```bash
-        conda init zsh
-        ```
+### Environment Name and Location
 
-        This edits your shell startup file and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
-
-### Environment Layout
-
-#### Environment Name and Location
-
-Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `heisenblue-demo` instead of a generic name such as `venv` when creating a Conda environment:
+Conda stores named environments outside the project root. Use the descriptive name `redsticks-demo` rather than a generic name such as `venv`:
 
 ```bash
-conda create -y -n heisenblue-demo -c conda-forge python=3.12 rdkit pillow pip
+conda create -y -n redsticks-demo -c conda-forge python=3.12 rdkit pillow rich click pybind11 cmake ninja pip pytest
 ```
 
-By default, the environment is stored under `~/miniconda3` on Linux or macOS and `%UserProfile%\miniconda3` on Windows. 
+By default, the environment is stored under `~/miniconda3/envs/redsticks-demo` on Linux or macOS and `%UserProfile%\miniconda3\envs\redsticks-demo` on Windows.
 
 === "Linux (Debian-based)"
 
     ```text
     <conda-prefix>/
-    ├── bin/
-    │   └── conda
+    ├── bin/conda
     ├── envs/
-    │   └── heisenblue-demo/
+    │   └── redsticks-demo/
     │       ├── bin/
-    │       │   ├── heisenblue
     │       │   ├── python
-    │       │   └── python3.12
+    │       │   ├── python3.12
+    │       │   └── redsticks
     │       ├── conda-meta/
     │       ├── include/python3.12/
     │       ├── lib/python3.12/site-packages/
-    │       └── x86_64-conda-linux-gnu/
+    │       └── lib/libredsticks.so
     └── pkgs/
     ```
 
@@ -185,14 +146,11 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 
     ```text
     <conda-prefix>\
-    ├── condabin\
-    │   └── conda.bat
+    ├── condabin\conda.bat
     ├── envs\
-    │   └── heisenblue-demo\
+    │   └── redsticks-demo\
     │       ├── python.exe
-    │       ├── Scripts\
-    │       │   ├── heisenblue.exe
-    │       │   └── activate.bat
+    │       ├── Scripts\redsticks.exe
     │       ├── Lib\site-packages\
     │       ├── Library\bin\
     │       └── conda-meta\
@@ -203,246 +161,152 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 
     ```text
     <conda-prefix>/
-    ├── bin/
-    │   └── conda
+    ├── bin/conda
     ├── envs/
-    │   └── heisenblue-demo/
-    │       ├── bin/
-    │       │   ├── heisenblue
-    │       │   ├── python
-    │       │   └── python3.12
+    │   └── redsticks-demo/
+    │       ├── bin/python
+    │       ├── bin/redsticks
     │       ├── conda-meta/
-    │       ├── include/python3.12/
     │       ├── lib/python3.12/site-packages/
-    │       └── lib/
+    │       └── lib/libredsticks.dylib
     └── pkgs/
     ```
 
-#### Key Directories and Files
+### Key Directories and Files
 
-- **Top-level Conda executable:** the main Conda command lives under the installation prefix, such as `~/miniconda3/bin/conda` on Linux or macOS, or `%UserProfile%\miniconda3\condabin\conda.bat` on Windows.
-
+- **Conda executable:** lives under the installation prefix, such as `~/miniconda3/bin/conda` or `%UserProfile%\miniconda3\condabin\conda.bat`.
 - **`<conda-prefix>/envs/<name>/`:** is the named environment directory.
-
-- **Environment-local executables:** Linux and macOS store them under `bin/`, while Windows uses `python.exe` at the environment root together with `Scripts\` for `pip.exe`, activation scripts, and console entry points.
-
-- **Python packages:** Linux and macOS store them under `lib/python3.12/site-packages/`, while Windows uses `Lib\site-packages\`. These directories contain Python packages installed from Conda channels or from `pip`.
-
-- **Native runtime files:** Conda also installs shared libraries and other runtime files into the environment, such as `lib/` on Linux or macOS and `Library\bin\` on Windows.
-
-- **`conda-meta/`:** stores Conda's package records and history for the environment.
-
+- **Environment-local executables:** Linux and macOS use `bin/`; Windows uses the environment root and `Scripts\`.
+- **Python packages:** Linux and macOS use `lib/python3.12/site-packages/`; Windows uses `Lib\site-packages\`.
+- **Native runtime files:** Conda installs shared libraries into `lib/` on Linux and macOS or `Library\bin\` on Windows.
+- **`conda-meta/`:** stores Conda package records and environment history.
 - **`pkgs/`:** stores the shared package cache for the Conda installation prefix.
 
-#### Environment Definition (`environment.yml`)
+### Environment Definition (`environment.yml`)
 
-The `environment.yml` file describes the [respective Conda environment](#environment-layout) from outside and is stored **within the project tree** next to the source code and other project files.
+The project stores its environment definition next to the source code:
 
 ```yaml
-name: heisenblue-demo
+name: redsticks-demo
 channels:
   - conda-forge
-  # - defaults  # Served from repo.anaconda.com and added by default, so it usually does not need to be listed explicitly.
 dependencies:
   - python=3.12
-    - rdkit
-    - pillow
-    - pybind11
-    - cmake
-    - ninja
+  - click
+  - rdkit
+  - pillow
+  - rich
+  - pybind11
+  - cmake
+  - ninja
   - pip
-    - pytest
-    - karva
+  - pytest
+  - pip:
+      - karva
 ```
 
-- `name`: sets the Conda environment name to `heisenblue-demo`.
-- `channels`: tells Conda from where to resolve Conda-managed packages.
-
-    | Source | Kind | Examples |
-    | ------ | ---- | -------- |
-        | `conda-forge` | Community Conda channel | `python`, `rdkit`, `pillow`, `pybind11` |
-    | `defaults` | Anaconda-hosted Conda channel set, served from `repo.anaconda.com` | `python`, `numpy`, `pandas` |
-
-- `dependencies`: lists the Conda-managed packages to install, including Python, RDKit, Pillow, the C++ build tools, and the project test tooling.
+- `name`: Sets the Conda environment name to `redsticks-demo`.
+- `channels`: Tells Conda where to resolve Conda-managed packages.
+- `dependencies`: Lists Conda-managed packages and the pip-only `karva` test tool.
 
 ## Workflow
 
+The Conda path keeps Python bindings and native binaries inside one environment. The non-Conda path splits Python packages and system libraries across different locations.
+
 ### Create and Activate
 
-The examples below show three ways to get to a working project setup. The Conda-based paths keep the Python bindings and native binaries inside the environment, while the non-Conda path splits Python packages and system libraries across different locations.
+The project is set up entirely with the Conda CLI. There is no `pip install -e .` step and no `pyproject.toml`: the environment provides all dependencies and build tools, and the only project-specific build action is compiling the pybind11 extension with CMake.
+
+!!! info "Best practice in the real world"
+    This project is deliberately *conda-only* to keep the focus on Conda concepts.
+    In production, the standard pattern is a `pyproject.toml` as the single build
+    definition, with the Conda recipe wrapping it via
+    `pip install . --no-deps --no-build-isolation` — that is how conda-forge
+    packages are built. Use `environment.yml` for the development environment
+    either way; the two files answer different questions: "what is in my
+    environment" (`environment.yml`) versus "how is my package built"
+    (`pyproject.toml`).
 
 === "Create from `environment.yml`"
 
-    Create the environment from the section folder:
+    Create the environment from the project root:
 
     ```bash
     conda env create -f environment.yml
+    conda activate redsticks-demo
     ```
 
-    > This command creates the environment and installs the listed packages.
-
-    Activate the environment:
-
-    ```bash
-    conda activate heisenblue-demo
-    ```
-
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
-    │   ├── bin/python
-    │   ├── lib/python3.12/site-packages/
-    │   │   ├── heisenblue/
-    │   │   ├── heisenblue/_native*.so
-    │   │   ├── PIL/
-    │   │   └── rdkit/
-    │   └── lib/libRDKit*.so
-    └── heisenblue/                         # project
-        ├── environment.yml
-        ├── cpp/
-        └── src/heisenblue/
-    ```
-    
 === "Create from scratch"
 
-    Create the same Conda-managed environment defined in `environment.yml`:
+    Create the same Conda-managed environment directly:
 
     ```bash
-    conda create -y -n heisenblue-demo -c conda-forge \
-        python=3.12 \
-        rdkit \
-        pillow \
-        pybind11 \
-        cmake \
-        ninja \
-        pip \
-        pytest \
-        karva
+    conda create -y -n redsticks-demo -c conda-forge \
+        python=3.12 rdkit pillow rich click pybind11 cmake ninja pip pytest
+    conda activate redsticks-demo
     ```
 
-    Activate the environment:
+With the environment active, build the native extension in-place using the CMake and compiler toolchain that Conda installed:
 
-    ```bash
-    conda activate heisenblue-demo
-    ```
+```bash
+cmake -S cpp -B build-dev -G Ninja -DREDSTICKS_BUILD_BINDINGS=ON
+cmake --build build-dev
+cp build-dev/_native*.so src/redsticks/
+```
 
-    Install the project itself in editable mode:
-
-    ```bash
-    (heisenblue-demo) $ python -m pip install -e .
-    ```
-
-    Snapshot the environment requirements back to YAML:
-
-    ```bash
-    (heisenblue-demo) $ conda env export --from-history > environment.yml
-    ```
-
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
-    │   ├── bin/python
-    │   ├── lib/python3.12/site-packages/
-    │   │   ├── heisenblue/
-    │   │   ├── heisenblue/_native*.so
-    │   │   ├── PIL/
-    │   │   └── rdkit/
-    │   └── lib/libRDKit*.so
-    └── heisenblue/                         # project
-        ├── environment.yml
-        ├── cpp/
-        └── src/heisenblue/
-    ```
-
-=== "Without `conda`"
-
-    On Ubuntu-based systems where Python 3.12 is not yet available, add an external package source first:
-
-    ```bash
-    sudo apt-get install -y software-properties-common
-    sudo add-apt-repository -y ppa:deadsnakes/ppa
-    sudo apt-get update
-    ```
-
-    Install Python 3.12, `venv` support, and the native build tools the project needs:
-
-    ```bash
-    sudo apt-get install -y \
-        python3.12 \
-        python3.12-venv \
-        build-essential \
-        cmake \
-        ninja-build
-    ```
-
-    Create and activate a virtual environment:
-
-    ```bash
-    python3.12 -m venv .venv && source .venv/bin/activate
-    ```
-
-    Install the Python-side tooling into the virtual environment:
-
-    ```bash
-    pip install pillow pybind11 scikit-build-core pytest karva
-    ```
-
-    A separate RDKit installation still has to come from outside the virtual environment, which is one reason Conda is the easier and more reproducible workflow for this project.
-
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    └── heisenblue/                          # project
-        ├── .venv/                           # project environment, managed by venv/pip
-        │   ├── bin/python
-        │   └── lib/python3.12/site-packages/
-        │       └── heisenblue/
-        ├── cpp/
-        └── src/heisenblue/
-
-    /usr/                                 # OS filesystem
-    ├── bin/python3.12
-    ├── bin/cmake
-    └── bin/c++
-    ```
+The Python package then runs directly from the source tree via `PYTHONPATH=src`. Installation as a package happens only through the Conda recipe (`recipe/meta.yaml`), which builds and ships `redsticks-tools` as a Conda artifact.
 
 ### Add Packages
 
-Ensure that the dedicated Conda environment is active (see [Create and activate](#create-and-activate)).
+Ensure that `redsticks-demo` is active:
+
+```bash
+conda activate redsticks-demo
+```
 
 Add a package from a Conda channel:
 
 ```bash
-(heisenblue-demo) $ conda install -c conda-forge <package>
+conda install -c conda-forge numpy
 ```
 
-Add a package from PyPI when it is not available from your chosen Conda channels:
+Prefer Conda channels for every dependency. Packages that exist only on PyPI (such as the `karva` test tool) are declared in the `pip:` subsection of `environment.yml`, so even they are installed by the Conda CLI when the environment is created or synced — never by ad-hoc `pip install` commands.
+
+Export the environment's explicit package records when you need to reproduce the exact platform solve:
 
 ```bash
-(heisenblue-demo) $ python -m pip install <package>
+conda list --explicit > redsticks-linux-64.txt
 ```
 
-## Inspection
+### Run the Project
 
-Show the active environment name:
+In the development environment the package is not installed; run it from the source tree with one of the sample images shipped with the project:
 
 ```bash
-echo $CONDA_DEFAULT_ENV
+PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png
 ```
 
-List all Conda environments:
+Write a PNG shade swatch:
 
 ```bash
-conda env list
+PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png --output suggested-shade.png
 ```
 
-After activation, the environment's Python becomes the first interpreter on `PATH`, and imports resolve from the environment-specific package directory under the [Conda prefix](#environment-layout) instead of from the [project tree](#environment-definition-environmentyml). Show the active interpreter inside the Conda environment:
+Use the Python API directly:
+
+```python
+from redsticks import suggest
+
+result = suggest("samples/blue-eye.png")
+print(result.shade_name, result.hex)
+```
+
+> The `redsticks` console command becomes available once the `redsticks-tools` Conda package is installed in an environment; the entry point is generated by the Conda recipe, not by a pip install.
+
+### Test the Project
+
+Run the test suite with the project's test tool:
 
 ```bash
-(heisenblue-demo) $ python -c "import sys; print(sys.prefix); print(sys.executable)"
+PYTHONPATH=src karva test tests/
 ```
