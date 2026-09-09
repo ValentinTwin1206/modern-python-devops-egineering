@@ -243,7 +243,7 @@ flowchart LR
 - `postStartCommand`: runs each time the container starts, including later restarts.
 - `postAttachCommand`: runs each time the IDE attaches to the running container, including later reconnects, which makes it useful for editor-session setup tasks.
 
-## Workflow
+## Development Workflow
 
 ### Create and start
 

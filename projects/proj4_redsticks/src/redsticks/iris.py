@@ -1,10 +1,10 @@
 """AI-assisted eye-region color extraction using an open-weight model.
 
-Downloads the open-weight face-parsing model ``jonathandinu/face-parsing``
+Downloads the open-weight face-parsing model `jonathandinu/face-parsing``
 (SegFormer) from the Hugging Face Hub on first use, segments the image, and
 returns the dominant color of the eye-region pixels only.
 
-Returns ``None`` when the model is unavailable (e.g. offline and not cached)
+Returns `None` when the model is unavailable (e.g. offline and not cached)
 or when no eye pixels are detected, so the caller can fall back to plain
 color quantization.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 
+# Third-party libraries
 import numpy as np
 import torch
 from PIL.Image import Image
@@ -21,13 +22,11 @@ from transformers import AutoImageProcessor, AutoModelForSemanticSegmentation
 logger = logging.getLogger("redsticks")
 
 _EYE_LABELS = {"l_eye", "r_eye", "left_eye", "right_eye"}
-
 _MODEL_CACHE: dict[str, tuple[AutoImageProcessor, AutoModelForSemanticSegmentation]] = {}
 
 
 def cuda_available() -> bool:
     """Return True when PyTorch sees a CUDA device."""
-
     return torch.cuda.is_available()
 
 

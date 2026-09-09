@@ -49,17 +49,17 @@ Conda is a strong fit for computer vision, numerical computing, geospatial proce
 
 #### Pros
 
-- Manages the Python version as part of the environment.
-- Installs Python and non-Python packages together from Conda channels.
-- Keeps Python bindings and native binaries in one environment prefix.
-- Works well for scientific or compiled dependencies.
+- ✅ Manages the Python version as part of the environment.
+- ✅ Installs Python and non-Python packages together from Conda channels.
+- ✅ Keeps Python bindings and native binaries in one environment prefix.
+- ✅ Works well for scientific or compiled dependencies.
 
 #### Cons
 
-- Heavier than `venv` in tooling footprint and environment size.
-- Uses a separate ecosystem alongside PyPI, so some projects need both `conda` and `pip`.
-- Dependency solving can be slower than simpler PyPI-only workflows.
-- Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
+- ⚠️ Heavier than `venv` in tooling footprint and environment size.
+- ⚠️ Uses a separate ecosystem alongside PyPI, so some projects need both `conda` and `pip`.
+- ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
+- ⚠️ Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
 
 ### Install Conda
 
@@ -112,17 +112,44 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 !!! warning
     Run `conda init bash`, `conda init powershell`, or `conda init zsh` only when you want Conda activation integrated into future shells. Initialization can leave the `base` environment active by default.
 
-## Environment Layout
+### Environment Definition (`environment.yml`)
 
-### Environment Name and Location
+The dedicated `environment.yml` file defines a Conda environment, in the sample below it is named `redsticks-demo`. It records the `channels` and `dependencies` needed by the project, including Python, scientific and machine-learning packages, and native build tools. A Conda environment can be created via `conda env create -f environment.yml`; Conda uses this file to create the environment consistently on a new machine.
 
-Conda stores named environments outside the project root. Use the descriptive name `redsticks-demo` rather than a generic name such as `venv`:
-
-```bash
-conda create -y -n redsticks-demo -c conda-forge python=3.12 rdkit pillow rich click numpy pytorch transformers huggingface_hub pybind11 cmake ninja pip pytest
+```yaml
+name: redsticks-demo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - click
+  - rdkit
+  - pillow
+  - rich
+  - numpy
+  - pytorch
+  - torchvision
+  - transformers
+  - huggingface_hub
+  - pybind11
+  - cmake
+  - ninja
+  - pip
+  - pip:
+      - cloudsmith-cli==1.26.0
+      - pytest
 ```
 
-By default, the environment is stored under `~/miniconda3/envs/redsticks-demo` on Linux or macOS and `%UserProfile%\miniconda3\envs\redsticks-demo` on Windows.
+- `name`: Sets the Conda environment name to `redsticks-demo`.
+- `channels`: Tells Conda where to resolve Conda-managed packages.
+  - `default`: Conda's standard package channel, used when it is enabled in the Conda configuration.
+  - `conda-forge`: The community channel explicitly selected here for the project's scientific, machine-learning, and native packages.
+- `dependencies`: Lists Conda-managed packages, including the PyTorch/torchvision/transformers ML stack. Because `pytorch` is unpinned, Conda selects a CUDA build when an NVIDIA driver is detected and a CPU build otherwise.
+- `pip`: Installs packages available only from PyPI through the environment definition; here it provides `cloudsmith-cli` and `pytest`.
+
+### Environment Layout
+
+After creating the environment described in [Environment Definition](#environment-definition-environmentyml), its directory layout looks like this:
 
 === "Linux (Debian-based)"
 
@@ -182,65 +209,16 @@ By default, the environment is stored under `~/miniconda3/envs/redsticks-demo` o
 - **`conda-meta/`:** stores Conda package records and environment history.
 - **`pkgs/`:** stores the shared package cache for the Conda installation prefix.
 
-### Environment Definition (`environment.yml`)
-
-The project stores its environment definition next to the source code:
-
-```yaml
-name: redsticks-demo
-channels:
-  - conda-forge
-dependencies:
-  - python=3.12
-  - click
-  - rdkit
-  - pillow
-  - rich
-  - numpy
-  - pytorch
-  - torchvision
-  - transformers
-  - huggingface_hub
-  - pybind11
-  - cmake
-  - ninja
-  - pip
-  - pytest
-  - pip:
-      - karva
-```
-
-- `name`: Sets the Conda environment name to `redsticks-demo`.
-- `channels`: Tells Conda where to resolve Conda-managed packages.
-- `dependencies`: Lists Conda-managed packages — including the PyTorch/torchvision/transformers ML stack — and the pip-only `karva` test tool.
-
-The unpinned `pytorch` entry lets the Conda solver pick the build variant: on machines with an NVIDIA driver — detected through the `__cuda` *virtual package*, which also works in Windows WSL2 — it installs the CUDA build together with the CUDA runtime libraries as regular Conda packages; on other machines it installs the CPU build. The host never needs a system-wide CUDA toolkit, only the driver. The `redsticks` CLI then accepts a `--gpu` flag to run the AI model on the GPU. Force a variant with `CONDA_OVERRIDE_CUDA="12.6"` (CUDA) or `CONDA_OVERRIDE_CUDA=""` (CPU).
-
-!!! note "Model weights are not Conda packages"
-    The AI model code and its dependencies (PyTorch, transformers) come from
-    conda-forge, but the open-weight model itself is downloaded from the
-    Hugging Face Hub at first use and cached in `~/.cache/huggingface`.
-    Contrast this with `libredsticks`, which Conda installs and pins as a
-    versioned binary package.
-
-## Workflow
-
-The Conda path keeps Python bindings and native binaries inside one environment. The non-Conda path splits Python packages and system libraries across different locations.
+## Development Workflow
 
 ### Create and Activate
 
-The project is set up entirely with the Conda CLI. There is no `pip install -e .` step and no `pyproject.toml`: the environment provides all dependencies and build tools, and the only project-specific build action is compiling the pybind11 extension with CMake.
+The `redsticks` sample project is deliberately Conda-only: its `environment.yml` defines the Python dependencies, native libraries, and build tools, while CMake compiles the pybind11 extension.
 
-!!! info "Best practice in the real world"
-    This project is deliberately *conda-only* to keep the focus on Conda concepts.
-    In production, the standard pattern is a `pyproject.toml` as the single build
-    definition, with the Conda recipe wrapping it via
-    `pip install . --no-deps --no-build-isolation` — that is how conda-forge
-    packages are built. Use `environment.yml` for the development environment
-    either way; the two files answer different questions: "what is in my
-    environment" (`environment.yml`) versus "how is my package built"
-    (`pyproject.toml`).
-
+!!! info "BEST PRACTICE IN REAL WORLD"
+    Use a `pyproject.toml` as the Python project's build and packaging definition.
+    This keeps the Python part's metadata and build configuration in one standard file.
+    
 === "Create from `environment.yml`"
 
     Create the environment from the project root:
@@ -252,12 +230,12 @@ The project is set up entirely with the Conda CLI. There is no `pip install -e .
 
 === "Create from scratch"
 
-    Create the same Conda-managed environment directly:
+    Create the Conda-managed portion directly:
 
     ```bash
     conda create -y -n redsticks-demo -c conda-forge \
-        python=3.12 rdkit pillow rich click numpy pytorch transformers \
-        huggingface_hub pybind11 cmake ninja pip pytest
+        python=3.12 rdkit pillow rich click numpy pytorch torchvision \
+        transformers huggingface_hub pybind11 cmake ninja pip
     conda activate redsticks-demo
     ```
 
@@ -285,7 +263,7 @@ Add a package from a Conda channel:
 conda install -c conda-forge numpy
 ```
 
-Prefer Conda channels for every dependency. Packages that exist only on PyPI (such as the `karva` test tool) are declared in the `pip:` subsection of `environment.yml`, so even they are installed by the Conda CLI when the environment is created or synced — never by ad-hoc `pip install` commands.
+Prefer Conda channels for every dependency. Packages that exist only on PyPI, such as `cloudsmith-cli` and `pytest`, are declared in the `pip:` subsection of `environment.yml`, so they are still installed by the Conda CLI when the environment is created or synced.
 
 Export the environment's explicit package records when you need to reproduce the exact platform solve:
 
@@ -307,15 +285,6 @@ Run the AI model on the GPU (requires the CUDA build of PyTorch and an NVIDIA dr
 PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png --gpu
 ```
 
-Use the Python API directly:
-
-```python
-from redsticks import suggest
-
-result = suggest("samples/blue-eye.png")
-print(result.shade_name, result.hex)
-```
-
 > The `redsticks` console command becomes available once the `redsticks-tools` Conda package is installed in an environment; the entry point is generated by the Conda recipe, not by a pip install.
 
 ### Test the Project
@@ -323,5 +292,5 @@ print(result.shade_name, result.hex)
 Run the test suite with the project's test tool:
 
 ```bash
-PYTHONPATH=src karva test tests/
+PYTHONPATH=src pytest tests/
 ```
