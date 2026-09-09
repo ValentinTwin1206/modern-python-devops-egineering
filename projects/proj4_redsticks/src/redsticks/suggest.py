@@ -9,13 +9,10 @@ from PIL import Image
 
 from redsticks._native import harmony_score
 
+from .iris import extract_eye_rgb
 from .pigments import CATALOG, pigment_details
 
 _SUPPORTED_SUFFIXES = {".png", ".jpg", ".jpeg"}
-
-
-class UnsupportedImageError(ValueError):
-    """Raised when the input image is missing or not a PNG/JPEG file."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,11 +26,13 @@ class SuggestionResult:
     harmony: int
     pigment_formula: str
     pigment_weight: float
+    source: str = "quantize"
 
     def __str__(self) -> str:
         return "\n".join(
             [
                 f"Eye color: rgb{self.eye_rgb}",
+                f"Eye color source: {self.source}",
                 f"Suggested shade: {self.shade_name}",
                 f"Shade color: {self.hex}",
                 f"Harmony: {self.harmony}/100",
@@ -45,24 +44,23 @@ class SuggestionResult:
     __repr__ = __str__
 
 
-def suggest(image_path: str | Path) -> SuggestionResult:
-    """Suggest the lipstick shade that best matches the eye color in an image.
-
-    Pillow extracts the dominant color of the image, the native C++ library
-    scores every catalog shade against it in CIELAB space, and RDKit supplies
-    the chemistry details of the winning pigment.
-    """
+def suggest(image_path: str | Path, *, device: str = "cpu") -> SuggestionResult:
+    """Suggest the lipstick shade that best matches the eye color in an image."""
 
     path = Path(image_path)
     if path.suffix.lower() not in _SUPPORTED_SUFFIXES or not path.is_file():
-        raise UnsupportedImageError(f"Expected an existing PNG or JPEG file, got: {path}")
+        raise ValueError(f"Expected an existing PNG or JPEG file, got: {path}")
 
+    source = "ai"
     with Image.open(path) as image:
-        quantized = image.convert("RGB").quantize(colors=8)
-        counts = quantized.getcolors()
-        palette = quantized.getpalette()
-    _, dominant_index = max(counts)
-    eye_rgb = tuple(palette[dominant_index * 3 : dominant_index * 3 + 3])
+        eye_rgb = extract_eye_rgb(image, device=device)
+        if eye_rgb is None:
+            source = "quantize"
+            quantized = image.convert("RGB").quantize(colors=8)
+            counts = quantized.getcolors()
+            palette = quantized.getpalette()
+            _, dominant_index = max(counts)
+            eye_rgb = tuple(palette[dominant_index * 3 : dominant_index * 3 + 3])
 
     scored = [
         (harmony_score(*map(float, eye_rgb), *map(float, pigment.rgb)), pigment)
@@ -79,4 +77,5 @@ def suggest(image_path: str | Path) -> SuggestionResult:
         harmony=max(0, min(100, round(best_score))),
         pigment_formula=formula,
         pigment_weight=weight,
+        source=source,
     )

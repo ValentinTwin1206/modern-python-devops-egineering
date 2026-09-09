@@ -17,6 +17,7 @@ __pycache__/
 
 # Packaging and build outputs
 build/
+build-dev/
 dist/
 site/
 *.egg-info/

@@ -1,5 +1,6 @@
 FROM continuumio/miniconda3
 
+# Keep Conda and Python output predictable inside the development container.
 ENV CONDA_DIR=/opt/conda \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -8,6 +9,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app
 
+# Install native build tools and create the development user 'alice'.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -15,38 +17,42 @@ RUN apt-get update \
         curl \
         sudo \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash --groups sudo snake \
-    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
-    && chmod 0440 /etc/sudoers.d/snake
+    && useradd --create-home --shell /bin/bash --groups sudo alice \
+    && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/alice \
+    && chmod 0440 /etc/sudoers.d/alice
 
-RUN pip install --no-cache-dir cloudsmith-cli uv
-
-RUN conda install -n base -c conda-forge -y conda-build conda-package-handling \
+# Install the tools needed to build and inspect Conda packages.
+RUN conda install \
+    -n base \
+    -c conda-forge \
+    -y conda-build conda-package-handling \
     && conda clean --all --yes
 
 COPY environment.yml ./
 
-RUN conda env create -f environment.yml \
-    && conda clean --all --yes
+# Create the reproducible project environment before copying source files.
+RUN conda env create -f environment.yml && conda clean --all --yes
 
+# Put the RedSticks environment first on PATH for interactive commands.
 ENV PATH=$CONDA_DIR/envs/redsticks-demo/bin:$PATH
 ENV CONDA_DEFAULT_ENV=redsticks-demo
 
+# Copy the source, native code, tests, recipe, and sample assets.
 COPY src ./src
 COPY cpp ./cpp
 COPY tests ./tests
 COPY recipe ./recipe
 COPY samples ./samples
-COPY pytest.ini ./pytest.ini
 COPY README.md ./README.md
 
 ENV PYTHONPATH=/app/src
 
-RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/snake/.bashrc \
-    && echo 'conda activate redsticks-demo' >> /home/snake/.bashrc \
-    && echo 'cd /app' >> /home/snake/.bashrc \
-    && chown -R snake:snake /app /home/snake /opt/conda
+# Start interactive shells in the project environment and directory.
+RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/alice/.bashrc \
+    && echo 'conda activate redsticks-demo' >> /home/alice/.bashrc \
+    && echo 'cd /app' >> /home/alice/.bashrc \
+    && chown -R alice:alice /app /home/alice /opt/conda
 
-USER snake
+USER alice
 
 CMD ["/bin/bash"]

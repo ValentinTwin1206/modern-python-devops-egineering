@@ -6,7 +6,7 @@ This page covers Conda as both a package manager and an environment manager. Con
 
 ### Project Setup
 
-The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, and compiled C++ code in one environment.
+The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), a native [pybind11](https://pybind11.readthedocs.io/) extension, and an open-weight AI face-parsing model ([transformers](https://huggingface.co/docs/transformers) + [PyTorch](https://pytorch.org/)) for extracting the eye color from real photos. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, compiled C++ code, and a heavyweight ML stack in one environment.
 
 ### Run the Project
 
@@ -119,7 +119,7 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 Conda stores named environments outside the project root. Use the descriptive name `redsticks-demo` rather than a generic name such as `venv`:
 
 ```bash
-conda create -y -n redsticks-demo -c conda-forge python=3.12 rdkit pillow rich click pybind11 cmake ninja pip pytest
+conda create -y -n redsticks-demo -c conda-forge python=3.12 rdkit pillow rich click numpy pytorch transformers huggingface_hub pybind11 cmake ninja pip pytest
 ```
 
 By default, the environment is stored under `~/miniconda3/envs/redsticks-demo` on Linux or macOS and `%UserProfile%\miniconda3\envs\redsticks-demo` on Windows.
@@ -196,6 +196,11 @@ dependencies:
   - rdkit
   - pillow
   - rich
+  - numpy
+  - pytorch
+  - torchvision
+  - transformers
+  - huggingface_hub
   - pybind11
   - cmake
   - ninja
@@ -207,7 +212,16 @@ dependencies:
 
 - `name`: Sets the Conda environment name to `redsticks-demo`.
 - `channels`: Tells Conda where to resolve Conda-managed packages.
-- `dependencies`: Lists Conda-managed packages and the pip-only `karva` test tool.
+- `dependencies`: Lists Conda-managed packages — including the PyTorch/torchvision/transformers ML stack — and the pip-only `karva` test tool.
+
+The unpinned `pytorch` entry lets the Conda solver pick the build variant: on machines with an NVIDIA driver — detected through the `__cuda` *virtual package*, which also works in Windows WSL2 — it installs the CUDA build together with the CUDA runtime libraries as regular Conda packages; on other machines it installs the CPU build. The host never needs a system-wide CUDA toolkit, only the driver. The `redsticks` CLI then accepts a `--gpu` flag to run the AI model on the GPU. Force a variant with `CONDA_OVERRIDE_CUDA="12.6"` (CUDA) or `CONDA_OVERRIDE_CUDA=""` (CPU).
+
+!!! note "Model weights are not Conda packages"
+    The AI model code and its dependencies (PyTorch, transformers) come from
+    conda-forge, but the open-weight model itself is downloaded from the
+    Hugging Face Hub at first use and cached in `~/.cache/huggingface`.
+    Contrast this with `libredsticks`, which Conda installs and pins as a
+    versioned binary package.
 
 ## Workflow
 
@@ -242,7 +256,8 @@ The project is set up entirely with the Conda CLI. There is no `pip install -e .
 
     ```bash
     conda create -y -n redsticks-demo -c conda-forge \
-        python=3.12 rdkit pillow rich click pybind11 cmake ninja pip pytest
+        python=3.12 rdkit pillow rich click numpy pytorch transformers \
+        huggingface_hub pybind11 cmake ninja pip pytest
     conda activate redsticks-demo
     ```
 
@@ -286,10 +301,10 @@ In the development environment the package is not installed; run it from the sou
 PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png
 ```
 
-Write a PNG shade swatch:
+Run the AI model on the GPU (requires the CUDA build of PyTorch and an NVIDIA driver):
 
 ```bash
-PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png --output suggested-shade.png
+PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png --gpu
 ```
 
 Use the Python API directly:

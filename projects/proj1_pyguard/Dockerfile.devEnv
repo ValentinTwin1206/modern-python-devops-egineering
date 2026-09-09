@@ -20,9 +20,9 @@ RUN apt-get update \
         sudo \
         unzip \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash --groups sudo snake \
-    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
-    && chmod 0440 /etc/sudoers.d/snake
+    && useradd --create-home --shell /bin/bash --groups sudo bob \
+    && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
+    && chmod 0440 /etc/sudoers.d/bob
 
 WORKDIR /app
 
@@ -32,10 +32,10 @@ COPY pyproject.toml ./
 COPY README.md ./
 COPY src ./src
 
-RUN chown -R snake:snake /app
+RUN chown -R bob:bob /app
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
-USER snake
+USER bob
 
 CMD ["/bin/bash"]

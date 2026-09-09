@@ -82,6 +82,11 @@ outputs:
         - rdkit
         - pillow
         - rich
+        - numpy
+        - pytorch
+        - torchvision
+        - transformers
+        - huggingface_hub
         - {{ pin_subpackage('libredsticks', exact=True) }}
     test:
       imports:

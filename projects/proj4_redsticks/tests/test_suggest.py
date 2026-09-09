@@ -1,7 +1,11 @@
 """Tests for the shade suggestion pipeline."""
 
+import importlib
+
 import pytest
 from PIL import Image
+
+suggest_module = importlib.import_module("redsticks.suggest")
 
 from redsticks import SuggestionResult, UnsupportedImageError, suggest
 from redsticks.pigments import CATALOG
@@ -44,3 +48,25 @@ def test_suggest_rejects_unsupported_extension(tmp_path):
 def test_suggest_rejects_missing_file(tmp_path):
     with pytest.raises(UnsupportedImageError):
         suggest(tmp_path / "missing.png")
+
+
+def test_suggest_falls_back_to_quantization_without_eyes(tmp_path):
+    image = tmp_path / "eye.png"
+    _write_eye_image(image, (70, 110, 180))
+
+    result = suggest(image)
+
+    assert result.source == "quantize"
+
+
+def test_suggest_uses_ai_eye_color_when_available(tmp_path, monkeypatch):
+    image = tmp_path / "eye.png"
+    _write_eye_image(image, (70, 110, 180))
+    monkeypatch.setattr(
+        suggest_module, "extract_eye_rgb", lambda image, device="cpu": (10, 20, 30)
+    )
+
+    result = suggest(image)
+
+    assert result.source == "ai"
+    assert result.eye_rgb == (10, 20, 30)

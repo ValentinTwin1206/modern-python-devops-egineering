@@ -7,22 +7,19 @@ from typing import Sequence
 
 # Third-party modules
 import click
-from PIL import Image
-from rdkit import Chem
-from rdkit.Chem import Draw
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
 from rich.text import Text
 
 # Own modules
-from .pigments import CATALOG
-from .suggest import SuggestionResult, UnsupportedImageError, suggest
+from .iris import cuda_available
+from .suggest import SuggestionResult, suggest
 
 logger = logging.getLogger("redsticks")
 
 
-def render_suggestion(result: SuggestionResult) -> Table:
+def _render_suggestion(result: SuggestionResult) -> Table:
     """Build a Rich table for a suggestion result."""
 
     eye_hex = "#{:02X}{:02X}{:02X}".format(*result.eye_rgb)
@@ -39,11 +36,16 @@ def render_suggestion(result: SuggestionResult) -> Table:
         eye_swatch,
     )
     table.add_row(
-        "Suggested shade:",
+        "Suggested shade",
         f"{result.shade_name}\n{result.hex}",
         swatch,
     )
     table.add_row("Harmony", f"{result.harmony}/100", "")
+    table.add_row(
+        "Eye color source",
+        "AI face parsing" if result.source == "ai" else "Color quantization",
+        "",
+    )
     table.add_row(
         "Pigment",
         f"{result.pigment_formula}\n{result.pigment_weight:.2f} g/mol",
@@ -52,6 +54,9 @@ def render_suggestion(result: SuggestionResult) -> Table:
     return table
 
 
+#
+# CLI
+# # # # # # # #
 @click.command()
 @click.option(
     "--image",
@@ -60,11 +65,11 @@ def render_suggestion(result: SuggestionResult) -> Table:
     help="Path to a PNG or JPEG eye-color image.",
 )
 @click.option(
-    "--output",
-    type=click.Path(dir_okay=False, path_type=str),
-    help="Optional PNG output path for a shade swatch with the pigment structure.",
+    "--gpu",
+    is_flag=True,
+    help="Run the AI face-parsing model on the GPU (requires a CUDA-enabled PyTorch).",
 )
-def cli(image: str, output: str | None) -> None:
+def cli(image: str, gpu: bool) -> None:
     """Suggest a lipstick shade that harmonizes with an eye-color image."""
 
     # Setup Logger
@@ -76,14 +81,21 @@ def cli(image: str, output: str | None) -> None:
         handlers=[RichHandler(console=error_console, show_path=False)],
     )
 
+    if gpu and not cuda_available():
+        raise click.ClickException(
+            "GPU requested but no CUDA device is available. Conda installs the "
+            "CUDA build of PyTorch automatically on machines with an NVIDIA "
+            "driver; containers additionally need 'docker run --gpus all'."
+        )
+
     # Run suggestion "algorithm"
     try:
-        result: SuggestionResult = suggest(image)
-    except UnsupportedImageError as error:
+        result: SuggestionResult = suggest(image, device="cuda" if gpu else "cpu")
+    except ValueError as error:
         raise click.ClickException(str(error)) from error
 
     console.print("REDSTICKS", style="bold")
-    console.print(render_suggestion(result))
+    console.print(_render_suggestion(result))
 
     logger.info(
         "Suggested shade %r with color %s for eye color rgb%s",
@@ -91,14 +103,6 @@ def cli(image: str, output: str | None) -> None:
         result.hex,
         result.eye_rgb,
     )
-
-    if output:
-        pigment = next(p for p in CATALOG if p.name == result.shade_name)
-        depiction = Draw.MolToImage(Chem.MolFromSmiles(pigment.smiles), size=(256, 256))
-        canvas = Image.new("RGB", (256, 320), result.rgb)
-        canvas.paste(depiction, (0, 64))
-        canvas.save(output, format="PNG")
-        logger.info("Wrote shade swatch to %s", output)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

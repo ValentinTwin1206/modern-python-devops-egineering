@@ -7,10 +7,15 @@ dependencies:
   - rdkit
   - pillow
   - rich
+  - numpy
+  - pytorch
+  - torchvision
+  - transformers
+  - huggingface_hub
   - pybind11
   - cmake
   - ninja
   - pip
-  - pytest
   - pip:
-      - karva
+      - cloudsmith-cli==1.26.0
+      - pytest
