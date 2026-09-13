@@ -1,0 +1,22 @@
+{
+  "realm": "license-service",
+  "enabled": true,
+  "displayName": "License Service",
+  "users": [
+    {
+      "username": "example-user",
+      "enabled": true,
+      "email": "example-user@example.com",
+      "emailVerified": true,
+      "firstName": "Example",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "example-password",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

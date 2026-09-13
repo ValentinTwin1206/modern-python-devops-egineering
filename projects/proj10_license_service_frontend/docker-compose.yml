@@ -1,0 +1,29 @@
+services:
+  backend:
+    container_name: backend
+    image: license-service-backend:latest
+    ports:
+      - "8080:8080"
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.20.0.2}
+
+  frontend:
+    build: .
+    container_name: frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.20.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+
+
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

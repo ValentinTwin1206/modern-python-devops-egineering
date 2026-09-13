@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      additional_contexts:
+        pyguard: ../proj1_pyguard
+    ports:
+      - "8080:8080"
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.30.0.2}
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.30.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    networks:
+      license_service_network:
+        ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
+
+
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
