@@ -46,7 +46,7 @@ Choose the package that matches your use case:
 Add the package(s) to your project's `environment.yml` file:
 
 ```yaml
-name: redsticks-demo
+name: redsticks
 channels:
     - {YOUR_CONDA_CHANNEL}
     - conda-forge
@@ -61,7 +61,7 @@ dependencies:
 Create and activate the environment from that file:
 
 ```bash
-conda env create -f environment.yml && conda activate redsticks-demo
+conda env create -f environment.yml && conda activate redsticks
 ```
 
 ### Usage
@@ -90,16 +90,22 @@ redsticks --image samples/green-eye.png --gpu
 
 ### Setup Environment
 
-The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. Developers should use the container so the host system does not need Python, Conda, RDKit, CMake, compilers, or Cloudsmith CLI installed. Build artifacts are stored on the host in `.build/`. Run the following command from the `projects` directory to open an interactive shell in the development image:
+The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. Developers should use the container so the host system does not need Python, Conda, RDKit, CMake, compilers, or Cloudsmith CLI installed. Build artifacts are stored on the host in `.build/`. From the `projects/` directory, open the dedicated RedSticks development container, enable GPU access, and forward the Cloudsmith configuration into the container session:
 
 ```bash
-./build.sh build --path proj4_redsticks/Dockerfile.devEnv
+./build.sh build \
+  --path proj4_redsticks/Dockerfile.devEnv \
+  --gpus all \
+  --cloudsmith-workspace "<cloudsmith-repo>" \
+  --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
+
+The `--gpus all` option is passed to the container runtime as `docker run --gpus all`. It requires Docker's NVIDIA Container Toolkit and a working NVIDIA driver exposed to WSL2. The full CUDA Toolkit is not required inside WSL for RedSticks inference; the CUDA runtime is provided by the CUDA-enabled PyTorch environment. Omit `--gpus all` when running the project without GPU access.
 
 Within the running container, the Conda environment is created solely from `environment.yml` using the Conda CLI:
 
 ```bash
-conda env create -f environment.yml && conda activate redsticks-demo
+conda env create -f environment.yml && conda activate redsticks
 ```
 
 On a machine with an NVIDIA GPU the same file installs the CUDA build of PyTorch automatically: conda-forge ships the CUDA runtime libraries as regular Conda packages and selects them via the `__cuda` virtual package, so the host only needs the NVIDIA driver. This includes Windows WSL2, where the Windows NVIDIA driver is exposed to the Linux distribution — never install a Linux driver inside WSL. Containers additionally need `nvidia-container-toolkit` and `docker run --gpus all`.

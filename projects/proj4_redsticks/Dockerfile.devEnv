@@ -34,8 +34,8 @@ COPY environment.yml ./
 RUN conda env create -f environment.yml && conda clean --all --yes
 
 # Put the RedSticks environment first on PATH for interactive commands.
-ENV PATH=$CONDA_DIR/envs/redsticks-demo/bin:$PATH
-ENV CONDA_DEFAULT_ENV=redsticks-demo
+ENV PATH=$CONDA_DIR/envs/redsticks/bin:$PATH
+ENV CONDA_DEFAULT_ENV=redsticks
 
 # Copy the source, native code, tests, recipe, and sample assets.
 COPY src ./src
@@ -49,7 +49,7 @@ ENV PYTHONPATH=/app/src
 
 # Start interactive shells in the project environment and directory.
 RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/alice/.bashrc \
-    && echo 'conda activate redsticks-demo' >> /home/alice/.bashrc \
+    && echo 'conda activate redsticks' >> /home/alice/.bashrc \
     && echo 'cd /app' >> /home/alice/.bashrc \
     && chown -R alice:alice /app /home/alice /opt/conda
 

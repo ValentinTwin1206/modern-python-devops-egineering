@@ -38,6 +38,7 @@ ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
                               ${DIM}(e.g. proj3_license_service/Dockerfile).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
+        ${YELLOW}--gpus${RESET} ${CYAN}<GPU_REQUEST>${RESET}       GPU access passed to the container runtime, such as ${CYAN}all${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
         ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}<WORKSPACE>${RESET}
@@ -117,6 +118,7 @@ resolve_dockerfile_path() {
 parse_build_args() {
     DOCKERFILE_PATH=""
     PORT_MAPPING="8080:8080"
+    GPU_REQUEST=""
     BUILD_ONLY=0
     NO_CACHE=0
     CLOUDSMITH_WORKSPACE=""
@@ -144,6 +146,15 @@ parse_build_args() {
                 ;;
             --port=*)
                 PORT_MAPPING="${1#*=}"
+                shift
+                ;;
+            --gpus)
+                [[ $# -ge 2 ]] || die "--gpus requires a value"
+                GPU_REQUEST="$2"
+                shift 2
+                ;;
+            --gpus=*)
+                GPU_REQUEST="${1#*=}"
                 shift
                 ;;
             --build-only)
@@ -259,6 +270,10 @@ build_command() {
     run_cmd+=(--volume "${build_artifact_dir}:/build")
 
     run_cmd+=(--publish "${PORT_MAPPING}")
+
+    if [[ -n "${GPU_REQUEST}" ]]; then
+        run_cmd+=(--gpus "${GPU_REQUEST}")
+    fi
 
     # --cloudsmith-workspace maps to CLOUDSMITH_REPOSITORY, which the container tooling reads.
     if [[ -n "${CLOUDSMITH_WORKSPACE}" ]]; then

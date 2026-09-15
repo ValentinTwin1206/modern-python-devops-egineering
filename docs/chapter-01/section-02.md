@@ -196,6 +196,13 @@ The exact directory names vary by operating system, but each `venv` still contai
 
 ## Development Workflow
 
+From the `projects/` directory, open the dedicated PyGuard development container:
+
+```bash
+./build.sh build \
+    --path proj1_pyguard/Dockerfile.devEnv
+```
+
 ### Create and Activate
 
 Create the environment from the section folder:

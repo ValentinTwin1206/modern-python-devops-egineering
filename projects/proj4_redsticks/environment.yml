@@ -1,4 +1,4 @@
-name: redsticks-demo
+name: redsticks
 channels:
   - conda-forge
 dependencies:
