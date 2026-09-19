@@ -21,23 +21,20 @@ RUN apt-get update \
     && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/alice \
     && chmod 0440 /etc/sudoers.d/alice
 
-# Install the tools needed to build and inspect Conda packages.
+# Install packaging and publishing tools in Conda "base" environment. 
+# The "redsticks" environment is created after the container starts.
 RUN conda install \
     -n base \
     -c conda-forge \
-    -y conda-build conda-package-handling \
+    -y conda-build conda-package-handling pip \
+    && /opt/conda/bin/python -m pip install --no-cache-dir cloudsmith-cli==1.26.0 \
     && conda clean --all --yes
 
-COPY environment.yml ./
-
-# Create the reproducible project environment before copying source files.
-RUN conda env create -f environment.yml && conda clean --all --yes
-
-# Put the RedSticks environment first on PATH for interactive commands.
-ENV PATH=$CONDA_DIR/envs/redsticks/bin:$PATH
-ENV CONDA_DEFAULT_ENV=redsticks
+# Do not activate the base environment automatically.
+RUN conda config --system --set auto_activate_base false
 
 # Copy the source, native code, tests, recipe, and sample assets.
+COPY environment.yml ./
 COPY src ./src
 COPY cpp ./cpp
 COPY tests ./tests
@@ -47,12 +44,12 @@ COPY README.md ./README.md
 
 ENV PYTHONPATH=/app/src
 
-# Start interactive shells in the project environment and directory.
-RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /home/alice/.bashrc \
-    && echo 'conda activate redsticks' >> /home/alice/.bashrc \
-    && echo 'cd /app' >> /home/alice/.bashrc \
-    && chown -R alice:alice /app /home/alice /opt/conda
+# Keep the project files and Conda installation writable by the development user.
+RUN chown -R alice:alice /app /home/alice /opt/conda
 
 USER alice
+
+# Configure Bash so Conda activation works in the user's interactive shells.
+RUN conda init bash
 
 CMD ["/bin/bash"]

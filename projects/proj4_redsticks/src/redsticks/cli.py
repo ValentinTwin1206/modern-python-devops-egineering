@@ -7,16 +7,39 @@ from typing import Sequence
 
 # Third-party modules
 import click
+from rich         import box
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.table import Table
-from rich.text import Text
+from rich.table   import Table
+from rich.text    import Text
 
 # Own modules
 from .iris import cuda_available
 from .suggest import SuggestionResult, suggest
 
 logger = logging.getLogger("redsticks")
+
+
+def _color_name(rgb: tuple[int, int, int]) -> str:
+    """Return the nearest approximate color name from a small eye-color palette."""
+
+    palette = {
+        "Black": (0, 0, 0),
+        "White": (255, 255, 255),
+        "Gray": (128, 128, 128),
+        "Blue": (70, 110, 180),
+        "Green": (70, 130, 80),
+        "Brown": (110, 70, 40),
+        "Hazel": (140, 115, 60),
+        "Amber": (190, 130, 40),
+    }
+    return min(
+        palette,
+        key=lambda name: sum(
+            (channel - reference) ** 2
+            for channel, reference in zip(rgb, palette[name])
+        ),
+    )
 
 
 def _render_suggestion(result: SuggestionResult) -> Table:
@@ -26,26 +49,25 @@ def _render_suggestion(result: SuggestionResult) -> Table:
     eye_swatch = Text("      ", style=f"on {eye_hex}")
     swatch = Text("      ", style=f"on {result.hex}")
 
-    table = Table(title="RedSticks Suggestion")
+    table = Table(
+        title="RedSticks Suggestion",
+        box=box.SQUARE,
+        show_lines=True,
+    )
     table.add_column("Metric")
     table.add_column("Value")
     table.add_column("Preview")
     table.add_row(
         "Eye color",
-        f"RGB {result.eye_rgb}\n{eye_hex}",
+        _color_name(result.eye_rgb),
         eye_swatch,
     )
     table.add_row(
         "Suggested shade",
-        f"{result.shade_name}\n{result.hex}",
+        f"{result.shade_name}",
         swatch,
     )
     table.add_row("Harmony", f"{result.harmony}/100", "")
-    table.add_row(
-        "Eye color source",
-        "AI face parsing" if result.source == "ai" else "Color quantization",
-        "",
-    )
     table.add_row(
         "Pigment",
         f"{result.pigment_formula}\n{result.pigment_weight:.2f} g/mol",
@@ -96,13 +118,6 @@ def cli(image: str, gpu: bool) -> None:
 
     console.print("REDSTICKS", style="bold")
     console.print(_render_suggestion(result))
-
-    logger.info(
-        "Suggested shade %r with color %s for eye color rgb%s",
-        result.shade_name,
-        result.hex,
-        result.eye_rgb,
-    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

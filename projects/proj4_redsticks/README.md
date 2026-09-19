@@ -26,7 +26,7 @@ graph LR
 | [src/redsticks/*](src/redsticks/) | Python package with the suggestion API, AI eye-color extraction (`iris.py`), pigment catalog, RDKit integration, and `redsticks` CLI. |
 | [cpp/*](cpp/) | C++ CIELAB scoring library, public header, pybind11 bindings, and CMake build for `libredsticks` and `_native`. |
 | [environment.yml](environment.yml) | Defines the Conda environment and installs Python, RDKit, Pillow, NumPy, PyTorch, torchvision, transformers, build tools, and development tooling from `conda-forge`. The solver picks the CUDA build of PyTorch on machines with an NVIDIA driver and the CPU build otherwise. |
-| [Dockerfile.devEnv](Dockerfile.devEnv) | Provides the complete containerized development environment with Miniconda, Conda packaging tools, Cloudsmith CLI, C++ build tooling, and the project environment. |
+| [Dockerfile.devEnv](Dockerfile.devEnv) | Provides the containerized development environment with Miniconda, Conda packaging tools, Cloudsmith CLI, and C++ build tooling. The `redsticks` environment is created separately from `environment.yml`. |
 | [recipe/meta.yaml](recipe/meta.yaml) | Multi-output Conda recipe that produces the `libredsticks` and `redsticks-tools` packages. The Python output is built inline with CMake; this recipe does not use pip or `pyproject.toml`. |
 
 ## End-User Guide
@@ -105,14 +105,36 @@ The `--gpus all` option is passed to the container runtime as `docker run --gpus
 Within the running container, the Conda environment is created solely from `environment.yml` using the Conda CLI:
 
 ```bash
-conda env create -f environment.yml && conda activate redsticks
+conda env create -f environment.yml
+conda activate redsticks
 ```
+
+The Dockerfile does not create the environment during the image build. This
+keeps the image usable for packaging from the base Conda environment and makes
+the project environment an explicit, reproducible setup step. Make the
+project environment the default for interactive container shells:
+
+```bash
+conda config --set default_activation_env redsticks
+conda config --set auto_activate true
+conda activate redsticks
+```
+
+The image already initializes Conda for Bash. Restart the shell, or source
+`/opt/conda/etc/profile.d/conda.sh` once in the current shell, to apply the
+default immediately.
+
+The development image contains a guarded shell hook for both the `alice` and
+`root` shells. It activates `redsticks` automatically once the environment
+exists. A newly built image therefore starts without a project environment
+until the command above has been run.
 
 On a machine with an NVIDIA GPU the same file installs the CUDA build of PyTorch automatically: conda-forge ships the CUDA runtime libraries as regular Conda packages and selects them via the `__cuda` virtual package, so the host only needs the NVIDIA driver. This includes Windows WSL2, where the Windows NVIDIA driver is exposed to the Linux distribution — never install a Linux driver inside WSL. Containers additionally need `nvidia-container-toolkit` and `docker run --gpus all`.
 
 ### Sync Environment
 
-Within the running container, update the Conda environment to match `environment.yml`, removing any packages that are no longer listed:
+Within the running container, update the existing Conda environment to match
+`environment.yml`, removing any packages that are no longer listed:
 
 ```bash
 conda env update -f environment.yml --prune

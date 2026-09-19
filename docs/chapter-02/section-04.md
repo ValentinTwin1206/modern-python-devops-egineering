@@ -157,12 +157,50 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session:
+From the `projects/` directory, open the dedicated packaging container and
+forward the Cloudsmith configuration into the container session:
 
 ```bash
-../build.sh build --path proj4_redsticks/Dockerfile.devEnv \
+./build.sh build --path proj4_redsticks/Dockerfile.devEnv \
   --cloudsmith-workspace "<cloudsmith-repo>" \
   --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+```
+
+The `Dockerfile.devEnv` image installs Miniconda, the base-environment
+packaging tools, the compiler toolchain, and the project source tree. It does
+not create the `redsticks` environment during the image build. Packaging uses
+the base environment's `conda-build` and `conda-package-handling` tools, while
+local source development and tests use the project environment created from
+`environment.yml`.
+
+### Create the Project Environment
+
+Create the project environment explicitly inside the running container when
+you need to run the source tree, tests, or native development commands:
+
+```bash
+cd /app
+conda env create -f environment.yml
+```
+
+Set `redsticks` as Conda's default activation environment and activate it:
+
+```bash
+conda config --set default_activation_env redsticks
+conda config --set auto_activate true
+conda activate redsticks
+```
+
+The image already initializes Conda for Bash. Restart the shell, or source
+`/opt/conda/etc/profile.d/conda.sh` once in the current shell, to use the
+default automatically. The image's guarded shell hook also activates
+`redsticks` automatically for new interactive shells after the environment
+exists. The hook is installed for both the `alice` and `root` shells because
+the shared project launcher can enter development images through a root shell.
+If the dependency file changes, synchronize the existing environment with:
+
+```bash
+conda env update -f environment.yml --prune
 ```
 
 Inside the running container, build both outputs from the project root. A single `conda build` invocation resolves the shared build environment and produces `libredsticks` and `redsticks-tools` in dependency order:

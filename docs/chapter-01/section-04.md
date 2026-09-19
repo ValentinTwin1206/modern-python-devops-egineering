@@ -12,7 +12,7 @@ The applied project is a small image-processing CLI called `Pixelpack Project`. 
 
 Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md).
 
-## Dev Containers environment model
+## Dev Containers Environment Model
 
 Dev Containers emerged in VS Code workflows in 2019 to make full development machines reproducible, not just Python package sets. A `venv` isolates a project-local Python interpreter and its Python packages, and Conda can extend that boundary to non-Python runtime packages as well. By contrast, a Dev Container declares the operating system image, system packages, language runtimes, editor extensions, lifecycle hooks, workspace mount, user account, and project setup commands. The boundary moves from one project environment to the entire development machine.
 
@@ -20,7 +20,7 @@ Inside the container, VS Code installs a `~/.vscode-server/` component that enab
 
 ![DevContainer Architecture](../assets/images/devcontainer.drawio.svg)
 
-### When to use Dev Containers?
+### When to Use Dev Containers?
 
 As described in the [Dev Containers environment model](#dev-containers-environment-model), Dev Containers are a strong fit for projects that need more than Python package isolation. Examples include projects with native extensions that need a C toolchain and matching system libraries, compilation steps such as Nuitka or Cython, database clients, browser tooling, or multiple language runtimes.
 
@@ -102,11 +102,31 @@ The Dev Containers CLI runs on Linux, macOS, and Windows. In typical Python work
 	devcontainer --version
 	```
 
-### Environment layout
+### Environment Layout
 
-#### Project structure
+#### Environment Definition
 
-A Dev Container is configured through a `.devcontainer/` folder at the repository root. The required file is `devcontainer.json`, while `Dockerfile` and helper scripts such as `postCreateCommand.sh` are optional and useful when the project needs system-level setup or more complex lifecycle commands.
+The dedicated Dev Container environment is defined by the files in
+`projects/proj5_pixelpack/.devcontainer/`, together with the project's Python
+dependency metadata:
+
+- `.devcontainer/devcontainer.json` defines the workspace, editor integration,
+  lifecycle hooks, and remote user.
+- `.devcontainer/Dockerfile` defines the container image, operating-system
+  packages, Python runtimes, and native build tools.
+- `pyproject.toml` declares the runtime and development dependencies.
+- `uv.lock` records the resolved dependency versions used by `uv sync`.
+
+The `postCreateCommand` in `devcontainer.json` runs `uv sync --group dev` after
+the workspace is mounted. This creates or updates the project-local `.venv/`
+inside the container.
+
+#### Key Directories and Files
+
+A Dev Container is configured through a `.devcontainer/` folder at the project
+root. The required file is `devcontainer.json`, while `Dockerfile` and helper
+scripts such as `postCreateCommand.sh` are optional and useful when the project
+needs system-level setup or more complex lifecycle commands.
 
 ```text
 project-root/
@@ -116,7 +136,8 @@ project-root/
 │   └── postCreateCommand.sh  # optional
 ├── src/
 ├── tests/
-└── pyproject.toml
+├── pyproject.toml
+└── uv.lock
 ```
 
 #### DevContainer configuration
@@ -130,7 +151,7 @@ The `devcontainer.json` file is the central configuration file. It tells the IDE
 		"dockerfile": "Dockerfile",
 		"context": ".."
 	},
-	"workspaceFolder": "/workspaces/section-04",
+	"workspaceFolder": "/workspaces/proj5_pixelpack",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -154,7 +175,7 @@ The `devcontainer.json` file is the central configuration file. It tells the IDE
 - `build`: tells Dev Containers to build the environment from the local `Dockerfile` instead of pulling a prebuilt image directly.
 - `build.dockerfile`: points to `Dockerfile`; see [Container image](#container-image).
 - `build.context`: sets the build context to the project root relative to `.devcontainer/`.
-- `workspaceFolder`: mounts the project into `/workspaces/section-04` inside the container.
+- `workspaceFolder`: mounts the project into `/workspaces/proj5_pixelpack` inside the container.
 - `customizations.vscode.extensions`: installs the Python, Pylance, and Ruff extensions in VS Code.
 - `customizations.vscode.settings`: sets the default interpreter, enables terminal activation for the project environment, and turns on Ruff's native server.
 - `postCreateCommand`: runs `uv sync --group dev` after the workspace has been mounted; see [Lifecycle commands](#lifecycle-commands).
@@ -245,30 +266,52 @@ flowchart LR
 
 ## Development Workflow
 
-### Create and start
+### Activate the Environment
 
-Start the environment from a shell with the globally installed CLI:
+Start the environment from a shell with the globally installed CLI. This
+project intentionally uses `devcontainer up` rather than `projects/build.sh`:
+`build.sh` accepts project Dockerfiles and `Dockerfile.devEnv` files, but
+explicitly rejects `.devcontainer/Dockerfile` images.
 
 ```bash
 devcontainer up --workspace-folder projects/proj5_pixelpack
 ```
 
-After the container has started, activate the virtual environment created by `uv`:
-inside it:
+Open a shell inside the running container and activate the virtual environment
+created by `uv`:
 
 ```bash
-vscode@container:/workspaces/section-04$ source .venv/bin/activate
+devcontainer exec --workspace-folder projects/proj5_pixelpack bash
 ```
-
-Then you can run the applied project:
 
 ```bash
-(.venv) vscode@container:/workspaces/section-04$ pixelpack --help
+source .venv/bin/activate
 ```
 
-## Inspection
+### Installing Dependencies
 
-Show the workspace location inside the running container:
+The first container creation runs the following command automatically through
+`postCreateCommand`:
+
+```bash
+uv sync --group dev
+```
+
+Run the same command inside the container after changing `pyproject.toml` or
+when the lockfile and environment need to be synchronized.
+
+### Run the Project
+
+With the container shell and `.venv` active, run the applied project:
+
+```bash
+pixelpack --help
+```
+
+### Inspect the Environment
+
+Run these commands inside the container to inspect its workspace, user,
+interpreter, and Dev Container definition.
 
 ```bash
 pwd

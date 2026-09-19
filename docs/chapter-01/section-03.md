@@ -112,9 +112,16 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 !!! warning
     Run `conda init bash`, `conda init powershell`, or `conda init zsh` only when you want Conda activation integrated into future shells. Initialization can leave the `base` environment active by default.
 
-### Environment Definition (`environment.yml`)
+### Environment Layout
 
-The dedicated `environment.yml` file defines a Conda environment, in the sample below it is named `redsticks`. It records the `channels` and `dependencies` needed by the project, including Python, scientific and machine-learning packages, and native build tools. A Conda environment can be created via `conda env create -f environment.yml`; Conda uses this file to create the environment consistently on a new machine.
+#### Environment Definition
+
+The dedicated `projects/proj4_redsticks/environment.yml` file defines the
+`redsticks` Conda environment. It records the channels and dependencies needed
+by the project, including Python, scientific and machine-learning packages,
+native libraries, and build tools. A Conda environment can be created via
+`conda env create -f environment.yml`; Conda uses this file to create the
+environment consistently on a new machine.
 
 ```yaml
 name: redsticks
@@ -145,11 +152,11 @@ dependencies:
     - `default`: Conda's standard package channel, used when it is enabled in the Conda configuration.
     - `conda-forge`: The community channel explicitly selected here for the project's scientific, machine-learning, and native packages.
 - `dependencies`: Lists the packages that Conda should install. Version constraints can pin an exact version or define a range, using operators such as `=`, `==`, `<`, `<=`, `>`, and `>=`. For example, `python=3.12` requests Python 3.12, while leaving a package unpinned lets Conda resolve a compatible version from the selected channels.
-    - `pip`: Installs packages available only from PyPI through the environment definition. For example, `cloudsmith-cli==1.26.0` requests exactly version 1.26.0, while `pytest` is left unpinned.
+    - `pip`: Installs packages available only from PyPI through the environment definition. For example, `cloudsmith-cli==1.26.0` requests exactly version 1.26.0, while `pytest` is left unpinned. Prefer Conda channels for Conda-compatible dependencies; packages that exist only on PyPI, such as `cloudsmith-cli` and `pytest`, belong in this subsection and are installed by the Conda CLI when the environment is created or synced.
 
-### Environment Layout
+#### Key Directories and Files
 
-After creating the environment described in [Environment Definition](#environment-definition-environmentyml), its directory layout looks like this:
+After creating the environment described in [Environment Definition](#environment-definition), its directory layout looks like this:
 
 === "Linux (Debian-based)"
 
@@ -199,8 +206,6 @@ After creating the environment described in [Environment Definition](#environmen
     └── pkgs/
     ```
 
-### Key Directories and Files
-
 - **Conda executable:** lives under the installation prefix, such as `~/miniconda3/bin/conda` or `%UserProfile%\miniconda3\condabin\conda.bat`.
 - **`<conda-prefix>/envs/<name>/`:** is the named environment directory.
 - **Environment-local executables:** Linux and macOS use `bin/`; Windows uses the environment root and `Scripts\`.
@@ -211,7 +216,9 @@ After creating the environment described in [Environment Definition](#environmen
 
 ## Development Workflow
 
-From the `projects/` directory, open the dedicated RedSticks development container, enable GPU access, and forward the Cloudsmith configuration into the container session:
+From the repository's `projects/` directory, use `build.sh` to open the
+dedicated RedSticks development container. The command enables GPU access and
+forwards the Cloudsmith configuration into the container session:
 
 ```bash
 ./build.sh build \
@@ -221,64 +228,101 @@ From the `projects/` directory, open the dedicated RedSticks development contain
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
+The `Dockerfile.devEnv` image installs Miniconda, the base-environment
+packaging tools, the compiler toolchain, and the project files. It deliberately
+does **not** create the `redsticks` environment during the image build. This
+keeps the image reusable and makes environment creation an explicit, inspectable
+workflow step.
+
 !!! info "Local Inference on CPU or GPU"
     RedSticks downloads a trained ML model on first use and processes photos locally inside the container, using the CPU by default. For GPU inference, start the container with `--gpus all` and run RedSticks with `--gpu`.
 
-    Inside the container image PyTorch is installed from `environment.yml`. GPU inference requires CUDA-enabled PyTorch, which supplies the CUDA runtime dependencies. For WSL 2, install the NVIDIA driver on Windows, **not inside WSL 2**, which automatically exposes the Windows driver's CUDA support. Use Docker Desktop's WSL 2 backend or configure the NVIDIA Container Toolkit for Docker Engine running directly in WSL.
+    After the `redsticks` environment is created, PyTorch is installed from `environment.yml` into that environment. GPU inference requires CUDA-enabled PyTorch, which supplies the CUDA runtime dependencies. For WSL 2, install the NVIDIA driver on Windows, **not inside WSL 2**, which automatically exposes the Windows driver's CUDA support. Use Docker Desktop's WSL 2 backend or configure the NVIDIA Container Toolkit for Docker Engine running directly in WSL.
 
-### Create and Activate
+### Create the Environment
 
-The `redsticks` sample project is deliberately Conda-only: its `environment.yml` defines the Python dependencies, native libraries, and build tools, while CMake compiles the pybind11 extension.
-
-!!! info "BEST PRACTICE IN REAL WORLD"
-    Use a `pyproject.toml` as the Python project's build and packaging definition.
-    This keeps the Python part's metadata and build configuration in one standard file.
+The `redsticks` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. In a real-world Python project, use a `pyproject.toml` file to define the Python project's metadata, dependencies, and build configuration, while keeping Conda-specific requirements such as the Python version, native libraries, and external build tools in `environment.yml`.
     
 === "Create from `environment.yml`"
 
-    Create the environment from the project root:
+    From the project root, create the `redsticks` environment in the container's writable Conda prefix at `/opt/conda/envs/redsticks` and install the dependencies listed in `environment.yml`:
 
     ```bash
     conda env create -f environment.yml
+    ```
+
+    After the environment has been created, activate it for the current shell:
+
+    ```bash
     conda activate redsticks
     ```
 
 === "Create from scratch"
 
-    Create the Conda-managed portion directly:
+    Create the `redsticks` environment and install its dependencies directly
+    from the Conda command line:
 
     ```bash
-    conda create -y -n redsticks -c conda-forge \
-        python=3.12 rdkit pillow rich click numpy pytorch torchvision \
-        transformers huggingface_hub pybind11 cmake ninja pip
+    conda create -y \
+        -n redsticks \
+        -c conda-forge \
+            python=3.12 \
+            rdkit \
+            pillow \
+            rich \
+            click \
+            numpy \
+            pytorch \
+            torchvision \
+            transformers \
+            huggingface_hub \
+            pybind11 \
+            cmake \
+            ninja \
+            pip
+    ```
+
+    After the environment has been created, activate it for the current shell:
+
+    ```bash
     conda activate redsticks
     ```
 
-With the environment active, build the native extension in-place using the CMake and compiler toolchain that Conda installed:
+After the first activation, configure `redsticks` as the default environment for
+future interactive Bash shells. This setting applies to `alice`, the development
+user created by the Dockerfile.
 
 ```bash
-cmake -S cpp -B build-dev -G Ninja -DREDSTICKS_BUILD_BINDINGS=ON
-cmake --build build-dev
-cp build-dev/_native*.so src/redsticks/
+conda config --set default_activation_env redsticks
+conda config --set auto_activate true
 ```
 
-The Python package then runs directly from the source tree via `PYTHONPATH=src`. Installation as a package happens only through the Conda recipe (`recipe/meta.yaml`), which builds and ships `redsticks-tools` as a Conda artifact.
+!!! info "Base Environment"
+    The Conda `"base"` environment remains available within the container image as
+    it provides the packaging tools like `conda-build` and `conda-package-handling`, 
+    required for the *Packaging Workflow* explained in [Chapter 02, Section 04](../chapter-02/section-04.md).
 
-### Add Packages
+### Add Additional Packages
 
-Ensure that `redsticks` is active:
+Ensure that `redsticks` is active before installing or updating dependencies:
 
 ```bash
 conda activate redsticks
 ```
 
-Add a package from a Conda channel:
+To synchronize an existing environment with the definition file, update it
+from the project root:
 
 ```bash
-conda install -c conda-forge numpy
+conda env update -f environment.yml --prune
 ```
 
-Prefer Conda channels for every dependency. Packages that exist only on PyPI, such as `cloudsmith-cli` and `pytest`, are declared in the `pip:` subsection of `environment.yml`, so they are still installed by the Conda CLI when the environment is created or synced.
+Add an additional development tool, such as `ruff`, from the `conda-forge`
+channel:
+
+```bash
+conda install -c conda-forge ruff
+```
 
 Export the environment's explicit package records when you need to reproduce the exact platform solve:
 
@@ -288,24 +332,72 @@ conda list --explicit > redsticks-linux-64.txt
 
 ### Run the Project
 
-In the development environment the package is not installed; run it from the source tree with one of the sample images shipped with the project:
+With the `redsticks` environment active, remove any previous CMake cache before
+configuring the native extension:
 
 ```bash
-PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png
+rm -rf build-dev
 ```
 
-Run the AI model on the GPU (requires the CUDA build of PyTorch and an NVIDIA driver):
+Configure the native extension with the installed CMake and Ninja toolchain:
 
 ```bash
-PYTHONPATH=src python -m redsticks.cli --image samples/blue-eye.png --gpu
+cmake -S cpp -B build-dev -G Ninja -DREDSTICKS_BUILD_BINDINGS=ON
 ```
 
-> The `redsticks` console command becomes available once the `redsticks-tools` Conda package is installed in an environment; the entry point is generated by the Conda recipe, not by a pip install.
+Build the configured native extension:
+
+```bash
+cmake --build build-dev
+```
+
+Copy the compiled extension into the Python package:
+
+```bash
+cp build-dev/_native*.so src/redsticks/
+```
+
+During the development loop, run the CLI module directly from the source tree
+so that changes can be tested without reinstalling the package:
+
+```bash
+python -m redsticks.cli --image samples/blue-eye.png
+```
+
+> The Dockerfile sets `PYTHONPATH=/app/src`, so no path prefix is required.
+
+Run the same source-tree module on the GPU when the container has GPU access and
+the environment contains a CUDA-enabled PyTorch build:
+
+```bash
+python -m redsticks.cli --image samples/blue-eye.png --gpu
+```
+
+!!! info "Package Integration Testing"
+    For package-level integration testing, build and install the
+    `redsticks-tools` Conda package from `recipe/meta.yaml`. Its generated
+    console entry point then becomes available in the active environment. See
+    [Conda Packages](../chapter-02/section-04.md) for the packaging workflow.
+
+    ```bash
+    redsticks --image samples/blue-eye.png
+    ```
+
+### Inspect the Environment
+
+Inspect the active Conda environment and its installation prefix:
+
+```bash
+conda info --envs
+conda list
+which python
+python -c "import sys; print(sys.prefix)"
+```
 
 ### Test the Project
 
-Run the test suite with the project's test tool:
+Run the test suite against the current source tree with the project's test tool:
 
 ```bash
-PYTHONPATH=src pytest tests/
+pytest tests/
 ```

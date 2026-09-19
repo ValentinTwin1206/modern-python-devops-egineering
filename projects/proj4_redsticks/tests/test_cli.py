@@ -3,7 +3,25 @@
 import pytest
 from PIL import Image
 
-from redsticks.cli import main
+from redsticks.cli import _color_name, main
+
+
+@pytest.mark.parametrize(
+    ("rgb", "expected"),
+    [
+        ((0, 0, 0), "Black"),
+        ((255, 255, 255), "White"),
+        ((128, 128, 128), "Gray"),
+        ((70, 110, 180), "Blue"),
+        ((72, 108, 178), "Blue"),
+        ((70, 130, 80), "Green"),
+        ((110, 70, 40), "Brown"),
+        ((140, 115, 60), "Hazel"),
+        ((190, 130, 40), "Amber"),
+    ],
+)
+def test_color_name(rgb, expected):
+    assert _color_name(rgb) == expected
 
 
 @pytest.fixture()
@@ -20,6 +38,9 @@ def test_cli_prints_hex_value(eye_image, capsys):
     assert exit_code == 0
     assert "#" in captured.out
     assert "Suggested shade" in captured.out
+    assert "Blue" in captured.out
+    assert "RGB (70, 110, 180)" not in captured.out
+    assert "#466EB4" not in captured.out
 
 
 def test_cli_rejects_unsupported_image(tmp_path):

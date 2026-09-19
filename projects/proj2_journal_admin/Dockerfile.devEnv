@@ -20,7 +20,7 @@ FROM ubuntu:24.04
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PATH="/home/snake/.local/bin:$PATH"
+ENV PATH="/home/bob/.local/bin:$PATH"
 ENV PYTHONPATH=/app/src
 ENV CLOUDSMITH_REPOSITORY=""
 
@@ -44,18 +44,18 @@ RUN apt-get update \
         sudo \
         tree \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash --groups sudo snake \
-    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
-    && chmod 0440 /etc/sudoers.d/snake
+    && useradd --create-home --shell /bin/bash --groups sudo bob \
+    && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
+    && chmod 0440 /etc/sudoers.d/bob
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Install some developer tools into the local "administrator" target and keep the
 # project runtime dependency managed by the system package manager.
 RUN uv pip install --system --break-system-packages cloudsmith-cli ruff \
-    && chown -R snake:snake /app /home/snake
+    && chown -R bob:bob /app /home/bob
 
-USER snake
+USER bob
 
 # Install one developer CLI tool into the local "user" target 
 RUN python3 -m pip install karva --user --break-system-packages
