@@ -1,211 +1,177 @@
 # RedSticks
 
-RedSticks is a Conda sample project that suggests lipstick shades from eye-color images. It combines AI or Pillow-based color extraction, RDKit pigment chemistry, and a native C++ CIELAB scorer exposed through pybind11. The Conda-only build uses `environment.yml` for development and `recipe/meta.yaml` to produce the `libredsticks` and `redsticks-tools` packages.
+RedSticks is a Python/C++ sample project that recommends lipstick shades based on eye color.
+
+The project demonstrates how **Conda can manage both Python and native C++ dependencies** within the same development and packaging workflow.
+
+RedSticks combines:
+
+- **MediaPipe** for local iris detection
+- **NumPy and CIELAB** for eye-color analysis
+- **C++** for lipstick color-harmony scoring
+- **pybind11** to connect Python and C++
+- **RDKit** for pigment chemistry
+
+The project uses a **Conda-first workflow** based on `environment.yml` and Conda recipes. No `pyproject.toml` is required.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    IMG["Eye image (PNG/JPEG)"] --> CLI["redsticks CLI (click)"]
-    CLI --> IRIS["iris.py - AI face parsing (transformers + PyTorch, CPU or --gpu)"]
-    HF["Hugging Face Hub (open-weight model, cached locally)"] -.-> IRIS
-    IRIS -- "eye pixels found" --> COLOR["Eye color (RGB)"]
-    IRIS -- "no eyes detected" --> QUANT["Pillow color quantization"]
-    QUANT --> COLOR
-    COLOR --> NATIVE["_native (pybind11) - CIELAB harmony scoring"]
-    NATIVE --> LIB["libredsticks (C++)"]
-    NATIVE --> BEST["Best catalog shade"]
-    BEST --> RDKIT["RDKit - pigment formula and weight"]
-    RDKIT --> OUT["Rich table / PNG swatch"]
+
+    IMG["Portrait"] --> MP["MediaPipe<br/>Iris Detection"]
+
+    MP --> COLOR["Python<br/>Eye Color Analysis"]
+    MP --> RGB["Iris RGB"]
+
+    RGB --> CPP["C++<br/>Harmony Scoring"]
+
+    COLOR --> RESULT["Lipstick Recommendation"]
+    CPP --> RESULT
+
+    RESULT --> RDKIT["RDKit<br/>Pigment Information"]
 ```
 
-## Project Components
+MediaPipe runs locally and identifies the iris regions in the image.
 
-| Component | Description |
-| --------- | ----------- |
-| [src/redsticks/*](src/redsticks/) | Python package with the suggestion API, AI eye-color extraction (`iris.py`), pigment catalog, RDKit integration, and `redsticks` CLI. |
-| [cpp/*](cpp/) | C++ CIELAB scoring library, public header, pybind11 bindings, and CMake build for `libredsticks` and `_native`. |
-| [environment.yml](environment.yml) | Defines the Conda environment and installs Python, RDKit, Pillow, NumPy, PyTorch, torchvision, transformers, build tools, and development tooling from `conda-forge`. The solver picks the CUDA build of PyTorch on machines with an NVIDIA driver and the CPU build otherwise. |
-| [Dockerfile.devEnv](Dockerfile.devEnv) | Provides the containerized development environment with Miniconda, Conda packaging tools, Cloudsmith CLI, and C++ build tooling. The `redsticks` environment is created separately from `environment.yml`. |
-| [recipe/meta.yaml](recipe/meta.yaml) | Multi-output Conda recipe that produces the `libredsticks` and `redsticks-tools` packages. The Python output is built inline with CMake; this recipe does not use pip or `pyproject.toml`. |
+Python analyzes the extracted iris pixels and classifies the eye color as:
 
-## End-User Guide
+**Blue · Green · Gray · Hazel · Amber · Brown**
 
-### Requirements
+The representative iris color is passed to the native C++ library, which calculates the harmony between the eye color and the available lipstick shades.
 
-- Miniconda or Anaconda.
-- Access to the proprietary Cloudsmith Conda repository that publishes the `libredsticks` and `redsticks-tools` packages.
+## Project Structure
 
-### Installation
+| Path | Purpose |
+| --- | --- |
+| `src/redsticks/` | Python application, CLI, iris detection, and eye-color analysis |
+| `cpp/` | Native C++ harmony algorithm and pybind11 bindings |
+| `models/` | Local MediaPipe model |
+| `samples/` | Example portrait images |
+| `environment.yml` | Conda development environment |
+| `recipe/` | Conda package recipe |
+| `Dockerfile.devEnv` | Ubuntu-based development environment |
 
-Choose the package that matches your use case:
+## Development Setup
 
-- `redstick-tools`: Provides the Python API and CLI, and automatically pulls in a matching `libredsticks` build.
-- `libredsticks`: Provides the native C++ shared library and headers for C/C++ consumers without the Python stack.
+The development container starts from **Ubuntu 24.04** and installs Miniconda explicitly.
 
-Add the package(s) to your project's `environment.yml` file:
+This keeps the different layers visible:
 
-```yaml
-name: redsticks
-channels:
-    - {YOUR_CONDA_CHANNEL}
-    - conda-forge
-dependencies:
-    - python=3.12
-    - redsticks-tools    # Python API + CLI
-    # - libredsticks     # only needed explicitly for C/C++ consumers
+```text
+Ubuntu 24.04
+      │
+      ▼
+   Miniconda
+      │
+      ▼
+redsticks environment
+      │
+      ├── Python dependencies
+      └── C/C++ dependencies
 ```
 
-> Use the channel URL and authentication settings from your Cloudsmith Conda repository. For private repositories, configure credentials in Conda or through your organization's standard secret-management workflow instead of committing tokens to `environment.yml`.
-
-Create and activate the environment from that file:
-
-```bash
-conda env create -f environment.yml && conda activate redsticks
-```
-
-### Usage
-
-#### Run on CPU
-
-Analyze an eye-color image with the default CPU workflow:
-
-```bash
-redsticks --image samples/green-eye.png
-```
-
-The open-weight [`jonathandinu/face-parsing`](https://huggingface.co/jonathandinu/face-parsing) model extracts eye-region pixels and is cached in `~/.cache/huggingface`. If no eyes are detected, RedSticks falls back to Pillow color quantization.
-
-#### Run on GPU
-
-Use the GPU with a CUDA-enabled PyTorch installation:
-
-```bash
-redsticks --image samples/green-eye.png --gpu
-```
-
-> Conda automatically selects the CUDA build when an NVIDIA driver is available.
-
-## Developer Guide
-
-### Setup Environment
-
-The [Dockerfile.devEnv](Dockerfile.devEnv) contains all required development tools. Developers should use the container so the host system does not need Python, Conda, RDKit, CMake, compilers, or Cloudsmith CLI installed. Build artifacts are stored on the host in `.build/`. From the `projects/` directory, open the dedicated RedSticks development container, enable GPU access, and forward the Cloudsmith configuration into the container session:
-
-```bash
-./build.sh build \
-  --path proj4_redsticks/Dockerfile.devEnv \
-  --gpus all \
-  --cloudsmith-workspace "<cloudsmith-repo>" \
-  --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
-```
-
-The `--gpus all` option is passed to the container runtime as `docker run --gpus all`. It requires Docker's NVIDIA Container Toolkit and a working NVIDIA driver exposed to WSL2. The full CUDA Toolkit is not required inside WSL for RedSticks inference; the CUDA runtime is provided by the CUDA-enabled PyTorch environment. Omit `--gpus all` when running the project without GPU access.
-
-Within the running container, the Conda environment is created solely from `environment.yml` using the Conda CLI:
+Inside the development container, create the project environment:
 
 ```bash
 conda env create -f environment.yml
 conda activate redsticks
 ```
 
-The Dockerfile does not create the environment during the image build. This
-keeps the image usable for packaging from the base Conda environment and makes
-the project environment an explicit, reproducible setup step. Make the
-project environment the default for interactive container shells:
-
-```bash
-conda config --set default_activation_env redsticks
-conda config --set auto_activate true
-conda activate redsticks
-```
-
-The image already initializes Conda for Bash. Restart the shell, or source
-`/opt/conda/etc/profile.d/conda.sh` once in the current shell, to apply the
-default immediately.
-
-The development image contains a guarded shell hook for both the `alice` and
-`root` shells. It activates `redsticks` automatically once the environment
-exists. A newly built image therefore starts without a project environment
-until the command above has been run.
-
-On a machine with an NVIDIA GPU the same file installs the CUDA build of PyTorch automatically: conda-forge ships the CUDA runtime libraries as regular Conda packages and selects them via the `__cuda` virtual package, so the host only needs the NVIDIA driver. This includes Windows WSL2, where the Windows NVIDIA driver is exposed to the Linux distribution — never install a Linux driver inside WSL. Containers additionally need `nvidia-container-toolkit` and `docker run --gpus all`.
-
-### Sync Environment
-
-Within the running container, update the existing Conda environment to match
-`environment.yml`, removing any packages that are no longer listed:
+To update an existing environment:
 
 ```bash
 conda env update -f environment.yml --prune
 ```
 
-### Local Development Build
+## Build the Native Extension
 
-The pybind11 extension `_native` must be compiled once (and after every C++ change) so the Python package can import it. Build it in-place with CMake and copy it into the package:
+RedSticks contains a native C++ component exposed to Python through pybind11.
+
+Build it locally with:
 
 ```bash
-cmake -S cpp -B build-dev -G Ninja -DREDSTICKS_BUILD_BINDINGS=ON
+cmake \
+  -S cpp \
+  -B build-dev \
+  -G Ninja \
+  -DREDSTICKS_BUILD_BINDINGS=ON
+
 cmake --build build-dev
+
 cp build-dev/_native*.so src/redsticks/
 ```
 
-Outside a Conda build, `libredsticks` is not pre-installed, so CMake automatically embeds the library sources into the extension (see `cpp/CMakeLists.txt`).
+## Run RedSticks
 
-### Run Tests
+Analyze one of the sample portraits:
 
-Within the running container, run the test suite with pytest:
+```bash
+python -m redsticks.cli \
+  --image samples/blue-eyes.png
+```
+
+Example:
+
+```text
+RedSticks Suggestion
+
+Eye color        Blue
+Eye RGB          (69, 77, 83)
+Extraction       iris-landmarks
+Eyes detected    2
+Suggested shade  Coral Flame
+Harmony          71/100
+```
+
+All image processing and ML inference runs **locally on the CPU**. No cloud inference service or GPU is required.
+
+## Run Tests
+
+Run the test suite with:
 
 ```bash
 PYTHONPATH=src pytest
 ```
 
-### Build Guide
+## Conda Packages
 
-#### Install Packaging Tools
+The project demonstrates a multi-output Conda recipe with two packages:
 
-Install Conda packaging tools into the base environment:
+| Package | Purpose |
+| --- | --- |
+| `libredsticks` | Native C++ library and headers |
+| `redsticks-tools` | Python application, CLI, and pybind11 extension |
 
-```bash
-conda install -n base -c conda-forge conda-build conda-package-handling
-```
-
-#### Build Packages
-
-Build the packages from the project root. The multi-output recipe declares exactly two outputs, `libredsticks` and `redsticks-tools`, and produces both in a single invocation. The `libredsticks` output is built by `recipe/build-libredsticks.sh`, while the `redsticks-tools` output is built by an inline CMake command in `recipe/meta.yaml` that compiles `_native` and copies the Python sources into `site-packages`. This packaging pipeline is entirely Conda-driven and does not use pip or `pyproject.toml`:
+Build both packages with:
 
 ```bash
 conda build recipe/ --channel conda-forge
 ```
 
-Each resulting package contains platform-specific binaries (a native shared library for `libredsticks`, a compiled pybind11 extension for `redsticks-tools`), so neither may be published as `noarch`.
+`redsticks-tools` depends on `libredsticks`, allowing Conda to resolve the native dependency automatically.
 
-#### Authenticate with Cloudsmith
+## Install the Packaged Application
 
-Authenticate the Cloudsmith CLI with an API key that can deploy to the Conda repository:
+Once published to your Conda repository, RedSticks can be consumed from another environment:
 
-```bash
-export CLOUDSMITH_API_KEY="<your-api-key>"
+```yaml
+name: redsticks
+
+channels:
+  - {YOUR_CONDA_CHANNEL}
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - redsticks-tools
 ```
 
-#### Publish Packages
-
-Resolve the exact built artifact paths instead of hard-coding a `noarch` location. `conda build --output` prints one path per output package:
+Create the environment:
 
 ```bash
-mapfile -t PACKAGES < <(conda build recipe/ --channel conda-forge --output)
+conda env create -f environment.yml
+conda activate redsticks
 ```
 
-Upload each built package to your Cloudsmith Conda repository:
-
-```bash
-for PACKAGE in "${PACKAGES[@]}"; do
-    cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
-done
-```
-
-Verify that Cloudsmith can find both uploaded artifacts:
-
-```bash
-cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libredsticks OR redsticks-tools"
-```
+The native `libredsticks` dependency is installed automatically by Conda.

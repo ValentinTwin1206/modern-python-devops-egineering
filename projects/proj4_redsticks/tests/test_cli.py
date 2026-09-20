@@ -3,25 +3,7 @@
 import pytest
 from PIL import Image
 
-from redsticks.cli import _color_name, main
-
-
-@pytest.mark.parametrize(
-    ("rgb", "expected"),
-    [
-        ((0, 0, 0), "Black"),
-        ((255, 255, 255), "White"),
-        ((128, 128, 128), "Gray"),
-        ((70, 110, 180), "Blue"),
-        ((72, 108, 178), "Blue"),
-        ((70, 130, 80), "Green"),
-        ((110, 70, 40), "Brown"),
-        ((140, 115, 60), "Hazel"),
-        ((190, 130, 40), "Amber"),
-    ],
-)
-def test_color_name(rgb, expected):
-    assert _color_name(rgb) == expected
+from redsticks.cli import main
 
 
 @pytest.fixture()
@@ -54,7 +36,19 @@ def test_cli_reports_eye_color_source(eye_image, capsys):
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Color quantization" in captured.out
+    assert "iris-ai" in captured.out
+
+
+def test_cli_reports_detection_failure(eye_image, monkeypatch, capsys):
+    monkeypatch.setattr("redsticks.cli.suggest", lambda *args, **kwargs: (_ for _ in ()).throw(
+        ValueError("Could not reliably detect an iris color.")
+    ))
+
+    exit_code = main(["--image", str(eye_image)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "Could not reliably detect an iris color" in captured.err
 
 
 def test_cli_gpu_without_cuda_fails(eye_image, monkeypatch):

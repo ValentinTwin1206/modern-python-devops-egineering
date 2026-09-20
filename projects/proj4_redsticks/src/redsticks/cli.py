@@ -1,135 +1,129 @@
-"""Command-line interface for redsticks."""
+"""Command-line interface for RedSticks."""
 
 from __future__ import annotations
 
 import logging
 from typing import Sequence
 
-# Third-party modules
+# third-party imports
 import click
-from rich         import box
+from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.table   import Table
-from rich.text    import Text
+from rich.table import Table
+from rich.text import Text
 
-# Own modules
-from .iris import cuda_available
-from .suggest import SuggestionResult, suggest
+# own imports
+from .suggest import EyeColorDetectionError, SuggestionResult, suggest
 
 logger = logging.getLogger("redsticks")
-
-
-def _color_name(rgb: tuple[int, int, int]) -> str:
-    """Return the nearest approximate color name from a small eye-color palette."""
-
-    palette = {
-        "Black": (0, 0, 0),
-        "White": (255, 255, 255),
-        "Gray": (128, 128, 128),
-        "Blue": (70, 110, 180),
-        "Green": (70, 130, 80),
-        "Brown": (110, 70, 40),
-        "Hazel": (140, 115, 60),
-        "Amber": (190, 130, 40),
-    }
-    return min(
-        palette,
-        key=lambda name: sum(
-            (channel - reference) ** 2
-            for channel, reference in zip(rgb, palette[name])
-        ),
-    )
 
 
 def _render_suggestion(result: SuggestionResult) -> Table:
     """Build a Rich table for a suggestion result."""
 
-    eye_hex = "#{:02X}{:02X}{:02X}".format(*result.eye_rgb)
-    eye_swatch = Text("      ", style=f"on {eye_hex}")
-    swatch = Text("      ", style=f"on {result.hex}")
+    shade_value = Text(f"{result.shade_name} {result.hex} ")
+    shade_value.append("      ", style=f"on {result.hex}")
 
     table = Table(
         title="RedSticks Suggestion",
         box=box.SQUARE,
         show_lines=True,
     )
+
     table.add_column("Metric")
     table.add_column("Value")
-    table.add_column("Preview")
+
+    table.add_row("Eye color", result.eye_color.value)
+    table.add_row("Eye RGB", str(result.eye_rgb))
     table.add_row(
-        "Eye color",
-        _color_name(result.eye_rgb),
-        eye_swatch,
+        "Extraction",
+        f"{result.source} ({result.confidence:.0%} confidence)",
     )
-    table.add_row(
-        "Suggested shade",
-        f"{result.shade_name}",
-        swatch,
-    )
-    table.add_row("Harmony", f"{result.harmony}/100", "")
+    table.add_row("Eyes detected", str(result.eyes_detected))
+    table.add_row("Suggested shade", shade_value)
+    table.add_row("Harmony", f"{result.harmony}/100")
     table.add_row(
         "Pigment",
-        f"{result.pigment_formula}\n{result.pigment_weight:.2f} g/mol",
-        "",
+        f"{result.pigment_formula}\n"
+        f"{result.pigment_weight:.2f} g/mol",
     )
+
     return table
 
 
-#
-# CLI
-# # # # # # # #
 @click.command()
 @click.option(
     "--image",
     required=True,
     type=click.Path(dir_okay=False, path_type=str),
-    help="Path to a PNG or JPEG eye-color image.",
+    help="Path to a PNG or JPEG portrait image.",
 )
 @click.option(
     "--gpu",
     is_flag=True,
-    help="Run the AI face-parsing model on the GPU (requires a CUDA-enabled PyTorch).",
+    help=(
+        "Request GPU acceleration where supported. "
+        "The iris landmark detector may run on CPU."
+    ),
 )
-def cli(image: str, gpu: bool) -> None:
-    """Suggest a lipstick shade that harmonizes with an eye-color image."""
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Enable debug logging.",
+)
+def cli(image: str, gpu: bool, verbose: bool) -> None:
+    """Suggest a lipstick shade that harmonizes with eye color."""
 
-    # Setup Logger
     console = Console()
     error_console = Console(stderr=True)
+
+    log_level = logging.DEBUG if verbose else logging.INFO
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(message)s",
-        handlers=[RichHandler(console=error_console, show_path=False)],
+        handlers=[
+            RichHandler(
+                console=error_console,
+                show_path=False,
+            )
+        ],
     )
 
-    if gpu and not cuda_available():
-        raise click.ClickException(
-            "GPU requested but no CUDA device is available. Conda installs the "
-            "CUDA build of PyTorch automatically on machines with an NVIDIA "
-            "driver; containers additionally need 'docker run --gpus all'."
-        )
-
-    # Run suggestion "algorithm"
     try:
-        result: SuggestionResult = suggest(image, device="cuda" if gpu else "cpu")
+        result = suggest(
+            image,
+            device="cuda" if gpu else "cpu",
+        )
+    except EyeColorDetectionError as error:
+        raise click.ClickException(str(error)) from error
     except ValueError as error:
         raise click.ClickException(str(error)) from error
 
-    console.print("REDSTICKS", style="bold")
+    logger.info(
+        "Eye color classified as %s",
+        result.eye_color.value,
+    )
+    logger.info("Showing 'redsticks' suggestion")
+
     console.print(_render_suggestion(result))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the redsticks command-line interface."""
+    """Run the RedSticks command-line interface."""
 
     try:
-        cli.main(args=argv, standalone_mode=False)
+        cli.main(
+            args=argv,
+            standalone_mode=False,
+        )
     except click.ClickException as error:
         error.show()
         return 2
     except click.exceptions.Exit as error:
         return error.exit_code
+
     return 0
 
 

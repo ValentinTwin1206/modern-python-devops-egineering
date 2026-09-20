@@ -1,21 +1,34 @@
 name: redsticks
+
 channels:
   - conda-forge
+
 dependencies:
   - python=3.12
+
+  # CLI
   - click
-  - rdkit
-  - pillow
   - rich
+
+  # Image / numerical processing
+  - pillow
   - numpy
-  - pytorch
-  - torchvision
-  - transformers
-  - huggingface_hub
+
+  # MediaPipe native runtime
+  - libgl
+  - libegl
+  - libgles
+
+  # Chemistry
+  - rdkit
+
+  # Native C++ extension
   - pybind11
   - cmake
   - ninja
+
   - pip
   - pip:
+      - mediapipe
       - cloudsmith-cli==1.26.0
       - pytest

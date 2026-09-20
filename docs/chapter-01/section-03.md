@@ -63,27 +63,47 @@ Conda is a strong fit for computer vision, numerical computing, geospatial proce
 
 ### Install Conda
 
-On Linux, Windows, and macOS, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3` on Unix-like systems, while the project Docker image uses `/opt/conda`.
+Conda is available on Linux, Windows, and macOS. A common starting point is **Miniconda**, a minimal distribution 
+containing Conda, Python, and the packages required to run them.
 
-=== "Linux (Debian-based)"
+A user installation typically lives under `~/miniconda3` on Linux and macOS.
 
-    Download the Miniconda installer:
+=== "Linux"
+
+    Download the Miniconda installer for Linux x86-64:
 
     ```bash
-    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    curl -LsSf \
+      -o miniconda.sh \
+      https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     ```
 
-    Install it into a user-local prefix:
+    Install Miniconda into your home directory:
 
     ```bash
     bash miniconda.sh -b -p "$HOME/miniconda3"
     ```
 
-    Add Conda to the current shell's `PATH`:
+    Initialize Conda for Bash:
 
     ```bash
-    export PATH="$HOME/miniconda3/bin:$PATH"
+    "$HOME/miniconda3/bin/conda" init bash
     ```
+
+    Restart the shell or load the updated configuration:
+
+    ```bash
+    source ~/.bashrc
+    ```
+
+    Verify the installation:
+
+    ```bash
+    conda --version
+    ```
+
+    !!! note "ARM64 / AArch64"
+        On an ARM64 Linux system, use `Miniconda3-latest-Linux-aarch64.sh` instead.
 
 === "Windows"
 
@@ -93,7 +113,7 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
     winget install Anaconda.Miniconda3
     ```
 
-    Check that Conda is available:
+    Open a new terminal and verify the installation:
 
     ```powershell
     conda --version
@@ -101,13 +121,40 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 
 === "macOS"
 
-    Download and install the Apple Silicon Miniconda installer:
+    For an Apple Silicon Mac, download the ARM64 installer:
 
     ```bash
-    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
-    bash miniconda.sh -b -p "$HOME/miniconda3"
-    export PATH="$HOME/miniconda3/bin:$PATH"
+    curl -LsSf \
+      -o miniconda.sh \
+      https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
     ```
+
+    Install Miniconda:
+
+    ```bash
+    bash miniconda.sh -b -p "$HOME/miniconda3"
+    ```
+
+    Initialize Conda for the default Zsh shell:
+
+    ```bash
+    "$HOME/miniconda3/bin/conda" init zsh
+    ```
+
+    Restart the shell or load the updated configuration:
+
+    ```bash
+    source ~/.zshrc
+    ```
+
+    Verify the installation:
+
+    ```bash
+    conda --version
+    ```
+
+    !!! note "Intel Macs"
+        On an Intel Mac, use `Miniconda3-latest-MacOSX-x86_64.sh` instead.
 
 !!! warning
     Run `conda init bash`, `conda init powershell`, or `conda init zsh` only when you want Conda activation integrated into future shells. Initialization can leave the `base` environment active by default.
@@ -116,33 +163,44 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
 
 #### Environment Definition
 
-The dedicated `projects/proj4_redsticks/environment.yml` file defines the
-`redsticks` Conda environment. It records the channels and dependencies needed
-by the project, including Python, scientific and machine-learning packages,
-native libraries, and build tools. A Conda environment can be created via
-`conda env create -f environment.yml`; Conda uses this file to create the
-environment consistently on a new machine.
+The dedicated `projects/proj4_redsticks/environment.yml` file defines the `redsticks` Conda environment. It records the 
+channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native 
+libraries, and build tools. A Conda environment can be created via `conda env create -f environment.yml`; Conda uses this 
+file to create the environment consistently on a new machine.
 
 ```yaml
 name: redsticks
+
 channels:
   - conda-forge
+
 dependencies:
   - python=3.12
+
+  # CLI
   - click
-  - rdkit
-  - pillow
   - rich
+
+  # Image / numerical processing
+  - pillow
   - numpy
-  - pytorch
-  - torchvision
-  - transformers
-  - huggingface_hub
+
+  # MediaPipe native runtime
+  - libgl
+  - libegl
+  - libgles
+
+  # Chemistry
+  - rdkit
+
+  # Native C++ extension
   - pybind11
   - cmake
   - ninja
+
   - pip
   - pip:
+      - mediapipe
       - cloudsmith-cli==1.26.0
       - pytest
 ```
@@ -216,9 +274,8 @@ After creating the environment described in [Environment Definition](#environmen
 
 ## Development Workflow
 
-From the repository's `projects/` directory, use `build.sh` to open the
-dedicated RedSticks development container. The command enables GPU access and
-forwards the Cloudsmith configuration into the container session:
+From the repository's `projects/` directory, use `build.sh` to open the dedicated RedSticks development container. The 
+command enables GPU access and forwards the Cloudsmith configuration into the container session:
 
 ```bash
 ./build.sh build \
@@ -228,16 +285,16 @@ forwards the Cloudsmith configuration into the container session:
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
-The `Dockerfile.devEnv` image installs Miniconda, the base-environment
-packaging tools, the compiler toolchain, and the project files. It deliberately
-does **not** create the `redsticks` environment during the image build. This
-keeps the image reusable and makes environment creation an explicit, inspectable
-workflow step.
+The `Dockerfile.devEnv` image installs Miniconda, the base-environment packaging tools, the compiler toolchain, and 
+the project files. It deliberately does **not** create the `redsticks` environment during the image build. This
+keeps the image reusable and makes environment creation an explicit, inspectable workflow step.
 
-!!! info "Local Inference on CPU or GPU"
-    RedSticks downloads a trained ML model on first use and processes photos locally inside the container, using the CPU by default. For GPU inference, start the container with `--gpus all` and run RedSticks with `--gpu`.
+!!! info "Local ML Inference"
+    RedSticks uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs entirely **locally inside the container** using MediaPipe and TensorFlow Lite — no image data is sent to a cloud service.
 
-    After the `redsticks` environment is created, PyTorch is installed from `environment.yml` into that environment. GPU inference requires CUDA-enabled PyTorch, which supplies the CUDA runtime dependencies. For WSL 2, install the NVIDIA driver on Windows, **not inside WSL 2**, which automatically exposes the Windows driver's CUDA support. Use Docker Desktop's WSL 2 backend or configure the NVIDIA Container Toolkit for Docker Engine running directly in WSL.
+    The detected iris landmarks are used to isolate the actual iris pixels. RedSticks then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
+
+    The MediaPipe models are lightweight and run efficiently on the **CPU**, so CUDA, PyTorch, an NVIDIA GPU, and GPU-enabled Docker containers are no longer required.
 
 ### Create the Environment
 
@@ -272,10 +329,9 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
             rich \
             click \
             numpy \
-            pytorch \
-            torchvision \
-            transformers \
-            huggingface_hub \
+            libgl \
+            libegl \
+            libgles \
             pybind11 \
             cmake \
             ninja \
@@ -286,6 +342,15 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
 
     ```bash
     conda activate redsticks
+    ```
+
+    And finally install the "pip-only" dependencies:
+
+    ```bash
+    python -m pip install \
+        mediapipe \
+        cloudsmith-cli==1.26.0 \
+        pytest
     ```
 
 After the first activation, configure `redsticks` as the default environment for

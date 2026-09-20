@@ -7,7 +7,9 @@ from PIL import Image
 
 suggest_module = importlib.import_module("redsticks.suggest")
 
-from redsticks import SuggestionResult, UnsupportedImageError, suggest
+from redsticks import SuggestionResult, suggest
+from redsticks.iris import IrisResult
+from redsticks.suggest import EyeColorDetectionError
 from redsticks.pigments import CATALOG
 
 
@@ -41,32 +43,39 @@ def test_suggest_rejects_unsupported_extension(tmp_path):
     bad = tmp_path / "eye.gif"
     _write_eye_image(bad, (70, 110, 180))
 
-    with pytest.raises(UnsupportedImageError):
+    with pytest.raises(ValueError):
         suggest(bad)
 
 
 def test_suggest_rejects_missing_file(tmp_path):
-    with pytest.raises(UnsupportedImageError):
+    with pytest.raises(ValueError):
         suggest(tmp_path / "missing.png")
 
 
-def test_suggest_falls_back_to_quantization_without_eyes(tmp_path):
+def test_suggest_rejects_image_without_eyes(tmp_path, monkeypatch):
     image = tmp_path / "eye.png"
     _write_eye_image(image, (70, 110, 180))
 
-    result = suggest(image)
-
-    assert result.source == "quantize"
+    monkeypatch.setattr(suggest_module, "extract_iris", lambda image, device="cpu": None)
+    with pytest.raises(EyeColorDetectionError, match="Could not reliably"):
+        suggest(image)
 
 
 def test_suggest_uses_ai_eye_color_when_available(tmp_path, monkeypatch):
     image = tmp_path / "eye.png"
     _write_eye_image(image, (70, 110, 180))
     monkeypatch.setattr(
-        suggest_module, "extract_eye_rgb", lambda image, device="cpu": (10, 20, 30)
+        suggest_module,
+        "extract_iris",
+        lambda image, device="cpu": IrisResult(
+            rgb=(10, 20, 30),
+            confidence=0.9,
+            eyes_detected=1,
+        ),
     )
 
     result = suggest(image)
 
-    assert result.source == "ai"
+    assert result.source == "iris-ai"
     assert result.eye_rgb == (10, 20, 30)
+    assert result.confidence == 0.9

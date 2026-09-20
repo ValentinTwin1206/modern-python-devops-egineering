@@ -23,6 +23,7 @@ site/
 *.egg-info/
 .eggs/
 pip-wheel-metadata/
+*.so
 
 # Per-project artifact directory bind-mounted at /build inside containers
 # managed by projects/build.sh

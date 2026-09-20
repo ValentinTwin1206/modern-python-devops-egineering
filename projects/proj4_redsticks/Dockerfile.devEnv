@@ -1,39 +1,80 @@
-FROM continuumio/miniconda3
+FROM ubuntu:24.04
 
-# Keep Conda and Python output predictable inside the development container.
-ENV CONDA_DIR=/opt/conda \
+ENV DEBIAN_FRONTEND=noninteractive \
+    CONDA_DIR=/opt/conda \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CLOUDSMITH_REPOSITORY=""
-ENV PATH=$CONDA_DIR/bin:$PATH
+
+ENV PATH="${CONDA_DIR}/bin:${PATH}"
 
 WORKDIR /app
 
-# Install native build tools and create the development user 'alice'.
+# Start with a plain Ubuntu environment and install only the tools required
+# for development and for installing Miniconda.
+#
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
         curl \
         sudo \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash --groups sudo alice \
-    && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/alice \
-    && chmod 0440 /etc/sudoers.d/alice
+    && rm -rf /var/lib/apt/lists/*
 
-# Install packaging and publishing tools in Conda "base" environment. 
-# The "redsticks" environment is created after the container starts.
-RUN conda install \
-    -n base \
-    -c conda-forge \
-    -y conda-build conda-package-handling pip \
-    && /opt/conda/bin/python -m pip install --no-cache-dir cloudsmith-cli==1.26.0 \
+
+# Install Miniconda explicitly instead of inheriting it from the base image.
+# Conda is installed system-wide under /opt/conda.
+#
+RUN curl -fsSL \
+        https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+        -o /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p "${CONDA_DIR}" \
+    && rm /tmp/miniconda.sh \
+    && conda config --system --set auto_activate_base false \
     && conda clean --all --yes
 
-# Do not activate the base environment automatically.
-RUN conda config --system --set auto_activate_base false
 
-# Copy the source, native code, tests, recipe, and sample assets.
+# Alice represents the developer working inside the development container.
+# She receives passwordless sudo access for teaching/demo purposes.
+#
+RUN useradd \
+        --create-home \
+        --shell /bin/bash \
+        --groups sudo \
+        alice \
+    && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' \
+        > /etc/sudoers.d/alice \
+    && chmod 0440 /etc/sudoers.d/alice
+
+
+# Install tools used for building and publishing Conda packages into the
+# base environment.
+#
+# The actual "redsticks" development environment is intentionally NOT
+# created here. It can be created interactively from environment.yml.
+#
+RUN conda install \
+        -n base \
+        -c conda-forge \
+        -y \
+        conda-build \
+        conda-package-handling \
+        pip \
+    && "${CONDA_DIR}/bin/python" -m pip install \
+        --no-cache-dir \
+        cloudsmith-cli==1.26.0 \
+    && conda clean --all --yes
+
+
+# Download the Face Landmarker model used by iris.py.
+# Inference runs locally inside the container.
+#
+RUN mkdir -p /app/models \
+    && curl -fsSL \
+        https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task \
+        -o /app/models/face_landmarker.task
+
+# RedSticks sources
 COPY environment.yml ./
 COPY src ./src
 COPY cpp ./cpp
@@ -44,12 +85,14 @@ COPY README.md ./README.md
 
 ENV PYTHONPATH=/app/src
 
-# Keep the project files and Conda installation writable by the development user.
-RUN chown -R alice:alice /app /home/alice /opt/conda
+# Alice owns both the project and the Conda installation so she can create,
+# modify, and remove Conda environments without sudo.
+#
+RUN chown -R alice:alice /app /home/alice "${CONDA_DIR}"
 
 USER alice
 
-# Configure Bash so Conda activation works in the user's interactive shells.
+# Configure Alice's interactive Bash shells for `conda activate`.
 RUN conda init bash
 
 CMD ["/bin/bash"]

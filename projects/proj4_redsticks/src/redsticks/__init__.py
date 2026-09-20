@@ -1,5 +1,5 @@
 """redsticks: lipstick shade suggestions from eye-color images."""
 
-from .suggest import SuggestionResult, suggest
+from .suggest import EyeColorDetectionError, SuggestionResult, suggest
 
-__all__ = ["SuggestionResult", "suggest"]
+__all__ = ["EyeColorDetectionError", "SuggestionResult", "suggest"]
