@@ -439,14 +439,9 @@ python -m redsticks.cli --image samples/blue-eye.png --gpu
 ```
 
 !!! info "Package Integration Testing"
-    For package-level integration testing, build and install the
-    `redsticks-tools` Conda package from `recipe/meta.yaml`. Its generated
-    console entry point then becomes available in the active environment. See
-    [Conda Packages](../chapter-02/section-04.md) for the packaging workflow.
-
-    ```bash
-    redsticks --image samples/blue-eye.png
-    ```
+    For package-level integration testing, build and install the `redsticks-tools` 
+    Conda package from `meta.yaml`. Its generated console entry point then becomes 
+    available in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
 
 ### Inspect the Environment
 
