@@ -6,7 +6,7 @@ This page covers Conda as both a package manager and an environment manager. Con
 
 ### Project Setup
 
-The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), a native [pybind11](https://pybind11.readthedocs.io/) extension, and an open-weight AI face-parsing model ([transformers](https://huggingface.co/docs/transformers) + [PyTorch](https://pytorch.org/)) for extracting the eye color from real photos. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, compiled C++ code, and a heavyweight ML stack in one environment.
+The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It uses **MediaPipe Face Landmarker** with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to classify the eye color. The result is combined with [RDKit](https://www.rdkit.org/) for pigment chemistry and a native C++ harmony-scoring library exposed to Python through [pybind11](https://pybind11.readthedocs.io/). This makes RedSticks a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local ML inference dependencies together
 
 ### Run the Project
 
@@ -163,16 +163,17 @@ A user installation typically lives under `~/miniconda3` on Linux and macOS.
 
 #### Environment Definition
 
-The dedicated `projects/proj4_redsticks/environment.yml` file defines the `redsticks` Conda environment. It records the 
-channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native 
-libraries, and build tools. A Conda environment can be created via `conda env create -f environment.yml`; Conda uses this 
-file to create the environment consistently on a new machine.
+The dedicated `projects/proj4_redsticks/environment.yml` file defines the `redsticks` Conda environment. It records the
+channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native
+libraries, and development tools. A Conda environment can be created via
+`conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
 
 ```yaml
 name: redsticks
 
 channels:
   - conda-forge
+  - nodefaults
 
 dependencies:
   - python=3.12
@@ -198,19 +199,21 @@ dependencies:
   - cmake
   - ninja
 
+  # Development / testing
+  - pytest
+
+  # Packages not available from conda-forge
   - pip
   - pip:
       - mediapipe
-      - cloudsmith-cli==1.26.0
-      - pytest
 ```
 
 - `name`: Sets the Conda environment name to `redsticks`.
 - `channels`: Tells Conda where to resolve Conda-managed packages.
-    - `default`: Conda's standard package channel, used when it is enabled in the Conda configuration.
     - `conda-forge`: The community channel explicitly selected here for the project's scientific, machine-learning, and native packages.
+    - `nodefaults`: Prevents Conda from adding the Anaconda `defaults` channels from its global configuration. This keeps dependency resolution on `conda-forge` and avoids requiring Anaconda channel Terms of Service acceptance.
 - `dependencies`: Lists the packages that Conda should install. Version constraints can pin an exact version or define a range, using operators such as `=`, `==`, `<`, `<=`, `>`, and `>=`. For example, `python=3.12` requests Python 3.12, while leaving a package unpinned lets Conda resolve a compatible version from the selected channels.
-    - `pip`: Installs packages available only from PyPI through the environment definition. For example, `cloudsmith-cli==1.26.0` requests exactly version 1.26.0, while `pytest` is left unpinned. Prefer Conda channels for Conda-compatible dependencies; packages that exist only on PyPI, such as `cloudsmith-cli` and `pytest`, belong in this subsection and are installed by the Conda CLI when the environment is created or synced.
+    - `pip`: Installs the `mediapipe` package, which is not installed from the Conda dependencies in this environment definition.
 
 #### Key Directories and Files
 
@@ -285,16 +288,17 @@ command enables GPU access and forwards the Cloudsmith configuration into the co
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
-The `Dockerfile.devEnv` image installs Miniconda, the base-environment packaging tools, the compiler toolchain, and 
-the project files. It deliberately does **not** create the `redsticks` environment during the image build. This
-keeps the image reusable and makes environment creation an explicit, inspectable workflow step.
+The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as its only system package channel, and
+installs the compiler toolchain, the MediaPipe model, and the project files.
 
 !!! info "Local ML Inference"
     RedSticks uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs entirely **locally inside the container** using MediaPipe and TensorFlow Lite — no image data is sent to a cloud service.
 
     The detected iris landmarks are used to isolate the actual iris pixels. RedSticks then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
 
-    The MediaPipe models are lightweight and run efficiently on the **CPU**, so CUDA, PyTorch, an NVIDIA GPU, and GPU-enabled Docker containers are no longer required.
+    The MediaPipe models are lightweight and run efficiently on the **CPU**, so CUDA, PyTorch, an NVIDIA GPU, and
+    GPU-enabled Docker containers are not required for the current implementation. The optional GPU-enabled container
+    workflow remains available for a future model or inference backend that benefits from GPU acceleration.
 
 ### Create the Environment
 
@@ -305,7 +309,7 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
     From the project root, create the `redsticks` environment in the container's writable Conda prefix at `/opt/conda/envs/redsticks` and install the dependencies listed in `environment.yml`:
 
     ```bash
-    conda env create -f environment.yml
+    conda env create --file environment.yml
     ```
 
     After the environment has been created, activate it for the current shell:
@@ -335,6 +339,7 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
             pybind11 \
             cmake \
             ninja \
+            pytest \
             pip
     ```
 
@@ -348,9 +353,7 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
 
     ```bash
     python -m pip install \
-        mediapipe \
-        cloudsmith-cli==1.26.0 \
-        pytest
+        mediapipe
     ```
 
 After the first activation, configure `redsticks` as the default environment for
@@ -361,11 +364,6 @@ user created by the Dockerfile.
 conda config --set default_activation_env redsticks
 conda config --set auto_activate true
 ```
-
-!!! info "Base Environment"
-    The Conda `"base"` environment remains available within the container image as
-    it provides the packaging tools like `conda-build` and `conda-package-handling`, 
-    required for the *Packaging Workflow* explained in [Chapter 02, Section 04](../chapter-02/section-04.md).
 
 ### Add Additional Packages
 
@@ -379,7 +377,7 @@ To synchronize an existing environment with the definition file, update it
 from the project root:
 
 ```bash
-conda env update -f environment.yml --prune
+conda env update --file environment.yml --prune
 ```
 
 Add an additional development tool, such as `ruff`, from the `conda-forge`
@@ -431,8 +429,9 @@ python -m redsticks.cli --image samples/blue-eye.png
 
 > The Dockerfile sets `PYTHONPATH=/app/src`, so no path prefix is required.
 
-Run the same source-tree module on the GPU when the container has GPU access and
-the environment contains a CUDA-enabled PyTorch build:
+The current MediaPipe implementation runs on the CPU. Keep the GPU-enabled
+container option available for a future model or inference backend that
+supports GPU acceleration.
 
 ```bash
 python -m redsticks.cli --image samples/blue-eye.png --gpu

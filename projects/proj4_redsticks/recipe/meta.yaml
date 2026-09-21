@@ -83,16 +83,18 @@ outputs:
         - pillow
         - rich
         - numpy
-        - pytorch
-        - torchvision
-        - transformers
-        - huggingface_hub
+        - libgl
+        - libegl
+        - libgles
         - {{ pin_subpackage('libredsticks', exact=True) }}
     test:
+      requires:
+        - pip
       imports:
         - redsticks
         - redsticks._native
       commands:
+        - python -m pip install mediapipe
         - redsticks --help
 
 about:

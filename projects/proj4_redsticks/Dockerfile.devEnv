@@ -1,17 +1,18 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CONDA_DIR=/opt/conda \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
     CLOUDSMITH_REPOSITORY=""
 
 ENV PATH="${CONDA_DIR}/bin:${PATH}"
 
 WORKDIR /app
 
-# Start with a plain Ubuntu environment and install only the tools required
-# for development and for installing Miniconda.
+#
+# Install the basic OS tools required for development and Miniconda.
 #
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -21,21 +22,26 @@ RUN apt-get update \
         sudo \
     && rm -rf /var/lib/apt/lists/*
 
-
-# Install Miniconda explicitly instead of inheriting it from the base image.
-# Conda is installed system-wide under /opt/conda.
+#
+# Install a pinned Miniconda release system-wide under /opt/conda.
+#
+# Pinning the installer makes the development environment reproducible
+# and avoids the pip installer regression observed with Conda 26.7.x.
 #
 RUN curl -fsSL \
-        https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+        https://repo.anaconda.com/miniconda/Miniconda3-py312_26.5.3-2-Linux-x86_64.sh \
         -o /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -b -p "${CONDA_DIR}" \
     && rm /tmp/miniconda.sh \
     && conda config --system --set auto_activate_base false \
+    && (conda config --system --remove-key channels || true) \
+    && conda config --system --add channels conda-forge \
+    && conda config --system --set channel_priority strict \
     && conda clean --all --yes
 
-
+#
 # Alice represents the developer working inside the development container.
-# She receives passwordless sudo access for teaching/demo purposes.
+# Passwordless sudo is enabled intentionally for this teaching/dev environment.
 #
 RUN useradd \
         --create-home \
@@ -46,35 +52,23 @@ RUN useradd \
         > /etc/sudoers.d/alice \
     && chmod 0440 /etc/sudoers.d/alice
 
-
-# Install tools used for building and publishing Conda packages into the
-# base environment.
 #
-# The actual "redsticks" development environment is intentionally NOT
-# created here. It can be created interactively from environment.yml.
+# Download the MediaPipe Face Landmarker model used by iris.py.
 #
-RUN conda install \
-        -n base \
-        -c conda-forge \
-        -y \
-        conda-build \
-        conda-package-handling \
-        pip \
-    && "${CONDA_DIR}/bin/python" -m pip install \
-        --no-cache-dir \
-        cloudsmith-cli==1.26.0 \
-    && conda clean --all --yes
-
-
-# Download the Face Landmarker model used by iris.py.
-# Inference runs locally inside the container.
+# The model is stored outside the Python source tree and inference runs
+# locally inside the container.
 #
 RUN mkdir -p /app/models \
     && curl -fsSL \
         https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task \
         -o /app/models/face_landmarker.task
 
-# RedSticks sources
+#
+# Copy the RedSticks project.
+#
+# The "redsticks" Conda environment is intentionally NOT created during
+# the image build. Alice creates it interactively from environment.yml.
+#
 COPY environment.yml ./
 COPY src ./src
 COPY cpp ./cpp
@@ -85,14 +79,21 @@ COPY README.md ./README.md
 
 ENV PYTHONPATH=/app/src
 
-# Alice owns both the project and the Conda installation so she can create,
-# modify, and remove Conda environments without sudo.
 #
-RUN chown -R alice:alice /app /home/alice "${CONDA_DIR}"
+# Alice owns both the project directory and the Conda installation.
+# This allows her to create, update, and remove Conda environments
+# without requiring sudo.
+#
+RUN chown -R alice:alice \
+        /app \
+        /home/alice \
+        "${CONDA_DIR}"
 
 USER alice
 
-# Configure Alice's interactive Bash shells for `conda activate`.
+#
+# Configure Conda for Alice's interactive Bash shell.
+#
 RUN conda init bash
 
 CMD ["/bin/bash"]

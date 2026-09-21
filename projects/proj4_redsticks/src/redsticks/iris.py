@@ -9,9 +9,15 @@ No cloud inference is used.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
+# Configure native MediaPipe/TensorFlow logging before importing MediaPipe.
+os.environ.setdefault("GLOG_minloglevel", "2")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
+from absl import logging as absl_logging
 import mediapipe as mp
 import numpy as np
 from mediapipe.tasks import python
@@ -20,6 +26,9 @@ from PIL.Image import Image
 
 
 logger = logging.getLogger("redsticks")
+
+absl_logging.set_verbosity(absl_logging.ERROR)
+absl_logging.set_stderrthreshold(absl_logging.ERROR)
 
 
 # ---------------------------------------------------------------------------
@@ -77,8 +86,8 @@ class IrisResult:
 # ---------------------------------------------------------------------------
 
 
-def _create_detector() -> vision.FaceLandmarker:
-    """Create the local MediaPipe Face Landmarker."""
+def _create_detector(device: str = "cpu") -> vision.FaceLandmarker:
+    """Create the local MediaPipe Face Landmarker for the requested device."""
 
     if not _MODEL_PATH.is_file():
         raise FileNotFoundError(
@@ -88,10 +97,21 @@ def _create_detector() -> vision.FaceLandmarker:
             "'models/face_landmarker.task'."
         )
 
-    options = vision.FaceLandmarkerOptions(
-        base_options=python.BaseOptions(
+    if device == "cuda":
+        logger.info("Using MediaPipe GPU delegate")
+        base_options = python.BaseOptions(
             model_asset_path=str(_MODEL_PATH),
-        ),
+            delegate=python.BaseOptions.Delegate.GPU,
+        )
+    else:
+        logger.debug("Using MediaPipe CPU delegate")
+        base_options = python.BaseOptions(
+            model_asset_path=str(_MODEL_PATH),
+            delegate=python.BaseOptions.Delegate.CPU,
+        )
+
+    options = vision.FaceLandmarkerOptions(
+        base_options=base_options,
         running_mode=vision.RunningMode.IMAGE,
         num_faces=1,
         min_face_detection_confidence=0.5,
@@ -236,25 +256,17 @@ def _extract_eye(
     )
 
 
-# ---------------------------------------------------------------------------
+#
 # Public API
-# ---------------------------------------------------------------------------
-
-
-def extract_iris(
-    image: Image,
-    device: str = "cpu",
-) -> IrisResult | None:
+# # # # # # # 
+def extract_iris(image: Image, device: str = "cpu") -> IrisResult | None:
     """Locate the irises and extract their pigmentation.
 
     MediaPipe performs local ML inference using the Face Landmarker model.
 
-    ``device`` is retained temporarily for compatibility with the existing
-    RedSticks API. The current MediaPipe implementation does not use the
-    PyTorch/CUDA device argument.
+    ``device="cuda"`` selects MediaPipe's GPU delegate. The model must be
+    run in an environment with a supported MediaPipe GPU backend.
     """
-
-    del device
 
     rgb_image = image.convert("RGB")
 
@@ -271,16 +283,34 @@ def extract_iris(
         data=image_array,
     )
 
+    def detect_with_device(selected_device: str):
+        with _create_detector(selected_device) as detector:
+            return detector.detect(mp_image)
+
     try:
-        with _create_detector() as detector:
-            result = detector.detect(mp_image)
+        result = detect_with_device(device)
 
     except Exception as error:
-        logger.error(
-            "MediaPipe Face Landmarker failed: %s",
+        if device != "cuda":
+            logger.error(
+                "MediaPipe Face Landmarker failed: %s",
+                error,
+            )
+            return None
+
+        logger.warning(
+            "MediaPipe GPU delegate unavailable (%s); retrying with CPU",
             error,
         )
-        return None
+
+        try:
+            result = detect_with_device("cpu")
+        except Exception as cpu_error:
+            logger.error(
+                "MediaPipe Face Landmarker failed on CPU fallback: %s",
+                cpu_error,
+            )
+            return None
 
     if not result.face_landmarks:
         logger.info(

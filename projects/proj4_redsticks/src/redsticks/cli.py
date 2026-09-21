@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Sequence
 
 # third-party imports
@@ -17,7 +18,6 @@ from rich.text import Text
 from .suggest import EyeColorDetectionError, SuggestionResult, suggest
 
 logger = logging.getLogger("redsticks")
-
 
 def _render_suggestion(result: SuggestionResult) -> Table:
     """Build a Rich table for a suggestion result."""
@@ -75,11 +75,12 @@ def _render_suggestion(result: SuggestionResult) -> Table:
 def cli(image: str, gpu: bool, verbose: bool) -> None:
     """Suggest a lipstick shade that harmonizes with eye color."""
 
+    # Configure consoles
     console = Console()
     error_console = Console(stderr=True)
 
+    # Configure logging
     log_level = logging.DEBUG if verbose else logging.INFO
-
     logging.basicConfig(
         level=log_level,
         format="%(message)s",
@@ -91,16 +92,24 @@ def cli(image: str, gpu: bool, verbose: bool) -> None:
         ],
     )
 
+
     try:
+        # Parse args
+        image_path: Path = Path(image)
+        device: str = "cuda" if gpu else "cpu"
+
+        # Call the suggestion algo
         result = suggest(
-            image,
-            device="cuda" if gpu else "cpu",
+            image_path=image_path,
+            device=device
         )
+
     except EyeColorDetectionError as error:
         raise click.ClickException(str(error)) from error
     except ValueError as error:
         raise click.ClickException(str(error)) from error
 
+    # Log and render results
     logger.info(
         "Eye color classified as %s",
         result.eye_color.value,

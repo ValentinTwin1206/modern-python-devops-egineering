@@ -54,12 +54,13 @@ The representative iris color is passed to the native C++ library, which calcula
 
 ## Development Setup
 
-The development container starts from **Ubuntu 24.04** and installs Miniconda explicitly.
+The development container starts from **Ubuntu 26.04** and installs a pinned
+Miniconda release explicitly.
 
 This keeps the different layers visible:
 
 ```text
-Ubuntu 24.04
+Ubuntu 26.04
       │
       ▼
    Miniconda
@@ -71,10 +72,15 @@ redsticks environment
       └── C/C++ dependencies
 ```
 
-Inside the development container, create the project environment:
+Inside the development container, create the project environment if it does not
+already exist:
 
 ```bash
-conda env create -f environment.yml
+if conda env list | awk '{print $1}' | grep -qx redsticks; then
+    echo "Conda environment 'redsticks' already exists"
+else
+    conda env create --file environment.yml
+fi
 conda activate redsticks
 ```
 
@@ -82,6 +88,13 @@ To update an existing environment:
 
 ```bash
 conda env update -f environment.yml --prune
+```
+
+MediaPipe is not available from `conda-forge`, so install it from PyPI after
+creating or updating the environment:
+
+```bash
+python -m pip install mediapipe
 ```
 
 ## Build the Native Extension
@@ -151,6 +164,20 @@ conda build recipe/ --channel conda-forge
 
 `redsticks-tools` depends on `libredsticks`, allowing Conda to resolve the native dependency automatically.
 
+Install the packaging and publication tools separately when you need to build
+or upload Conda packages:
+
+```bash
+conda install \
+    --name base \
+    --channel conda-forge \
+    conda-build \
+    conda-package-handling
+
+conda run --name base \
+    python -m pip install cloudsmith-cli==1.26.0
+```
+
 ## Install the Packaged Application
 
 Once published to your Conda repository, RedSticks can be consumed from another environment:
@@ -161,17 +188,19 @@ name: redsticks
 channels:
   - {YOUR_CONDA_CHANNEL}
   - conda-forge
+  - nodefaults
 
 dependencies:
   - python=3.12
   - redsticks-tools
 ```
 
-Create the environment:
+Create and activate the environment:
 
 ```bash
-conda env create -f environment.yml
+conda env create --file environment.yml
 conda activate redsticks
+python -m pip install mediapipe
 ```
 
 The native `libredsticks` dependency is installed automatically by Conda.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,8 @@ _SUPPORTED_SUFFIXES = {
     ".jpg",
     ".jpeg",
 }
+
+logger = logging.getLogger("redsticks")
 
 
 class EyeColorDetectionError(ValueError):
@@ -89,9 +92,7 @@ CATALOG: tuple[Pigment, ...] = (
 )
 
 
-def _pigment_details(
-    pigment: Pigment,
-) -> tuple[str, float]:
+def _pigment_details(pigment: Pigment) -> tuple[str, float]:
     """Return molecular formula and weight."""
 
     molecule = Chem.MolFromSmiles(
@@ -109,45 +110,41 @@ def _pigment_details(
     )
 
 
-def suggest(
-    image_path: str | Path,
-    *,
-    device: str = "cpu",
-) -> SuggestionResult:
+#
+# Public API
+# # # # # # # 
+def suggest(image_path: Path, device: str = "cpu") -> SuggestionResult:
     """Suggest a lipstick shade from iris pigmentation."""
 
-    path = Path(image_path)
+    # Unsupported file format
+    if image_path.suffix.lower() not in _SUPPORTED_SUFFIXES:
+        raise ValueError(f"The file format '{image_path.suffix.lower()}' is not supported.")
 
-    if (
-        path.suffix.lower() not in _SUPPORTED_SUFFIXES
-        or not path.is_file()
-    ):
-        raise ValueError(
-            f"Expected an existing PNG or JPEG file, got: {path}"
-        )
+    # File not accessible
+    if not image_path.is_file():
+        raise ValueError(f"The file '{image_path}' does not exist or is not accessible.")
 
-    with Image.open(path) as image:
-        iris = extract_iris(
-            image,
-            device=device,
-        )
+    # Extract iris pigmentation from the image
+    logger.info("Trying to extract iris from '%s' using '%s' device", image_path, device)
+    with Image.open(image_path) as image:
+        iris = extract_iris(image=image, device=device)
 
     if iris is None:
-        raise EyeColorDetectionError(
-            "Could not reliably detect an iris. "
-            "Use a well-lit portrait with one or both eyes clearly visible."
-        )
+        raise EyeColorDetectionError("Could not reliably detect an iris. Use a portrait with clearly visible eye(s).")
 
-    eye_color = classify_eye_color(
-        iris.pixels
-    )
+    logger.info("Extracted iris from image with RGB '%s' and confidence %.2f", iris.rgb, iris.confidence)
 
-    eye_rgb = iris.rgb
+    # Classify eye color (e.g. blue, green, brown)
+    logger.info("Trying to classify eye color")
+    eye_color = classify_eye_color(iris.pixels)
+    logger.info("Classified eye color '%s' for RGB '%s'", eye_color.value, iris.rgb)
 
+    # Leverage native extenstion for harmony scoring
+    logger.info("Trying harmony scoring for '%d' pigments", len(CATALOG))
     scored = [
         (
             harmony_score(
-                *map(float, eye_rgb),
+                *map(float, iris.rgb),
                 *map(float, pigment.rgb),
             ),
             pigment,
@@ -155,11 +152,14 @@ def suggest(
         for pigment in CATALOG
     ]
 
-    best_score, best_pigment = max(
-        scored,
-        key=lambda pair: pair[0],
+    best_score, best_pigment = max(scored, key=lambda pair: pair[0])
+    logger.debug(
+        "Selected pigment '%s' with harmony score %.2f",
+        best_pigment.name,
+        best_score,
     )
 
+    logger.debug("Calling _pigment_details() for %s", best_pigment.name)
     formula, weight = _pigment_details(
         best_pigment
     )
@@ -170,7 +170,7 @@ def suggest(
             *best_pigment.rgb
         ),
         rgb=best_pigment.rgb,
-        eye_rgb=eye_rgb,
+        eye_rgb=iris.rgb,
         eye_color=eye_color,
         harmony=max(
             0,

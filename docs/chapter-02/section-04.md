@@ -8,7 +8,7 @@ The Conda workflow connects project definition, multi-language dependency resolu
 
 ### Project Setup
 
-The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. The project is a good Conda example because it combines Python packages, native libraries, and compiled C++ code in one distributable environment.
+The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker), [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. The project is a good Conda example because it combines Python packages, native libraries, local ML inference, and compiled C++ code in one distributable environment.
 
 The recipe produces two Conda packages:
 
@@ -56,15 +56,13 @@ A Conda package is built with a dedicated recipe directory alongside the project
 │   └── redsticks/
 ├── tests/
 ├── environment.yml
-├── pyproject.toml
 └── README.md
 ```
 
 - `recipe/meta.yaml`: Defines the two Conda outputs, their dependencies, build steps, entry point, and package tests.
 - `cpp/`: Contains the native C++ scoring library, public header, pybind11 bindings, and CMake configuration.
 - `src/`: Contains the Python package and CLI.
-- `pyproject.toml`: Defines the Python package metadata and `scikit-build-core` backend.
-- `environment.yml`: Defines the development environment, including Conda dependencies and the pip-only `karva` test tool.
+- `environment.yml`: Defines the development environment, including runtime, native, and testing dependencies, plus the pip-only `mediapipe` package.
 
 ### Package Recipe
 
@@ -84,22 +82,34 @@ outputs:
         - ninja
 
   - name: redsticks-tools
-    script: "{{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv"
+    # The current recipe builds the pybind11 extension directly with CMake.
+    script: >-
+      cmake -S "${SRC_DIR}/cpp" -B build-tools -G Ninja
+      -DCMAKE_BUILD_TYPE=Release -DREDSTICKS_BUILD_BINDINGS=ON
+      -DCMAKE_PREFIX_PATH="${PREFIX}"
+      && cmake --build build-tools
+      && mkdir -p "${SP_DIR}/redsticks"
+      && cp "${SRC_DIR}"/src/redsticks/*.py "${SP_DIR}/redsticks/"
+      && cp build-tools/_native*.so "${SP_DIR}/redsticks/"
     build:
       entry_points:
         - redsticks = redsticks.cli:main
     requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
       host:
         - python >=3.12
-        - pip
-        - scikit-build-core >=0.10
         - pybind11 >=2.12
         - {{ pin_subpackage('libredsticks', exact=True) }}
       run:
         - python >=3.12
+        - click
         - rdkit
         - pillow
         - rich
+        - numpy
         - {{ pin_subpackage('libredsticks', exact=True) }}
     test:
       imports:
@@ -113,7 +123,11 @@ outputs:
 - `redsticks-tools`: Builds the Python package and pybind11 extension. Its exact `pin_subpackage` dependency ensures the extension uses the matching native library.
 - `requirements.host`: Supplies Python and native build dependencies while the package is compiled.
 - `requirements.run`: Records the dependencies needed by the installed application.
-- `test`: Verifies that the extension imports and that the generated CLI is available.
+- `test`: Installs the PyPI-only MediaPipe dependency, then verifies that the extension imports and the generated CLI is available.
+
+> MediaPipe is not available from `conda-forge`, so it is intentionally not
+> listed in `requirements.run` for `redsticks-tools`. Install it from PyPI
+> after installing the Conda package, as described in the consumer workflow.
 
 ### Package Layout
 
@@ -148,8 +162,12 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
         │   └── redsticks
         └── site-packages/
             ├── redsticks/
+            │   ├── __init__.py
+            │   ├── cli.py
+            │   ├── eye_color.py
+            │   ├── iris.py
+            │   ├── suggest.py
             │   └── _native.<platform>.so
-            └── redsticks-1.0.0.dist-info/
     ```
 
 ## Packaging Workflow
@@ -166,50 +184,56 @@ forward the Cloudsmith configuration into the container session:
   --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
 ```
 
-The `Dockerfile.devEnv` image installs Miniconda, the base-environment
-packaging tools, the compiler toolchain, and the project source tree. It does
-not create the `redsticks` environment during the image build. Packaging uses
-the base environment's `conda-build` and `conda-package-handling` tools, while
-local source development and tests use the project environment created from
-`environment.yml`.
+The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as
+its only system package channel, and provides the compiler toolchain, the
+MediaPipe model, and the project source tree. It does not create the
+`redsticks` environment during the image build. Follow [Chapter 01, Section
+03](../chapter-01/section-03.md) to create the project environment, run the
+application, and test its functionality. This packaging workflow installs its
+packaging tools separately in Conda's `base` environment.
 
-### Create the Project Environment
+### Install Packaging Tools
 
-Create the project environment explicitly inside the running container when
-you need to run the source tree, tests, or native development commands:
-
-```bash
-cd /app
-conda env create -f environment.yml
-```
-
-Set `redsticks` as Conda's default activation environment and activate it:
+Install the packaging tools in Conda's `base` environment rather than in the
+project's `redsticks` environment. This separation keeps the *Packaging Workflow*
+independent from the *Development Workflow*. The installed `conda-build` package
+is the recipe-driven build tool, and `conda-package-handling` provides the `cph`
+command for listing package archives and inspecting their metadata and contents.
 
 ```bash
-conda config --set default_activation_env redsticks
-conda config --set auto_activate true
-conda activate redsticks
+conda install \
+    --name base \
+    --channel conda-forge \
+    conda-build \
+    conda-package-handling
 ```
 
-The image already initializes Conda for Bash. Restart the shell, or source
-`/opt/conda/etc/profile.d/conda.sh` once in the current shell, to use the
-default automatically. The image's guarded shell hook also activates
-`redsticks` automatically for new interactive shells after the environment
-exists. The hook is installed for both the `alice` and `root` shells because
-the shared project launcher can enter development images through a root shell.
-If the dependency file changes, synchronize the existing environment with:
+The following command runs `pip` in Conda's `base` environment. It downloads
+the `cloudsmith-cli` package from PyPI and installs it for uploading packages
+to the configured Cloudsmith repository.
 
 ```bash
-conda env update -f environment.yml --prune
+conda run --name base python -m pip install cloudsmith-cli==1.26.0
 ```
 
-Inside the running container, build both outputs from the project root. A single `conda build` invocation resolves the shared build environment and produces `libredsticks` and `redsticks-tools` in dependency order:
+### Create the Package
+
+Activate the `base` environment before running the packaging command:
+
+```bash
+conda activate base
+```
+
+From the project root, build both packages with `conda-build`. The
+`--channel conda-forge` option provides the public compilers, CMake, Python,
+RDKit, Pillow, and other dependencies required by the recipe.
 
 ```bash
 conda build recipe/ --channel conda-forge
 ```
 
-The `--channel conda-forge` option supplies public compilers, CMake, Python, RDKit, Pillow, and other build dependencies. Cloudsmith is the publication target for the finished packages.
+- `libredsticks`: Provides the standalone native C++ library and public header.
+- `redsticks-tools`: Provides the Python package, CLI, and pybind11 extension.
 
 ### Inspect the Package
 
@@ -217,10 +241,10 @@ The two archives have different payloads and dependency metadata, so inspect the
 
 === "libredsticks"
 
-    Resolve the native package path:
+    Resolve the native package created in the previous step:
 
     ```bash
-    LIBREDSTICKS_PKG="$(conda build recipe/ --channel conda-forge --output | grep '/libredsticks-')"
+    LIBREDSTICKS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'libredsticks-*.conda' -print -quit)"
     ```
 
     List the package contents:
@@ -238,10 +262,10 @@ The two archives have different payloads and dependency metadata, so inspect the
 
 === "redsticks-tools"
 
-    Resolve the Python package path:
+    Resolve the Python package created in the previous step:
 
     ```bash
-    REDSTICKS_TOOLS_PKG="$(conda build recipe/ --channel conda-forge --output | grep '/redsticks-tools-')"
+    REDSTICKS_TOOLS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'redsticks-tools-*.conda' -print -quit)"
     ```
 
     List the package contents:
@@ -277,10 +301,12 @@ repository-root/
     └── redsticks-tools-1.0.0-<build>.conda
 ```
 
-Upload both outputs so the exact native-library pin can be satisfied at install time:
+Upload the two archives created in the previous step so the exact native-library pin can be satisfied at install time:
 
 ```bash
-mapfile -t PACKAGES < <(conda build recipe/ --channel conda-forge --output)
+mapfile -t PACKAGES < <(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f \( \
+  -name 'libredsticks-*.conda' -o -name 'redsticks-tools-*.conda' \
+\) -print)
 for PACKAGE in "${PACKAGES[@]}"; do
     cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
 done
@@ -301,41 +327,56 @@ cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libredsticks OR redstick
 
 When Conda creates or updates an environment, it consults the configured `channels` list. Put the authenticated Cloudsmith channel before `conda-forge` so Conda can find `redsticks-tools` and its matching `libredsticks` package, then resolve public runtime dependencies from `conda-forge`.
 
-Keep authenticated URLs out of `environment.yml`, source control, and shell history. Configure the channel in `~/.condarc`, `/etc/conda/.condarc`, or an untracked CI configuration file.
+> Keep authenticated URLs out of `environment.yml`, source control, and shell history. Configure the channel in `~/.condarc`, `/etc/conda/.condarc`, or an untracked CI configuration file. Add `nodefaults` after `conda-forge` when the consumer environment should not use Anaconda's `defaults` channels.
 
 ```yaml
 channels:
   - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
   - conda-forge
+  - nodefaults
 channel_priority: strict
 ```
 
 ### Install the Package
 
-Create a small consumer project and record the Python package as an environment dependency:
+Create a small consumer project:
 
 ```bash
 mkdir redsticks-consumer && cd redsticks-consumer
 ```
+
+Record the `redsticks-tools` package as an environment dependency:
 
 ```yaml
 name: redsticks-demo
 channels:
   - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
   - conda-forge
+  - nodefaults
 dependencies:
   - python=3.12
   - redsticks-tools
 ```
 
-Create and activate the environment:
+Then, create the environment:
 
 ```bash
-conda env create -f environment.yml
+conda env create --file environment.yml
+```
+
+> Both `redsticks-tools` and its exact `libredsticks` dependency get installed.
+
+Activate the consumer environment:
+
+```bash
 conda activate redsticks-demo
 ```
 
-The solver installs the Python runtime, C++ runtime, RDKit, Pillow, Rich, `redsticks-tools`, and its exact `libredsticks` dependency into one environment.
+Since `mediapipe` is not available from `conda-forge`, install it from PyPI:
+
+```bash
+conda run --name "redsticks-demo" python -m pip install mediapipe
+```
 
 The CLI accepts an eye-color image and can write a PNG shade swatch:
 

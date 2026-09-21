@@ -2,6 +2,7 @@ name: redsticks
 
 channels:
   - conda-forge
+  - nodefaults
 
 dependencies:
   - python=3.12
@@ -27,8 +28,10 @@ dependencies:
   - cmake
   - ninja
 
+  # Development / testing
+  - pytest
+
+  # Packages not available from conda-forge
   - pip
   - pip:
       - mediapipe
-      - cloudsmith-cli==1.26.0
-      - pytest
