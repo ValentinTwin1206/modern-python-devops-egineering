@@ -427,12 +427,6 @@ so that changes can be tested without reinstalling the package:
 python -m redsticks.cli --image samples/blue-eye.png
 ```
 
-> The Dockerfile sets `PYTHONPATH=/app/src`, so no path prefix is required.
-
-The current MediaPipe implementation runs on the CPU. Keep the GPU-enabled
-container option available for a future model or inference backend that
-supports GPU acceleration.
-
 ```bash
 python -m redsticks.cli --image samples/blue-eye.png --gpu
 ```
