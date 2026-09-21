@@ -41,6 +41,7 @@ ${BLUE}${BOLD}BUILD OPTIONS${RESET}
         ${YELLOW}--gpus${RESET} ${CYAN}<GPU_REQUEST>${RESET}       GPU access passed to the container runtime, such as ${CYAN}all${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
+        ${YELLOW}--rm-container${RESET}       Remove the container automatically after it exits.
         ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}<WORKSPACE>${RESET}
                               Forward ${CYAN}CLOUDSMITH_REPOSITORY${RESET} into the container.
         ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}<API_KEY>${RESET}
@@ -75,14 +76,12 @@ detect_container_engine() {
 
 image_tag_for() {
     local dockerfile_abs="$1"
-    local projects_name rel_path slug
+    local rel_path project_name
 
-    projects_name="$(basename -- "${PROJECTS_ROOT}")"
     rel_path="${dockerfile_abs#"${PROJECTS_ROOT}/"}"
-    slug="$(printf '%s/%s' "${projects_name}" "${rel_path}" \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -e 's|/|-|g' -e 's|\.|-|g')"
-    printf 'mpe/%s:latest\n' "${slug}"
+    project_name="${rel_path%%/*}"
+    project_name="$(printf '%s' "${project_name}" | tr '[:upper:]' '[:lower:]')"
+    printf 'mpe/%s\n' "${project_name}"
 }
 
 resolve_dockerfile_path() {
@@ -121,6 +120,7 @@ parse_build_args() {
     GPU_REQUEST=""
     BUILD_ONLY=0
     NO_CACHE=0
+    RM_CONTAINER=0
     CLOUDSMITH_WORKSPACE=""
     CLOUDSMITH_API_KEY=""
 
@@ -163,6 +163,10 @@ parse_build_args() {
                 ;;
             --rebuild)
                 NO_CACHE=1
+                shift
+                ;;
+            --rm-container)
+                RM_CONTAINER=1
                 shift
                 ;;
             --cloudsmith-workspace)
@@ -243,8 +247,12 @@ build_command() {
         exit 0
     fi
 
-    local run_cmd=("${CONTAINER_ENGINE}" run --rm -it --name "${container_name}")
+    local run_cmd=("${CONTAINER_ENGINE}" run -it --name "${container_name}")
     local container_cmd=("/bin/bash")
+
+    if [[ "${RM_CONTAINER}" -eq 1 ]]; then
+        run_cmd+=(--rm)
+    fi
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
         mount_source="${build_context}"

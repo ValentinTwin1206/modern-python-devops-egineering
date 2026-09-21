@@ -175,22 +175,31 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, open the dedicated packaging container and
-forward the Cloudsmith configuration into the container session:
+From the `projects/` directory, use the already-built `mpe/proj4_redsticks`
+image to create an interactive Bash session. The command mounts the project
+source and build directory, then forwards the Cloudsmith configuration into
+the container.
+
+Create a host directory for package artifacts generated inside the container:
 
 ```bash
-./build.sh build --path proj4_redsticks/Dockerfile.devEnv \
-  --cloudsmith-workspace "<cloudsmith-repo>" \
-  --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+mkdir -p proj4_redsticks/.build
 ```
 
-The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as
-its only system package channel, and provides the compiler toolchain, the
-MediaPipe model, and the project source tree. It does not create the
-`redsticks` environment during the image build. Follow [Chapter 01, Section
-03](../chapter-01/section-03.md) to create the project environment, run the
-application, and test its functionality. This packaging workflow installs its
-packaging tools separately in Conda's `base` environment.
+Start the container and mount the project and build directories:
+
+```bash
+docker run -it \
+    -v "$PWD/proj4_redsticks:/app" \
+    -v "$PWD/proj4_redsticks/.build:/build" \
+    -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+    mpe/proj4_redsticks \
+    /bin/bash
+```
+
+> See [Development Workflow](./../chapter-01/section-03.md#development-workflow) for creating the image using the `build.sh` script
+
 
 ### Install Packaging Tools
 
@@ -325,16 +334,32 @@ cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libredsticks OR redstick
 
 ### Configure the Package Manager
 
-When Conda creates or updates an environment, it consults the configured `channels` list. Put the authenticated Cloudsmith channel before `conda-forge` so Conda can find `redsticks-tools` and its matching `libredsticks` package, then resolve public runtime dependencies from `conda-forge`.
+Configure `.condarc` before creating the environment. Replace `<cloudsmith-repo>` with the repository slug. Conda creates `.condarc` automatically when the first command writes to it.
 
-> Keep authenticated URLs out of `environment.yml`, source control, and shell history. Configure the channel in `~/.condarc`, `/etc/conda/.condarc`, or an untracked CI configuration file. Add `nodefaults` after `conda-forge` when the consumer environment should not use Anaconda's `defaults` channels.
+Expose the Cloudsmith channel URL to your local environment:
 
-```yaml
-channels:
-  - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
-  - conda-forge
-  - nodefaults
-channel_priority: strict
+```bash
+CLOUDSMITH_CHANNEL="https://token:${CLOUDSMITH_API_KEY}@conda.cloudsmith.io/<cloudsmith-repo>/"
+```
+
+Clear existing channels:
+
+```bash
+conda config --remove-key channels
+```
+
+Add the required channels:
+
+```bash
+conda config --add channels nodefaults
+conda config --add channels conda-forge
+conda config --add channels "$CLOUDSMITH_CHANNEL"
+```
+
+Set strict channel priority:
+
+```bash
+conda config --set channel_priority strict
 ```
 
 ### Install the Package
@@ -349,10 +374,6 @@ Record the `redsticks-tools` package as an environment dependency:
 
 ```yaml
 name: redsticks-demo
-channels:
-  - https://token:<token>@conda.cloudsmith.io/<cloudsmith-repo>/
-  - conda-forge
-  - nodefaults
 dependencies:
   - python=3.12
   - redsticks-tools
