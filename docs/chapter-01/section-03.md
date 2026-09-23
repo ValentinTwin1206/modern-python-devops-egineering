@@ -6,17 +6,17 @@ This page covers Conda as both a package manager and an environment manager. Con
 
 ### Project Setup
 
-The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It uses **MediaPipe Face Landmarker** with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to classify the eye color. The result is combined with [RDKit](https://www.rdkit.org/) for pigment chemistry and a native C++ harmony-scoring library exposed to Python through [pybind11](https://pybind11.readthedocs.io/). This makes RedSticks a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local ML inference dependencies together
+The applied project is `IrisLab`, a small image-based iris color analysis application. It uses MediaPipe Face Landmarker with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to determine perceptual color features and classify the eye color. The resulting color profile is compared with reference colors using a native C++ library that calculates CIE ΔE color distances and is exposed to Python through `pybind11`. This makes `IrisLab` a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local machine-learning dependencies together.
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_redsticks/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab/README.md).
 
 ## Conda Environment Model
 
 Conda can manage the Python interpreter version itself and install non-Python dependencies from Conda channels. One Conda environment can therefore bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
 
-Conda is more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and conventions for publishing binary scientific software. This is especially useful for projects such as RedSticks that combine RDKit, image processing, and compiled C++ code.
+Conda is more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and conventions for publishing binary scientific software. This is especially useful for projects such as `IrisLab` that combine scientific Python packages, image processing, local machine-learning inference, and compiled C++ code within a single environment.
 
 The simplified diagram compares a plain `venv` workflow with a Conda workflow:
 
@@ -30,15 +30,15 @@ graph TB
     PYPI --> VENV["venv + pip"]
     DEBIAN --> VENV_PY["Python 3.12"]
     VENV_PY --> VENV
-    VENV --> VENV_DEPS["Python packages / Pillow, pybind11, pytest"]
-    DEBIAN --> HOST_DEPS["Host packages / RDKit, CMake, C++ toolchain"]
-    VENV_DEPS --> VENV_APP["RedSticks"]
+    VENV --> VENV_DEPS["Python packages / Pillow, mediapipe, pybind11"]
+    DEBIAN --> HOST_DEPS["Host packages / CMake, C++ toolchain"]
+    VENV_DEPS --> VENV_APP["IrisLab"]
     HOST_DEPS --> VENV_APP
 
     CONDA_INSTALLER --> CONDA["Conda"]
     CONDA_FORGE --> CONDA
-    CONDA --> CONDA_DEPS["One environment prefix / Python, RDKit, Pillow, CMake"]
-    CONDA_DEPS --> CONDA_APP["RedSticks"]
+    CONDA --> CONDA_DEPS["One environment prefix / Python, Pillow, CMake"]
+    CONDA_DEPS --> CONDA_APP["IrisLab"]
 ```
 
 ### When to Use Conda?
@@ -163,13 +163,10 @@ A user installation typically lives under `~/miniconda3` on Linux and macOS.
 
 #### Environment Definition
 
-The dedicated `projects/proj4_redsticks/environment.yml` file defines the `redsticks` Conda environment. It records the
-channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native
-libraries, and development tools. A Conda environment can be created via
-`conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
+The dedicated `projects/proj4_irislab/environment.yml` file defines the `irislab` Conda environment. It records the channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native libraries, and development tools. A Conda environment can be created via `conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
 
 ```yaml
-name: redsticks
+name: irislab
 
 channels:
   - conda-forge
@@ -191,9 +188,6 @@ dependencies:
   - libegl
   - libgles
 
-  # Chemistry
-  - rdkit
-
   # Native C++ extension
   - pybind11
   - cmake
@@ -208,7 +202,7 @@ dependencies:
       - mediapipe
 ```
 
-- `name`: Sets the Conda environment name to `redsticks`.
+- `name`: Sets the Conda environment name to `irislab`.
 - `channels`: Tells Conda where to resolve Conda-managed packages.
     - `conda-forge`: The community channel explicitly selected here for the project's scientific, machine-learning, and native packages.
     - `nodefaults`: Prevents Conda from adding the Anaconda `defaults` channels from its global configuration. This keeps dependency resolution on `conda-forge` and avoids requiring Anaconda channel Terms of Service acceptance.
@@ -225,15 +219,15 @@ After creating the environment described in [Environment Definition](#environmen
     <conda-prefix>/
     ├── bin/conda
     ├── envs/
-    │   └── redsticks/
+    │   └── irislab/
     │       ├── bin/
     │       │   ├── python
     │       │   ├── python3.12
-    │       │   └── redsticks
+    │       │   └── irislab
     │       ├── conda-meta/
     │       ├── include/python3.12/
     │       ├── lib/python3.12/site-packages/
-    │       └── lib/libredsticks.so
+    │       └── lib/libirislab.so
     └── pkgs/
     ```
 
@@ -243,9 +237,9 @@ After creating the environment described in [Environment Definition](#environmen
     <conda-prefix>\
     ├── condabin\conda.bat
     ├── envs\
-    │   └── redsticks\
+    │   └── irislab\
     │       ├── python.exe
-    │       ├── Scripts\redsticks.exe
+    │       ├── Scripts\irislab.exe
     │       ├── Lib\site-packages\
     │       ├── Library\bin\
     │       └── conda-meta\
@@ -258,12 +252,12 @@ After creating the environment described in [Environment Definition](#environmen
     <conda-prefix>/
     ├── bin/conda
     ├── envs/
-    │   └── redsticks/
+    │   └── irislab/
     │       ├── bin/python
-    │       ├── bin/redsticks
+    │       ├── bin/irislab
     │       ├── conda-meta/
     │       ├── lib/python3.12/site-packages/
-    │       └── lib/libredsticks.dylib
+    │       └── lib/libirislab.dylib
     └── pkgs/
     ```
 
@@ -277,12 +271,11 @@ After creating the environment described in [Environment Definition](#environmen
 
 ## Development Workflow
 
-From the repository's `projects/` directory, use `build.sh` to open the dedicated RedSticks development container. The 
-command enables GPU access and forwards the Cloudsmith configuration into the container session:
+From the repository's `projects/` directory, use `build.sh` to open the dedicated IrisLab development container. The command enables GPU access and forwards the Cloudsmith configuration into the container session:
 
 ```bash
 ./build.sh build \
-    --path proj4_redsticks/Dockerfile.devEnv \
+    --path proj4_irislab/Dockerfile.devEnv \
     --gpus all \
     --cloudsmith-workspace "<cloudsmith-repo>" \
     --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
@@ -292,9 +285,9 @@ The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as it
 installs the compiler toolchain, the MediaPipe model, and the project files.
 
 !!! info "Local ML Inference"
-    RedSticks uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs entirely **locally inside the container** using MediaPipe and TensorFlow Lite — no image data is sent to a cloud service.
+    `IrisLab` uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs entirely **locally inside the container** using MediaPipe and TensorFlow Lite — no image data is sent to a cloud service.
 
-    The detected iris landmarks are used to isolate the actual iris pixels. RedSticks then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
+    The detected iris landmarks are used to isolate the actual iris pixels. `IrisLab` then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
 
     The MediaPipe models are lightweight and run efficiently on the **CPU**, so CUDA, PyTorch, an NVIDIA GPU, and
     GPU-enabled Docker containers are not required for the current implementation. The optional GPU-enabled container
@@ -302,11 +295,11 @@ installs the compiler toolchain, the MediaPipe model, and the project files.
 
 ### Create the Environment
 
-The `redsticks` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. In a real-world Python project, use a `pyproject.toml` file to define the Python project's metadata, dependencies, and build configuration, while keeping Conda-specific requirements such as the Python version, native libraries, and external build tools in `environment.yml`.
+The `irislab` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. In a real-world Python project, use a `pyproject.toml` file to define the Python project's metadata, dependencies, and build configuration, while keeping Conda-specific requirements such as the Python version, native libraries, and external build tools in `environment.yml`.
     
 === "Create from `environment.yml`"
 
-    From the project root, create the `redsticks` environment in the container's writable Conda prefix at `/opt/conda/envs/redsticks` and install the dependencies listed in `environment.yml`:
+    From the project root, create the `irislab` environment in the container's writable Conda prefix at `/opt/conda/envs/irislab` and install the dependencies listed in `environment.yml`:
 
     ```bash
     conda env create --file environment.yml
@@ -315,17 +308,17 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
     After the environment has been created, activate it for the current shell:
 
     ```bash
-    conda activate redsticks
+    conda activate irislab
     ```
 
 === "Create from scratch"
 
-    Create the `redsticks` environment and install its dependencies directly
+    Create the `irislab` environment and install its dependencies directly
     from the Conda command line:
 
     ```bash
     conda create -y \
-        -n redsticks \
+        -n irislab \
         -c conda-forge \
             python=3.12 \
             rdkit \
@@ -333,6 +326,7 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
             rich \
             click \
             numpy \
+            glib \
             libgl \
             libegl \
             libgles \
@@ -346,66 +340,85 @@ The `redsticks` sample project uses Conda to create and manage a complete develo
     After the environment has been created, activate it for the current shell:
 
     ```bash
-    conda activate redsticks
+    conda activate irislab
     ```
 
     And finally install the "pip-only" dependencies:
 
     ```bash
-    python -m pip install \
-        mediapipe
+    python -m pip install mediapipe
     ```
 
-After the first activation, configure `redsticks` as the default environment for
+After the first activation, configure `irislab` as the default environment for
 future interactive Bash shells. This setting applies to `alice`, the development
 user created by the Dockerfile.
 
 ```bash
-conda config --set default_activation_env redsticks
+conda config --set default_activation_env irislab
 conda config --set auto_activate true
 ```
 
 ### Add Additional Packages
 
-Ensure that `redsticks` is active before installing or updating dependencies:
+Use the tab that matches the dependency change you want to make:
 
-```bash
-conda activate redsticks
-```
+=== "Update from `environment.yml`"
 
-To synchronize an existing environment with the definition file, update it
-from the project root:
+    Ensure that `irislab` is active before synchronizing the environment:
 
-```bash
-conda env update --file environment.yml --prune
-```
+    ```bash
+    conda activate irislab
+    ```
 
-Add an additional development tool, such as `ruff`, from the `conda-forge`
-channel:
+    To synchronize an existing environment with the definition file, update it
+    from the project root:
 
-```bash
-conda install -c conda-forge ruff
-```
+    ```bash
+    conda env update --file environment.yml --prune
+    ```
 
-Export the environment's explicit package records when you need to reproduce the exact platform solve:
+    Inspect the installed package records after the update:
 
-```bash
-conda list --explicit > redsticks-linux-64.txt
-```
+    ```bash
+    conda list
+    ```
+
+=== "Install an additional package"
+
+    Ensure that `irislab` is active before installing a package:
+
+    ```bash
+    conda activate irislab
+    ```
+
+    Add an additional development tool, such as `ruff`, from the `conda-forge`
+    channel:
+
+    ```bash
+    conda install -c conda-forge ruff
+    ```
+
+    Inspect the installed package records:
+
+    ```bash
+    conda list
+    ```
 
 ### Run the Project
 
-With the `redsticks` environment active, remove any previous CMake cache before
+With the `irislab` environment active, remove any previous CMake cache before
 configuring the native extension:
+
+Remove any previous development build:
 
 ```bash
 rm -rf build-dev
 ```
 
-Configure the native extension with the installed CMake and Ninja toolchain:
+Configure the IrisLab native extension with the installed CMake and Ninja toolchain:
 
 ```bash
-cmake -S cpp -B build-dev -G Ninja -DREDSTICKS_BUILD_BINDINGS=ON
+cmake -S cpp -B build-dev -G Ninja -DIRISCOLOR_BUILD_BINDINGS=ON
 ```
 
 Build the configured native extension:
@@ -417,22 +430,22 @@ cmake --build build-dev
 Copy the compiled extension into the Python package:
 
 ```bash
-cp build-dev/_native*.so src/redsticks/
+cp build-dev/_native*.so src/irislab/
 ```
 
 During the development loop, run the CLI module directly from the source tree
 so that changes can be tested without reinstalling the package:
 
 ```bash
-python -m redsticks.cli --image samples/blue-eye.png
+python -m irislab.cli --image samples/blue-eye.png
 ```
 
 ```bash
-python -m redsticks.cli --image samples/blue-eye.png --gpu
+python -m irislab.cli --image samples/blue-eye.png --gpu
 ```
 
 !!! info "Package Integration Testing"
-    For package-level integration testing, build and install the `redsticks-tools` 
+    For package-level integration testing, build and install the `irislab-tools` 
     Conda package from `meta.yaml`. Its generated console entry point then becomes 
     available in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
 

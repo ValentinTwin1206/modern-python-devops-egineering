@@ -1,30 +1,33 @@
-"""Semantic eye-color classification from iris pixels.
+"""Perceptual color analysis and semantic classification of iris pixels.
 
-The iris localization stage provides the actual pixel population belonging
-to one or both irises. This module analyzes that population in perceptual
-CIELAB color space and classifies it into one of the six eye-color classes
-used by RedSticks:
+The iris localization stage provides the pixel population belonging to one
+or both irises. This module analyzes that population in perceptual color
+spaces and classifies it into one of the six eye-color classes used by
+IrisLab:
 
     Blue, Green, Gray, Hazel, Amber, Brown
 
-Classification deliberately uses the iris pixel distribution rather than a
-single representative RGB value. This is especially important for Hazel and
-Amber eyes, whose characteristic colors can be lost when reduced to a median.
+Classification uses the iris pixel distribution rather than only a single
+representative RGB value. This is especially important for Hazel and Amber
+eyes, whose characteristic pigmentation can be lost when reduced to a
+single median color.
 """
 
 from __future__ import annotations
 
+import colorsys
 import logging
+from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
 
 
-logger = logging.getLogger("redsticks")
+logger = logging.getLogger("irislab")
 
 
 class EyeColor(str, Enum):
-    """Semantic eye-color classes supported by RedSticks."""
+    """Semantic eye-color classes supported by IrisLab."""
 
     BLUE = "Blue"
     GREEN = "Green"
@@ -34,8 +37,19 @@ class EyeColor(str, Enum):
     BROWN = "Brown"
 
 
+@dataclass(frozen=True, slots=True)
+class ColorFeatures:
+    """Perceptual color features for a representative iris color."""
+
+    rgb: tuple[int, int, int]
+    lab: tuple[float, float, float]
+    hsv: tuple[float, float, float]
+    chroma: float
+    hue: float
+
+
 def _rgb_to_lab(pixels: np.ndarray) -> np.ndarray:
-    """Convert sRGB pixels with shape (N, 3) to CIELAB."""
+    """Convert sRGB pixels with shape ``(N, 3)`` to CIELAB."""
 
     rgb = pixels.astype(np.float32) / 255.0
 
@@ -46,7 +60,7 @@ def _rgb_to_lab(pixels: np.ndarray) -> np.ndarray:
         ((rgb + 0.055) / 1.055) ** 2.4,
     )
 
-    # Linear RGB -> XYZ using D65 illuminant.
+    # Linear RGB -> XYZ using the D65 illuminant.
     transform = np.asarray(
         [
             [0.4124564, 0.3575761, 0.1804375],
@@ -88,11 +102,64 @@ def _rgb_to_lab(pixels: np.ndarray) -> np.ndarray:
     return lab.astype(np.float32)
 
 
+def extract_color_features(
+    rgb: tuple[int, int, int],
+) -> ColorFeatures:
+    """Calculate perceptual features for one representative sRGB color."""
+
+    if len(rgb) != 3:
+        raise ValueError("Expected RGB color with exactly three components")
+
+    if any(component < 0 or component > 255 for component in rgb):
+        raise ValueError("RGB components must be between 0 and 255")
+
+    pixels = np.asarray([rgb], dtype=np.uint8)
+    lab_values = _rgb_to_lab(pixels)[0]
+
+    lightness = float(lab_values[0])
+    a = float(lab_values[1])
+    b = float(lab_values[2])
+
+    chroma = float(np.hypot(a, b))
+    hue = float(
+        (np.degrees(np.arctan2(b, a)) + 360.0) % 360.0
+    )
+
+    red, green, blue = (
+        component / 255.0
+        for component in rgb
+    )
+
+    hsv_h, hsv_s, hsv_v = colorsys.rgb_to_hsv(
+        red,
+        green,
+        blue,
+    )
+
+    hsv = (
+        hsv_h * 360.0,
+        hsv_s * 100.0,
+        hsv_v * 100.0,
+    )
+
+    return ColorFeatures(
+        rgb=rgb,
+        lab=(
+            lightness,
+            a,
+            b,
+        ),
+        hsv=hsv,
+        chroma=chroma,
+        hue=hue,
+    )
+
+
 def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     """Classify an iris pixel population into a semantic eye color.
 
-    The classification uses CIELAB color distributions rather than the
-    representative RGB value calculated by ``iris.py``.
+    The classification uses CIELAB color distributions rather than only
+    the representative RGB value calculated by ``iris.py``.
 
     Hazel is treated as a mixed-pigmentation class and therefore requires
     substantial green and warm pigmentation instead of merely a few warm
@@ -125,7 +192,7 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     ) % 360.0
 
     # Remove the darkest and brightest tails that may still contain
-    # pupil, eyelash, reflection or sclera contamination.
+    # pupil, eyelash, reflection, or sclera contamination.
     lower_lightness = np.percentile(lightness, 10)
     upper_lightness = np.percentile(lightness, 95)
 
@@ -160,8 +227,6 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     )
 
     # Natural green eyes are often muted rather than strongly saturated.
-    # Negative a* indicates movement toward green, while positive b*
-    # indicates some yellow contribution.
     green = (
         (a < -1.0)
         & (b > 4.0)
@@ -219,26 +284,14 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
         warm_fraction,
     )
 
-    # ------------------------------------------------------------------
-    # Hazel
-    # ------------------------------------------------------------------
-    #
-    # Hazel is not simply "green with some brown pixels".
-    #
-    # It requires substantial green pigmentation together with a
-    # substantial warm population, including a meaningful amber component.
-    #
-    # This deliberately makes Hazel harder to trigger than Green.
+    # Hazel requires substantial green pigmentation together with a
+    # substantial warm population and a meaningful amber component.
     if (
         green_fraction >= 0.20
         and warm_fraction >= 0.25
         and amber_fraction >= 0.10
     ):
         result = EyeColor.HAZEL
-
-    # ------------------------------------------------------------------
-    # Blue
-    # ------------------------------------------------------------------
 
     elif (
         blue_fraction >= 0.18
@@ -247,12 +300,6 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     ):
         result = EyeColor.BLUE
 
-    # ------------------------------------------------------------------
-    # Green
-    # ------------------------------------------------------------------
-    #
-    # Green is evaluated before Gray because natural green irises can be
-    # surprisingly muted and have relatively low chroma.
     elif (
         green_fraction >= 0.15
         or (
@@ -263,12 +310,6 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     ):
         result = EyeColor.GREEN
 
-    # ------------------------------------------------------------------
-    # Amber
-    # ------------------------------------------------------------------
-    #
-    # Amber should have a dominant golden/yellow component. In CIELAB this
-    # appears primarily as strong positive b* rather than strong red a*.
     elif (
         amber_fraction >= 0.20
         or (
@@ -279,29 +320,17 @@ def classify_eye_color(pixels: np.ndarray) -> EyeColor:
     ):
         result = EyeColor.AMBER
 
-    # ------------------------------------------------------------------
-    # Gray
-    # ------------------------------------------------------------------
-
     elif (
         neutral_fraction >= 0.55
         or median_chroma < 7.0
     ):
         result = EyeColor.GRAY
 
-    # ------------------------------------------------------------------
-    # Brown
-    # ------------------------------------------------------------------
-
     elif (
         brown_fraction >= 0.15
         or warm_fraction >= 0.20
     ):
         result = EyeColor.BROWN
-
-    # ------------------------------------------------------------------
-    # Conservative fallback
-    # ------------------------------------------------------------------
 
     else:
         result = EyeColor.GRAY

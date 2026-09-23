@@ -1,9 +1,9 @@
-"""Tests for the redsticks command-line interface."""
+"""Tests for the irislab command-line interface."""
 
 import pytest
 from PIL import Image
 
-from redsticks.cli import main
+from irislab.cli import main
 
 
 @pytest.fixture()
@@ -40,7 +40,7 @@ def test_cli_reports_eye_color_source(eye_image, capsys):
 
 
 def test_cli_reports_detection_failure(eye_image, monkeypatch, capsys):
-    monkeypatch.setattr("redsticks.cli.suggest", lambda *args, **kwargs: (_ for _ in ()).throw(
+    monkeypatch.setattr("irislab.cli.suggest", lambda *args, **kwargs: (_ for _ in ()).throw(
         ValueError("Could not reliably detect an iris color.")
     ))
 
@@ -52,7 +52,7 @@ def test_cli_reports_detection_failure(eye_image, monkeypatch, capsys):
 
 
 def test_cli_gpu_without_cuda_fails(eye_image, monkeypatch):
-    monkeypatch.setattr("redsticks.cli.cuda_available", lambda: False)
+    monkeypatch.setattr("irislab.cli.cuda_available", lambda: False)
 
     exit_code = main(["--image", str(eye_image), "--gpu"])
 

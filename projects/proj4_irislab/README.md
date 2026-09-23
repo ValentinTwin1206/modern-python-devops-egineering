@@ -1,16 +1,16 @@
-# RedSticks
+# IrisLab
 
-RedSticks is a Python/C++ sample project that recommends lipstick shades based on eye color.
+IrisLab is a Python/C++ sample project for analyzing iris color from portrait images.
 
 The project demonstrates how **Conda can manage both Python and native C++ dependencies** within the same development and packaging workflow.
 
-RedSticks combines:
+IrisLab combines:
 
-- **MediaPipe** for local iris detection
-- **NumPy and CIELAB** for eye-color analysis
-- **C++** for lipstick color-harmony scoring
+- **MediaPipe** for local eye and iris detection
+- **NumPy and CIELAB** for iris-color analysis
+- **C++** for perceptual color-distance calculations
 - **pybind11** to connect Python and C++
-- **RDKit** for pigment chemistry
+- **CIE ΔE** for comparing measured colors with reference profiles
 
 The project uses a **Conda-first workflow** based on `environment.yml` and Conda recipes. No `pyproject.toml` is required.
 
@@ -21,31 +21,33 @@ graph LR
 
     IMG["Portrait"] --> MP["MediaPipe<br/>Iris Detection"]
 
-    MP --> COLOR["Python<br/>Eye Color Analysis"]
+    MP --> COLOR["Python<br/>Color Analysis"]
+
     MP --> RGB["Iris RGB"]
 
-    RGB --> CPP["C++<br/>Harmony Scoring"]
+    RGB --> LAB["NumPy<br/>CIELAB Features"]
 
-    COLOR --> RESULT["Lipstick Recommendation"]
+    LAB --> CPP["C++<br/>ΔE Color Distance"]
+
+    COLOR --> RESULT["Iris Color Profile"]
+
     CPP --> RESULT
-
-    RESULT --> RDKIT["RDKit<br/>Pigment Information"]
 ```
 
-MediaPipe runs locally and identifies the iris regions in the image.
+MediaPipe runs locally and identifies the eye and iris regions in the image.
 
 Python analyzes the extracted iris pixels and classifies the eye color as:
 
 **Blue · Green · Gray · Hazel · Amber · Brown**
 
-The representative iris color is passed to the native C++ library, which calculates the harmony between the eye color and the available lipstick shades.
+The representative iris color is transformed into CIELAB color space and passed to the native C++ library, which calculates the perceptual color distance to predefined reference profiles.
 
 ## Project Structure
 
 | Path | Purpose |
 | --- | --- |
-| `src/redsticks/` | Python application, CLI, iris detection, and eye-color analysis |
-| `cpp/` | Native C++ harmony algorithm and pybind11 bindings |
+| `src/irislab/` | Python application, CLI, iris detection, and color analysis |
+| `cpp/` | Native C++ color-distance library and pybind11 bindings |
 | `models/` | Local MediaPipe model |
 | `samples/` | Example portrait images |
 | `environment.yml` | Conda development environment |
@@ -66,7 +68,7 @@ Ubuntu 26.04
    Miniconda
       │
       ▼
-redsticks environment
+ irislab environment
       │
       ├── Python dependencies
       └── C/C++ dependencies
@@ -76,12 +78,13 @@ Inside the development container, create the project environment if it does not
 already exist:
 
 ```bash
-if conda env list | awk '{print $1}' | grep -qx redsticks; then
-    echo "Conda environment 'redsticks' already exists"
+if conda env list | awk '{print $1}' | grep -qx irislab; then
+    echo "Conda environment 'irislab' already exists"
 else
     conda env create --file environment.yml
 fi
-conda activate redsticks
+
+conda activate irislab
 ```
 
 To update an existing environment:
@@ -90,8 +93,8 @@ To update an existing environment:
 conda env update -f environment.yml --prune
 ```
 
-MediaPipe is not available from `conda-forge`, so install it from PyPI after
-creating or updating the environment:
+MediaPipe is installed from PyPI after creating or updating the Conda
+environment:
 
 ```bash
 python -m pip install mediapipe
@@ -99,7 +102,7 @@ python -m pip install mediapipe
 
 ## Build the Native Extension
 
-RedSticks contains a native C++ component exposed to Python through pybind11.
+IrisLab contains a native C++ color-analysis component exposed to Python through pybind11.
 
 Build it locally with:
 
@@ -108,36 +111,38 @@ cmake \
   -S cpp \
   -B build-dev \
   -G Ninja \
-  -DREDSTICKS_BUILD_BINDINGS=ON
+  -DIRISCOLOR_BUILD_BINDINGS=ON
 
 cmake --build build-dev
 
-cp build-dev/_native*.so src/redsticks/
+cp build-dev/_native*.so src/irislab/
 ```
 
-## Run RedSticks
+## Run IrisLab
 
 Analyze one of the sample portraits:
 
 ```bash
-python -m redsticks.cli \
+python -m irislab.cli \
   --image samples/blue-eyes.png
 ```
 
 Example:
 
 ```text
-RedSticks Suggestion
+IrisLab Iris Color Analysis
 
-Eye color        Blue
-Eye RGB          (69, 77, 83)
-Extraction       iris-landmarks
-Eyes detected    2
-Suggested shade  Coral Flame
-Harmony          71/100
+Classification       Blue
+RGB                  (69, 77, 83)
+CIELAB               L* 32.1, a* -1.4, b* -4.7
+Chroma               4.9
+CIELAB hue           253.4°
+Closest profile      Blue-01
+Color distance (ΔE)  3.8
+Eyes detected        2
 ```
 
-All image processing and ML inference runs **locally on the CPU**. No cloud inference service or GPU is required.
+All image processing and iris detection runs **locally on the CPU**. No cloud inference service or GPU is required.
 
 ## Run Tests
 
@@ -153,8 +158,8 @@ The project demonstrates a multi-output Conda recipe with two packages:
 
 | Package | Purpose |
 | --- | --- |
-| `libredsticks` | Native C++ library and headers |
-| `redsticks-tools` | Python application, CLI, and pybind11 extension |
+| `libiriscolor` | Native C++ color-analysis library and headers |
+| `irislab-tools` | Python application, CLI, and pybind11 extension |
 
 Build both packages with:
 
@@ -162,7 +167,7 @@ Build both packages with:
 conda build recipe/ --channel conda-forge
 ```
 
-`redsticks-tools` depends on `libredsticks`, allowing Conda to resolve the native dependency automatically.
+`irislab-tools` depends on `libiriscolor`, allowing Conda to resolve the native dependency automatically.
 
 Install the packaging and publication tools separately when you need to build
 or upload Conda packages:
@@ -180,10 +185,10 @@ conda run --name base \
 
 ## Install the Packaged Application
 
-Once published to your Conda repository, RedSticks can be consumed from another environment:
+Once published to your Conda repository, IrisLab can be consumed from another environment:
 
 ```yaml
-name: redsticks
+name: irislab
 
 channels:
   - {YOUR_CONDA_CHANNEL}
@@ -192,15 +197,17 @@ channels:
 
 dependencies:
   - python=3.12
-  - redsticks-tools
+  - irislab-tools
 ```
 
 Create and activate the environment:
 
 ```bash
 conda env create --file environment.yml
-conda activate redsticks
+
+conda activate irislab
+
 python -m pip install mediapipe
 ```
 
-The native `libredsticks` dependency is installed automatically by Conda.
+The native `libiriscolor` dependency is installed automatically by Conda.

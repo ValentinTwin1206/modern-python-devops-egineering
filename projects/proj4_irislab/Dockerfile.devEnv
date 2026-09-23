@@ -64,9 +64,9 @@ RUN mkdir -p /app/models \
         -o /app/models/face_landmarker.task
 
 #
-# Copy the RedSticks project.
+# Copy the IrisLab project.
 #
-# The "redsticks" Conda environment is intentionally NOT created during
+# The "irislab" Conda environment is intentionally NOT created during
 # the image build. Alice creates it interactively from environment.yml.
 #
 COPY environment.yml ./
@@ -80,7 +80,7 @@ COPY README.md ./README.md
 ENV PYTHONPATH=/app/src
 
 #
-# Alice owns both the project directory and the Conda installation.
+# Alice owns both the IrisLab project directory and the Conda installation.
 # This allows her to create, update, and remove Conda environments
 # without requiring sudo.
 #

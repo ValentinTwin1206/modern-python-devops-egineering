@@ -2,7 +2,7 @@
 
 import pytest
 
-from redsticks.eye_color import describe_eye_color
+from irislab.eye_color import describe_eye_color
 
 
 @pytest.mark.parametrize(

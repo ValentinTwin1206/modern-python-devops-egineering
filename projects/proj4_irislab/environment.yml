@@ -1,4 +1,4 @@
-name: redsticks
+name: irislab
 
 channels:
   - conda-forge
@@ -16,12 +16,10 @@ dependencies:
   - numpy
 
   # MediaPipe native runtime
+  - glib
   - libgl
   - libegl
   - libgles
-
-  # Chemistry
-  - rdkit
 
   # Native C++ extension
   - pybind11

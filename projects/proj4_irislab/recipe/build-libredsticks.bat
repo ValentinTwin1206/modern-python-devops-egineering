@@ -1,7 +1,7 @@
 setlocal EnableDelayedExpansion
 
-mkdir build-libredsticks
-cd build-libredsticks
+mkdir build-libirislab
+cd build-libirislab
 
 cmake "%SRC_DIR%\cpp" ^
     -G Ninja ^
@@ -9,7 +9,7 @@ cmake "%SRC_DIR%\cpp" ^
     -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%"
 if errorlevel 1 exit 1
 
-cmake --build . --target redsticks --config Release
+cmake --build . --target irislab --config Release
 if errorlevel 1 exit 1
 
 cmake --install .

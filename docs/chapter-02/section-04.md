@@ -8,18 +8,18 @@ The Conda workflow connects project definition, multi-language dependency resolu
 
 ### Project Setup
 
-The applied project is `RedSticks`, a small image-based lipstick shade suggestion library. It combines [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker), [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), [Rich](https://rich.readthedocs.io/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. The project is a good Conda example because it combines Python packages, native libraries, local ML inference, and compiled C++ code in one distributable environment.
+The applied project is `IrisLab`, a small image-based iris color analysis application. It uses MediaPipe Face Landmarker with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to determine perceptual color features and classify the eye color. The resulting color profile is compared with reference colors using a native C++ library that calculates CIE ΔE color distances and is exposed to Python through `pybind11`. This makes `IrisLab` a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local machine-learning dependencies together.
 
 The recipe produces two Conda packages:
 
 | Conda package | Contents |
 | ------------- | -------- |
-| `libredsticks` | Standalone C++ shared library (`libredsticks.so`, `.dylib`, or `.dll`) and the public `redsticks.hpp` header. |
-| `redsticks-tools` | Python package, `redsticks` CLI, and pybind11 extension. It depends on the matching `libredsticks` build. |
+| `libirislab` | Standalone C++ shared library (`libirislab.so`, `.dylib`, or `.dll`) and the public `irislab.hpp` header. |
+| `irislab-tools` | Python package, `irislab` CLI, and pybind11 extension. It depends on the matching `libirislab` build. |
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_redsticks/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab/README.md).
 
 ## Building Blocks
 
@@ -45,15 +45,15 @@ A Conda package is built with a dedicated recipe directory alongside the project
 ├── cpp/
 │   ├── CMakeLists.txt
 │   ├── bindings.cpp
-│   ├── redsticks.cpp
-│   └── redsticks.hpp
+│   ├── iriscolor.cpp
+│   └── iriscolor.hpp
 ├── recipe/
-│   ├── build-libredsticks.bat
-│   ├── build-libredsticks.sh
+│   ├── build-libirislab.bat
+│   ├── build-libirislab.sh
 │   └── meta.yaml
 ├── samples/
 ├── src/
-│   └── redsticks/
+│   └── irislab/
 ├── tests/
 ├── environment.yml
 └── README.md
@@ -66,77 +66,97 @@ A Conda package is built with a dedicated recipe directory alongside the project
 
 ### Package Recipe
 
-A Conda package is defined by a YAML recipe that declares package identity, source, build behavior, dependencies, tests, and descriptive metadata. RedSticks uses a multi-output recipe so the standalone native library and Python package remain separately reusable.
+A Conda package is defined by a YAML recipe that declares package identity, source, build behavior, dependencies, tests, and descriptive metadata. `IrisLab` uses a multi-output recipe so the standalone native library and Python package remain separately reusable.
 
 ```yaml
 outputs:
-  - name: libredsticks
-    script: build-libredsticks.sh
+  # -------------------------------------------------------------------------
+  # libirislab: standalone C++ shared library and headers.
+  # -------------------------------------------------------------------------
+  - name: libirislab
+    script: build-libirislab.sh
+
     build:
       run_exports:
-        - {{ pin_subpackage('libredsticks', max_pin='x.x') }}
+        - {{ pin_subpackage('libirislab', max_pin='x.x') }}
+
     requirements:
       build:
         - "{{ compiler('cxx') }}"
         - cmake
         - ninja
 
-  - name: redsticks-tools
-    # The current recipe builds the pybind11 extension directly with CMake.
+  # -------------------------------------------------------------------------
+  # irislab-tools: Python package, CLI, and pybind11 extension.
+  #
+  # The extension is built directly with CMake and links against libirislab.
+  # -------------------------------------------------------------------------
+  - name: irislab-tools
+
     script: >-
       cmake -S "${SRC_DIR}/cpp" -B build-tools -G Ninja
-      -DCMAKE_BUILD_TYPE=Release -DREDSTICKS_BUILD_BINDINGS=ON
+      -DCMAKE_BUILD_TYPE=Release
+      -DIRISLAB_BUILD_BINDINGS=ON
       -DCMAKE_PREFIX_PATH="${PREFIX}"
       && cmake --build build-tools
-      && mkdir -p "${SP_DIR}/redsticks"
-      && cp "${SRC_DIR}"/src/redsticks/*.py "${SP_DIR}/redsticks/"
-      && cp build-tools/_native*.so "${SP_DIR}/redsticks/"
+      && mkdir -p "${SP_DIR}/irislab"
+      && cp "${SRC_DIR}"/src/irislab/*.py "${SP_DIR}/irislab/"
+      && cp build-tools/_native*.so "${SP_DIR}/irislab/"
+
     build:
       entry_points:
-        - redsticks = redsticks.cli:main
+        - irislab = irislab.cli:main
+
     requirements:
       build:
         - "{{ compiler('cxx') }}"
         - cmake
         - ninja
+
       host:
         - python >=3.12
         - pybind11 >=2.12
-        - {{ pin_subpackage('libredsticks', exact=True) }}
+        - {{ pin_subpackage('libirislab', exact=True) }}
+
       run:
         - python >=3.12
         - click
-        - rdkit
         - pillow
         - rich
         - numpy
-        - {{ pin_subpackage('libredsticks', exact=True) }}
+        - glib
+        - libgl
+        - libegl
+        - libgles
+        - {{ pin_subpackage('libirislab', exact=True) }}
+
     test:
+      requires:
+        - pip
+
       imports:
-        - redsticks
-        - redsticks._native
+        - irislab
+        - irislab._native
+
       commands:
-        - redsticks --help
+        - python -m pip install mediapipe
+        - irislab --help
 ```
 
-- `libredsticks`: Builds the standalone C++ shared library and public header. Its `run_exports` entry provides a compatible library pin to downstream packages.
-- `redsticks-tools`: Builds the Python package and pybind11 extension. Its exact `pin_subpackage` dependency ensures the extension uses the matching native library.
+- `libirislab`: Builds the standalone C++ shared library and public header. Its `run_exports` entry provides a compatible library pin to downstream packages.
+- `irislab-tools`: Builds the Python package and pybind11 extension. Its exact `pin_subpackage` dependency ensures the extension uses the matching native library.
 - `requirements.host`: Supplies Python and native build dependencies while the package is compiled.
 - `requirements.run`: Records the dependencies needed by the installed application.
 - `test`: Installs the PyPI-only MediaPipe dependency, then verifies that the extension imports and the generated CLI is available.
 
-> MediaPipe is not available from `conda-forge`, so it is intentionally not
-> listed in `requirements.run` for `redsticks-tools`. Install it from PyPI
-> after installing the Conda package, as described in the consumer workflow.
-
 ### Package Layout
 
-A `.conda` file is a ZIP container with separate compressed metadata and payload archives. RedSticks produces two packages from one recipe, allowing C/C++ consumers to install `libredsticks` without the Python stack while Python consumers install `redsticks-tools` and receive the native library automatically.
+A `.conda` file is a ZIP container with separate compressed metadata and payload archives. `IrisLab` produces two packages from one recipe, allowing C/C++ consumers to install `libirislab` without the Python stack while Python consumers install `irislab-tools` and receive the native library automatically.
 
-=== "`libredsticks` — C/C++ payload"
+=== "`libirislab` — C/C++ payload"
 
     ```text
-    libredsticks-1.0.0-<build>.conda
+    libirislab-1.0.0-<build>.conda
     ├── metadata.json
     ├── info-*.tar.zst
     │   └── info/
@@ -145,28 +165,28 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
     │       └── recipe/meta.yaml
     └── pkg-*.tar.zst
         ├── include/
-        │   └── redsticks.hpp
+        │   └── iriscolor.hpp
         └── lib/
-            └── libredsticks.so
+            └── libirislab.so
     ```
 
-=== "`redsticks-tools` — Python payload"
+=== "`irislab-tools` — Python payload"
 
     ```text
-    redsticks-tools-1.0.0-<build>.conda
+    irislab-tools-1.0.0-<build>.conda
     ├── metadata.json
     ├── info-*.tar.zst
-    │   └── info/index.json              # depends: libredsticks, rdkit, pillow, rich
+    │   └── info/index.json              # depends: libirislab, pillow, rich
     └── pkg-*.tar.zst
         ├── bin/
-        │   └── redsticks
+        │   └── irislab
         └── site-packages/
-            ├── redsticks/
+            ├── irislab/
             │   ├── __init__.py
             │   ├── cli.py
             │   ├── eye_color.py
             │   ├── iris.py
-            │   ├── suggest.py
+            │   ├── analyze.py
             │   └── _native.<platform>.so
     ```
 
@@ -175,26 +195,25 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, use the already-built `mpe/proj4_redsticks`
-image to create an interactive Bash session. The command mounts the project
-source and build directory, then forwards the Cloudsmith configuration into
-the container.
+From the `projects/` directory, use the already-built `mpe/proj4_irislab` image to create an interactive 
+Bash session. The command mounts the project source and build directory, then forwards the Cloudsmith 
+configuration into the container.
 
 Create a host directory for package artifacts generated inside the container:
 
 ```bash
-mkdir -p proj4_redsticks/.build
+mkdir -p proj4_irislab/.build
 ```
 
 Start the container and mount the project and build directories:
 
 ```bash
 docker run -it \
-    -v "$PWD/proj4_redsticks:/app" \
-    -v "$PWD/proj4_redsticks/.build:/build" \
+    -v "$PWD/proj4_irislab:/app" \
+    -v "$PWD/proj4_irislab/.build:/build" \
     -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
     -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-    mpe/proj4_redsticks \
+    mpe/proj4_irislab \
     /bin/bash
 ```
 
@@ -204,7 +223,7 @@ docker run -it \
 ### Install Packaging Tools
 
 Install the packaging tools in Conda's `base` environment rather than in the
-project's `redsticks` environment. This separation keeps the *Packaging Workflow*
+project's `irislab` environment. This separation keeps the *Packaging Workflow*
 independent from the *Development Workflow*. The installed `conda-build` package
 is the recipe-driven build tool, and `conda-package-handling` provides the `cph`
 command for listing package archives and inspecting their metadata and contents.
@@ -233,88 +252,87 @@ Activate the `base` environment before running the packaging command:
 conda activate base
 ```
 
-From the project root, build both packages with `conda-build`. The
-`--channel conda-forge` option provides the public compilers, CMake, Python,
-RDKit, Pillow, and other dependencies required by the recipe.
+From the project root, build both packages with `conda-build`. The `--channel conda-forge` option 
+provides the public compilers, CMake, Python, Pillow, and other dependencies required by the recipe.
 
 ```bash
 conda build recipe/ --channel conda-forge
 ```
 
-- `libredsticks`: Provides the standalone native C++ library and public header.
-- `redsticks-tools`: Provides the Python package, CLI, and pybind11 extension.
+- `libirislab`: Provides the standalone native C++ library and public header.
+- `irislab-tools`: Provides the Python package, CLI, and pybind11 extension.
 
 ### Inspect the Package
 
-The two archives have different payloads and dependency metadata, so inspect them separately. The native package should have an empty direct dependency list and a `run_exports` entry. The Python package should declare an exact dependency on the matching `libredsticks` build.
+The two archives have different payloads and dependency metadata, so inspect them separately. The native package should have an empty direct dependency list and a `run_exports` entry. The Python package should declare an exact dependency on the matching `libirislab` build.
 
-=== "libredsticks"
+=== "libirislab"
 
     Resolve the native package created in the previous step:
 
     ```bash
-    LIBREDSTICKS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'libredsticks-*.conda' -print -quit)"
+    LIBIRISLAB_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'libirislab-*.conda' -print -quit)"
     ```
 
     List the package contents:
 
     ```bash
-    cph list "$LIBREDSTICKS_PKG"
+    cph list "$LIBIRISLAB_PKG"
     ```
 
     Extract and inspect its metadata:
 
     ```bash
-    cph extract --info --dest /tmp/libredsticks-info "$LIBREDSTICKS_PKG"
-    cat /tmp/libredsticks-info/info/index.json
+    cph extract --info --dest /tmp/libirislab-info "$LIBIRISLAB_PKG"
+    cat /tmp/libirislab-info/info/index.json
     ```
 
-=== "redsticks-tools"
+=== "irislab-tools"
 
     Resolve the Python package created in the previous step:
 
     ```bash
-    REDSTICKS_TOOLS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'redsticks-tools-*.conda' -print -quit)"
+    IRISLAB_TOOLS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'irislab-tools-*.conda' -print -quit)"
     ```
 
     List the package contents:
 
     ```bash
-    cph list "$REDSTICKS_TOOLS_PKG"
+    cph list "$IRISLAB_TOOLS_PKG"
     ```
 
     Extract and inspect its metadata:
 
     ```bash
-    cph extract --info --dest /tmp/redsticks-tools-info "$REDSTICKS_TOOLS_PKG"
-    cat /tmp/redsticks-tools-info/info/index.json
+    cph extract --info --dest /tmp/irislab-tools-info "$IRISLAB_TOOLS_PKG"
+    cat /tmp/irislab-tools-info/info/index.json
     ```
 
 ### Publish the Package
 
-A compiled Conda package is built for a target platform. The channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. Because this recipe emits two outputs, each platform receives both a `libredsticks-*.conda` and a `redsticks-tools-*.conda` artifact.
+A compiled Conda package is built for a target platform. The channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. Because this recipe emits two outputs, each platform receives both a `libirislab-*.conda` and a `irislab-tools-*.conda` artifact.
 
 ```text
 repository-root/
 ├── linux-64/
 │   ├── repodata.json
-│   ├── libredsticks-1.0.0-<build>.conda
-│   └── redsticks-tools-1.0.0-<build>.conda
+│   ├── libirislab-1.0.0-<build>.conda
+│   └── irislab-tools-1.0.0-<build>.conda
 ├── osx-arm64/
 │   ├── repodata.json
-│   ├── libredsticks-1.0.0-<build>.conda
-│   └── redsticks-tools-1.0.0-<build>.conda
+│   ├── libirislab-1.0.0-<build>.conda
+│   └── irislab-tools-1.0.0-<build>.conda
 └── win-64/
     ├── repodata.json
-    ├── libredsticks-1.0.0-<build>.conda
-    └── redsticks-tools-1.0.0-<build>.conda
+    ├── libirislab-1.0.0-<build>.conda
+    └── irislab-tools-1.0.0-<build>.conda
 ```
 
 Upload the two archives created in the previous step so the exact native-library pin can be satisfied at install time:
 
 ```bash
 mapfile -t PACKAGES < <(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f \( \
-  -name 'libredsticks-*.conda' -o -name 'redsticks-tools-*.conda' \
+  -name 'libirislab-*.conda' -o -name 'irislab-tools-*.conda' \
 \) -print)
 for PACKAGE in "${PACKAGES[@]}"; do
     cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
@@ -324,11 +342,11 @@ done
 Verify that Cloudsmith received both artifacts:
 
 ```bash
-cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libredsticks OR redsticks-tools"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libirislab OR irislab-tools"
 ```
 
 !!! info "Python Wheels"
-    A wheel workflow can publish platform-specific files under one Python project name, but a Python index does not solve the native `libredsticks` dependency as a separate environment package. Conda keeps the native library, Python extension, and their dependency metadata visible to the solver.
+    A wheel workflow can publish platform-specific files under one Python project name, but a Python index does not solve the native `libirislab` dependency as a separate environment package. Conda keeps the native library, Python extension, and their dependency metadata visible to the solver.
 
 ## Consumer Workflow
 
@@ -367,16 +385,16 @@ conda config --set channel_priority strict
 Create a small consumer project:
 
 ```bash
-mkdir redsticks-consumer && cd redsticks-consumer
+mkdir irislab-consumer && cd irislab-consumer
 ```
 
-Record the `redsticks-tools` package as an environment dependency:
+Record the `irislab-tools` package as an environment dependency:
 
 ```yaml
-name: redsticks-demo
+name: irislab-demo
 dependencies:
   - python=3.12
-  - redsticks-tools
+  - irislab-tools
 ```
 
 Then, create the environment:
@@ -385,31 +403,35 @@ Then, create the environment:
 conda env create --file environment.yml
 ```
 
-> Both `redsticks-tools` and its exact `libredsticks` dependency get installed.
+> Both `irislab-tools` and its exact `libirislab` dependency get installed.
 
 Activate the consumer environment:
 
 ```bash
-conda activate redsticks-demo
+conda activate irislab-demo
 ```
 
 Since `mediapipe` is not available from `conda-forge`, install it from PyPI:
 
 ```bash
-conda run --name "redsticks-demo" python -m pip install mediapipe
+conda run --name "irislab-demo" python -m pip install mediapipe
 ```
 
-The CLI accepts an eye-color image and can write a PNG shade swatch:
+The CLI accepts a portrait image and analyzes the detected iris color:
 
 ```bash
-redsticks --image samples/blue-eye.png --output suggested-shade.png
+irislab --image samples/blue-eyes.png
 ```
 
 The project also exposes a Python API:
 
 ```python
-from redsticks import suggest
+from irislab import analyze
 
-result = suggest("samples/blue-eye.png")
-print(result.shade_name, result.hex)
+result = analyze("samples/blue-eye.png")
+
+print(result.eye_color)
+print(result.lab)
+print(result.closest_profile)
+print(result.delta_e)
 ```

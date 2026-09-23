@@ -5,8 +5,8 @@ import importlib
 import pytest
 from PIL import Image
 
-suggest_module = importlib.import_module("redsticks.suggest")
-from redsticks.iris import IrisResult
+suggest_module = importlib.import_module("irislab.suggest")
+from irislab.iris import IrisResult
 
 
 @pytest.fixture(autouse=True)
