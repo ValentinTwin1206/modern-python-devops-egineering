@@ -370,6 +370,13 @@ Use the tab that matches the dependency change you want to make:
     conda activate irislab
     ```
 
+    Add the respective package to the `dependencies` entry:
+
+    ```yaml
+    dependencies:
+        - ruff
+    ```
+
     To synchronize an existing environment with the definition file, update it
     from the project root:
 
@@ -409,10 +416,10 @@ Use the tab that matches the dependency change you want to make:
 With the `irislab` environment active, remove any previous CMake cache before
 configuring the native extension:
 
-Remove any previous development build:
+Remove any previous development build and re-create it:
 
 ```bash
-rm -rf build-dev
+rm -rf build-dev && mkdir -p build-dev
 ```
 
 Configure the IrisLab native extension with the installed CMake and Ninja toolchain:
@@ -437,11 +444,11 @@ During the development loop, run the CLI module directly from the source tree
 so that changes can be tested without reinstalling the package:
 
 ```bash
-python -m irislab.cli --image samples/blue-eye.png
+python -m irislab.cli --image samples/blue-eyes.png
 ```
 
 ```bash
-python -m irislab.cli --image samples/blue-eye.png --gpu
+python -m irislab.cli --image samples/blue-eyes.png --gpu
 ```
 
 !!! info "Package Integration Testing"

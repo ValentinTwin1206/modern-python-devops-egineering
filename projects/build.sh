@@ -226,9 +226,18 @@ build_command() {
     container_name="$(printf '%s' "${image_tag}" \
         | sed -e 's|[^a-zA-Z0-9_.-]|-|g' -e 's|^-*||' -e 's|-*$||')"
 
+    local host_uid host_gid
     local build_cmd=("${CONTAINER_ENGINE}" build)
     [[ "${NO_CACHE}" -eq 1 ]] && build_cmd+=(--no-cache)
-    build_cmd+=(--file "${dockerfile_abs}" --tag "${image_tag}" "${build_context}")
+    build_cmd+=(--file "${dockerfile_abs}" --tag "${image_tag}")
+
+    if [[ "${is_dev_image}" -eq 1 ]]; then
+        host_uid="$(id -u)"
+        host_gid="$(id -g)"
+        build_cmd+=(--build-arg "HOST_UID=${host_uid}" --build-arg "HOST_GID=${host_gid}")
+    fi
+
+    build_cmd+=("${build_context}")
 
     log "Image tag:       ${BOLD}${image_tag}${RESET}"
     log "Dockerfile:      ${dockerfile_abs}"
@@ -240,6 +249,9 @@ build_command() {
     fi
 
     log "Building image..."
+    if [[ "${is_dev_image}" -eq 1 ]]; then
+        log "Build user:      UID ${host_uid}, GID ${host_gid}"
+    fi
     "${build_cmd[@]}"
 
     if [[ "${BUILD_ONLY}" -eq 1 ]]; then

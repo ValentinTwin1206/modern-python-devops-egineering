@@ -261,7 +261,23 @@ recommended workflow or `venv + pip` for the traditional workflow.
 Add packages to the project environment and record them in `pyproject.toml`
 when using `uv`:
 
-=== "uv"
+=== "Update from `pyproject.toml`"
+
+    Add the respective package to `dependencies` entry in the `[project]` table:
+
+    ```toml
+    dependencies = [
+        "requests"
+    ]
+    ```
+
+    To synchronize an existing virtual environment with the definition file, update it from project root:
+
+    ```bash
+    uv sync --all-groups
+    ```
+
+=== "Install an additional package"
 
     Add a runtime package:
 
@@ -274,16 +290,6 @@ when using `uv`:
     ```bash
     uv add --dev ruff
     ```
-
-=== "venv + pip"
-
-    Install a package into the active environment:
-
-    ```bash
-    python -m pip install requests
-    ```
-
-    `pip` installs the package but does not record it in `pyproject.toml`.
 
 ### Run the Project
 
