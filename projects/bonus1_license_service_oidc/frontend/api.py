@@ -1,18 +1,15 @@
 import os
 
 import requests
-import logging
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
-ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "dev-secret")
 
 
-def create_license(user: str) -> dict:
-    response = requests.post(
+def get_license(access_token: str) -> dict:
+    response = requests.get(
         f"{BACKEND_URL}/licenses",
-        params={"user": user},
         headers={
-            "X-API-Key": ADMIN_API_KEY,
+            "Authorization": f"Bearer {access_token}",
         },
         timeout=10,
     )

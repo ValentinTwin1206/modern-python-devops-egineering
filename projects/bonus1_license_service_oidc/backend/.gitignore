@@ -10,3 +10,4 @@ wheels/
 .venv
 
 licenses.db
+.env

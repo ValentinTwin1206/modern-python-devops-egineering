@@ -2,6 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+RUN mkdir -p /app/data
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -17,7 +19,9 @@ RUN uv sync --frozen --no-dev
 ENV PATH="/app/.venv/bin:${PATH}"
 
 # Copy application source
-COPY main.py database.py helpers.py ./
+COPY main.py ./
+COPY schedule.py ./
+COPY license_service ./license_service
 
 EXPOSE 8080
 

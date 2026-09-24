@@ -6,7 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     "requests>=2.32",
     "streamlit>=1.42",
-    "Authlib>= 1.3.2"
+    "Authlib>= 1.3.2",
+    "httpx"
 ]
 
 [dependency-groups]

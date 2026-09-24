@@ -6,6 +6,19 @@ services:
         pyguard: ../proj1_pyguard
     ports:
       - "8080:8080"
+    volumes:
+      # Keep SQLite license and entitlement records across container replacement.
+      - license_service_data:/app/data
+    env_file:
+      - .env
+    environment:
+      # Shared admin credential for the X-API-Key path (Step 8).
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+      # `iss` claim in browser-issued tokens (host-facing Keycloak URL).
+      OIDC_ISSUER_URL: http://keycloak.localhost:8081/realms/license-service
+      # JWKS is fetched from inside the container network.
+      OIDC_JWKS_URL: http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
+      DATABASE_PATH: /app/data/licenses.db
     networks:
       license_service_network:
         ipv4_address: ${BACKEND_IP:-172.30.0.2}
@@ -16,11 +29,22 @@ services:
       - backend
     ports:
       - "8501:8501"
+    extra_hosts:
+      # Resolve the host-published Keycloak endpoint from inside the container.
+      # Use IPv4 explicitly; host-gateway also adds an unreachable IPv6 entry
+      # in Docker Desktop/WSL, which makes httpx fail before trying IPv4.
+      - "keycloak.localhost:172.30.0.1"
+    volumes:
+      # The entrypoint copies this template and generates a fresh cookie secret
+      # on every container start, invalidating browser login cookies from older runs.
+      - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
     networks:
       license_service_network:
         ipv4_address: ${FRONTEND_IP:-172.30.0.3}
     environment:
       BACKEND_URL: http://backend:8080
+      # Must match the backend so the admin X-API-Key path keeps working.
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
@@ -28,6 +52,7 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: http://keycloak.localhost:8081
     ports:
       - "8081:8080"
     volumes:
@@ -42,3 +67,6 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+
+volumes:
+  license_service_data:

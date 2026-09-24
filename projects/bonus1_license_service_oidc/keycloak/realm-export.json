@@ -2,6 +2,28 @@
   "realm": "license-service",
   "enabled": true,
   "displayName": "License Service",
+  "clients": [
+    {
+      "clientId": "streamlit-frontend",
+      "name": "Streamlit Frontend",
+      "description": "OIDC client for the license-service Streamlit application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "streamlit-dev-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8501/oauth2callback"
+      ],
+      "webOrigins": [
+        "http://localhost:8501"
+      ]
+    }
+  ],
   "users": [
     {
       "username": "example-user",

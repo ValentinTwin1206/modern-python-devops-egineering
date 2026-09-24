@@ -10,7 +10,8 @@ RUN uv sync --no-dev
 
 COPY app.py .
 COPY api.py .
+COPY entrypoint.sh .
 
 EXPOSE 8501
 
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+CMD ["sh", "/app/entrypoint.sh"]

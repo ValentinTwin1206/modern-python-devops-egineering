@@ -2,6 +2,16 @@
 
 ## Execute third party tools
 
+### Applied Project
+
+The section continues with [Bob's Webserver](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) and showcases how easily even legacy projects can be scaffolded with `uv`.
+
+### Run the Project
+
+Handling third-party tools is also addressed inside the [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+
+### The Tool Interface
+
 During development you frequently reach for command-line tools such as `ruff`, `black`, or `httpie`. Installing them into the project environment would mix tool dependencies with the project's own dependencies and lead to exactly the conflicts described above. To keep them isolated, `uv` provides a dedicated **tool interface**.
 
 To test Bob's server endpoints with `httpie`, install it once as a globally available tool:
@@ -47,6 +57,14 @@ uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
 ```
 
 ## Handling multiple projects with uv
+
+### Applied project
+
+This section builds on the previously introduced [License Service](./../../projects/proj3_license_service/README.md) and integrates the security middleware [PyGuard](./../../projects/proj1_pyguard/README.md) as a workspace member. This workspace setup streamlines development by allowing both projects to be managed and tested together.
+
+### Run the project
+
+The concept of `uv` workspaces is also addressed inside the [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
 
 ### Introduction into uv workspaces
 

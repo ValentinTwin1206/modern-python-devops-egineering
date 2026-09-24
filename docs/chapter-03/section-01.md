@@ -44,27 +44,47 @@ This might be more convenient for many developers, however, when installed via `
 
 Not every code base is a modern, `pyproject.toml`-based project. Legacy projects often still rely on a `requirements.txt` together with `pip` and `venv`. For these cases `uv` exposes a **pip-compatible interface** that mirrors the familiar commands while keeping uv's speed.
 
-Take [*Bob's server*](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md), a small internal web service whose dependencies are pinned in a `requirements.txt`. Setting it up with uv only takes two commands:
+### Project Setup
+
+The applied project is the already introduced [Webserver of Bob](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) who's dependencies aer pinned in a `requirements.txt` file. This project shows how well `uv` is capable to handle legacy projects trough its pip interface. 
+
+### Run the Project
+
+Setting it up with `uv` only takes two commands:
 
 ```shell
 uv venv                            # create a virtual environment (.venv)
 uv pip install -r requirements.txt # install the pinned dependencies
 ```
 
-The service can then be started through uv:
+The service can then be started through `uv`:
 
 ```shell
 uv run main.py
 ```
 
-!!! warning "The pip interface does not manage dependencies"
-    `uv pip install` installs packages **into the environment only** — it does not touch `pyproject.toml` or `uv.lock`. uv therefore keeps no record of what was installed and cannot resolve, lock, or verify these dependencies. Installing another package later (for example `uv pip install requests==2.0.0`) can silently downgrade or break an already-installed dependency, and uv has no way to detect the drift. The pip interface is meant for *interacting* with legacy projects, not for *managing* them.
+The pip interface is also demonstrated in the accompanying [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+
+!!! warning
+    `uv pip install` installs packages **into the environment only** — it does not touch `pyproject.toml` or `uv.lock`. uv therefore keeps no record of what was installed and cannot resolve, lock, or verify these dependencies. 
+    
+    Installing another package later (for example `uv pip install requests==2.0.0`) can silently downgrade or break an already-installed dependency, and uv has no way to detect the drift. The pip interface is meant for *interacting* with legacy projects, not for *managing* them.
 
 ## Managing a modern Python Project
 
 The following commands cover usual tasks during the lifecycle of a Python project.
 
-### Initialize a Project
+### Applied Project
+
+The [License Service](/home/fixcfhu/repos/ValentinTwin1206/modern-python-devops-egineering/projects/proj3_license_service/README.md), introduced earlier, demonstrates how `uv` can simplify the management of a modern Python project. It provides a practical example of a smooth and efficient `uv`-based workflow.
+
+### Run the Project
+
+The project setup and management steps are demonstrated in the accompanying [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+
+### Commands
+
+#### Initialize a Project
 
 Create a new project with a default `pyproject.toml`.
 
@@ -86,7 +106,7 @@ This creates the project structure and initializes Python package metadata.
 
 The command also sets up an initial cache structure under `/home/user/.cache/uv`. 
 
-### Add Dependencies
+#### Add Dependencies
 
 `uv` simplifies the integration of dependencies to your project.
 
@@ -148,7 +168,7 @@ httpx = { git = "https://github.com/encode/httpx" }
 
 This allows `uv` to install packages directly from version control systems instead of package registries.
 
-### Remove Dependencies
+#### Remove Dependencies
 
 Remove a dependency from the project.
 
@@ -158,7 +178,7 @@ uv remove requests
 
 This command removes the package from the `pyproject.toml` and updates `uv.lock` to reflect the change. It does not modify the virtual environment — run `uv sync` afterward to clean up the `.venv`.
 
-### Synchronize the Environment
+#### Synchronize the Environment
 
 When setting up a project the first time or after pulling dependencies, the `uv sync` command can be used to synchronize the project's virtual environment.
 
@@ -179,7 +199,7 @@ This command installs all locked dependencies and ensures that the local environ
 ```
 
 
-### Update the Lock File
+#### Update the Lock File
 
 Generate or refresh the project's lock file.
 
@@ -193,7 +213,7 @@ During resolution, `uv` may download metadata/wheels into `~/.cache/uv` and crea
 
 This is useful when dependencies have changed and you want to refresh the lock file separately from installation.
 
-### Change the Python version
+#### Change the Python version
 
 `uv` can manage Python interpreters directly and integrates it smoothly with the current project context. At first the needed Python version is going to be installed
 
@@ -210,7 +230,7 @@ uv python pin 3.10
 This writes the selected version to a `.python-version` file in the project root. From this point on, every `uv` command run inside the project (`uv sync`, `uv run`, `uv add`, …) will use Python 3.10. The next `uv sync` recreates `.venv` against the pinned interpreter.
 
 
-### Run commands
+#### Run commands
 
 `uv` can execute Python scripts and tools directly, without manually activating a virtual environment.
 
