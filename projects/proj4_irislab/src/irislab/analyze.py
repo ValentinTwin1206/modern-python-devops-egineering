@@ -6,10 +6,13 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+# Third-party libraries.
 from PIL import Image
 
+# Own (native) modules
 from irislab._native import delta_e
 
+# Own (python) modules
 from .eye_color import (
     ColorFeatures,
     EyeColor,
@@ -100,9 +103,7 @@ REFERENCE_COLORS: tuple[ReferenceColor, ...] = (
 )
 
 
-def _find_closest_profile(
-    features: ColorFeatures,
-) -> tuple[ReferenceColor, float]:
+def _find_closest_profile(features: ColorFeatures) -> tuple[ReferenceColor, float]:
     """Find the reference profile with the smallest CIELAB distance."""
 
     scored: list[tuple[float, ReferenceColor]] = []
@@ -134,10 +135,7 @@ def _find_closest_profile(
     return profile, distance
 
 
-def analyze(
-    image_path: Path,
-    device: str = "cpu",
-) -> ColorAnalysisResult:
+def analyze(image_path: Path, device: str = "cpu") -> ColorAnalysisResult:
     """Analyze iris pigmentation in an image.
 
     The image is processed by the local iris-segmentation pipeline.

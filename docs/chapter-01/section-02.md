@@ -214,14 +214,34 @@ The exact directory names vary by operating system, but each `venv` still contai
 
 ## Development Workflow
 
-From the repository's `projects/` directory, use `build.sh` to build and open
-the dedicated PyGuard development container. The script mounts the project at
-`/app` and mounts its `.build/` directory at `/build` for build artifacts:
+The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`, `unzip`, 
+`uv`, and `cloudsmith-cli`, then copies the project into `/app`. Choose the workflow that 
+matches the state of the local `mpe/proj1_pyguard` image:
 
-```bash
-./build.sh build \
-    --path proj1_pyguard/Dockerfile.devEnv
-```
+=== "Image does not exist"
+
+    From the repository's `projects/` directory, use `build.sh` to build and
+    open the dedicated PyGuard development container. The script mounts the
+    project at `/app` and its `.build/` directory at `/build` for build
+    artifacts:
+
+    ```bash
+    ./build.sh build \
+        --path proj1_pyguard/Dockerfile.devEnv
+    ```
+
+=== "Image already exists"
+
+    From the repository's `projects/` directory, run the existing image
+    directly:
+
+    ```bash
+    docker run -it \
+        -v "$PWD/proj1_pyguard:/app" \
+        -v "$PWD/proj1_pyguard/.build:/build" \
+        mpe/proj1_pyguard \
+        /bin/bash
+    ```
 
 ### Create the Environment
 

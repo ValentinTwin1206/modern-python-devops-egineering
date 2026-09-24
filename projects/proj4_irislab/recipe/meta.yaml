@@ -19,20 +19,20 @@ requirements:
 outputs:
 
   # -------------------------------------------------------------------------
-  # libiriscolor
+  # libirislab
   #
   # Standalone C++ color-science library implementing perceptual CIELAB
   # color-distance calculations.
   # -------------------------------------------------------------------------
-  - name: libiriscolor
+  - name: libirislab
     version: {{ version }}
 
-    script: build-libiriscolor.sh   # [unix]
-    script: build-libiriscolor.bat  # [win]
+    script: build-libirislab.sh   # [unix]
+    script: build-libirislab.bat  # [win]
 
     build:
       run_exports:
-        - {{ pin_subpackage('libiriscolor', max_pin='x.x') }}
+        - {{ pin_subpackage('libirislab', max_pin='x.x') }}
 
     requirements:
       build:
@@ -46,44 +46,24 @@ outputs:
 
     test:
       commands:
-        - test -f $PREFIX/lib/libiriscolor${SHLIB_EXT}              # [unix]
-        - test -f $PREFIX/include/iriscolor.hpp                     # [unix]
-        - if not exist %LIBRARY_BIN%\\iriscolor.dll exit 1         # [win]
-        - if not exist %LIBRARY_INC%\\iriscolor.hpp exit 1         # [win]
+        - test -f $PREFIX/lib/libirislab${SHLIB_EXT}              # [unix]
+        - test -f $PREFIX/include/irislab.hpp                     # [unix]
+        - if not exist %LIBRARY_BIN%\\irislab.dll exit 1         # [win]
+        - if not exist %LIBRARY_INC%\\irislab.hpp exit 1         # [win]
 
   # -------------------------------------------------------------------------
   # irislab-tools
   #
   # Python iris-color analysis package, CLI, and pybind11 extension.
   #
-  # The Python extension links against libiriscolor and exposes its native
+  # The Python extension links against libirislab and exposes its native
   # color-distance implementation through irislab._native.
-  #
-  # No pip/pyproject.toml packaging is used. The Python package and compiled
-  # extension are installed directly into the Conda environment.
   # -------------------------------------------------------------------------
   - name: irislab-tools
     version: {{ version }}
 
-    script: >-                                                    # [unix]
-      cmake -S "${SRC_DIR}/cpp" -B build-tools -G Ninja
-      -DCMAKE_BUILD_TYPE=Release
-      -DIRISCOLOR_BUILD_BINDINGS=ON
-      -DCMAKE_PREFIX_PATH="${PREFIX}"
-      && cmake --build build-tools
-      && mkdir -p "${SP_DIR}/irislab"
-      && cp "${SRC_DIR}"/src/irislab/*.py "${SP_DIR}/irislab/"
-      && cp build-tools/_native*.so "${SP_DIR}/irislab/"
-
-    script: >-                                                    # [win]
-      cmake -S "%SRC_DIR%\cpp" -B build-tools -G Ninja
-      -DCMAKE_BUILD_TYPE=Release
-      -DIRISCOLOR_BUILD_BINDINGS=ON
-      -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"
-      && cmake --build build-tools
-      && if not exist "%SP_DIR%\irislab" mkdir "%SP_DIR%\irislab"
-      && copy "%SRC_DIR%\src\irislab\*.py" "%SP_DIR%\irislab\"
-      && copy "build-tools\_native*.pyd" "%SP_DIR%\irislab\"
+    script: build-irislab-tools.sh   # [unix]
+    script: build-irislab-tools.bat  # [win]
 
     build:
       entry_points:
@@ -98,7 +78,7 @@ outputs:
       host:
         - python >=3.12
         - pybind11 >=2.12
-        - {{ pin_subpackage('libiriscolor', exact=True) }}
+        - {{ pin_subpackage('libirislab', exact=True) }}
 
       run:
         - python >=3.12
@@ -109,7 +89,7 @@ outputs:
         - libgl
         - libegl
         - libgles
-        - {{ pin_subpackage('libiriscolor', exact=True) }}
+        - {{ pin_subpackage('libirislab', exact=True) }}
 
     test:
       requires:
@@ -132,13 +112,13 @@ about:
 
     It ships as two Conda packages:
 
-      * libiriscolor
+      * libirislab
         A standalone C++ shared library implementing perceptual CIELAB
         color-distance calculations.
 
       * irislab-tools
         The Python API, command-line interface, image-analysis pipeline,
-        and pybind11 bindings that link against libiriscolor.
+        and pybind11 bindings that link against libirislab.
 
     The application extracts iris pigmentation from images, analyzes color
     characteristics using NumPy, and uses the native C++ library for

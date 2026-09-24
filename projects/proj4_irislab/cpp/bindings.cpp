@@ -1,4 +1,4 @@
-#include "iriscolor.hpp"
+#include "irislab.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -11,7 +11,7 @@ PYBIND11_MODULE(_native, module) {
 
     module.def(
         "delta_e",
-        &iriscolor::delta_e,
+        &irislab::delta_e,
         py::arg("l1"),
         py::arg("a1"),
         py::arg("b1"),

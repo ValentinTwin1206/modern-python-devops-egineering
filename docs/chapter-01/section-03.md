@@ -271,27 +271,41 @@ After creating the environment described in [Environment Definition](#environmen
 
 ## Development Workflow
 
-From the repository's `projects/` directory, use `build.sh` to open the dedicated IrisLab development container. The command enables GPU access and forwards the Cloudsmith configuration into the container session:
+The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as its only system 
+package channel, and includes the compiler toolchain, MediaPipe model, and project files. 
+Choose the workflow that matches the state of the local `mpe/proj4_irislab` image:
 
-```bash
-./build.sh build \
-    --path proj4_irislab/Dockerfile.devEnv \
-    --gpus all \
-    --cloudsmith-workspace "<cloudsmith-repo>" \
-    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
-```
+=== "Image does not exist"
 
-The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as its only system package channel, and
-installs the compiler toolchain, the MediaPipe model, and the project files.
+    From the repository's `projects/` directory, use `build.sh` to build the image and open 
+    the dedicated IrisLab development container. The command enables GPU access and forwards
+    the Cloudsmith configuration into the container session:
+
+    ```bash
+    ./build.sh build \
+        --path proj4_irislab/Dockerfile.devEnv \
+        --gpus all \
+        --cloudsmith-workspace "<cloudsmith-repo>" \
+        --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
+
+=== "Image already exists"
+
+    From the repository's `projects/` directory, run the existing image
+    directly:
+
+    ```bash
+    docker run -it \
+        -v "$PWD/proj4_irislab:/app" \
+        -v "$PWD/proj4_irislab/.build:/build" \
+        mpe/proj4_irislab \
+        /bin/bash
+    ```
 
 !!! info "Local ML Inference"
-    `IrisLab` uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs entirely **locally inside the container** using MediaPipe and TensorFlow Lite — no image data is sent to a cloud service.
+    `IrisLab` uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs **locally inside the container** on the CPU, so GPU-enabled containers are optional and no image data is sent to a cloud service.
 
     The detected iris landmarks are used to isolate the actual iris pixels. `IrisLab` then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
-
-    The MediaPipe models are lightweight and run efficiently on the **CPU**, so CUDA, PyTorch, an NVIDIA GPU, and
-    GPU-enabled Docker containers are not required for the current implementation. The optional GPU-enabled container
-    workflow remains available for a future model or inference backend that benefits from GPU acceleration.
 
 ### Create the Environment
 
@@ -422,15 +436,11 @@ Remove any previous development build and re-create it:
 rm -rf build-dev && mkdir -p build-dev
 ```
 
-Configure the IrisLab native extension with the installed CMake and Ninja toolchain:
+Configure the `IrisLab` native extension with the installed CMake and Ninja toolchain and
+build it:
 
 ```bash
-cmake -S cpp -B build-dev -G Ninja -DIRISCOLOR_BUILD_BINDINGS=ON
-```
-
-Build the configured native extension:
-
-```bash
+cmake -S cpp -B build-dev -G Ninja -DIRISLAB_BUILD_BINDINGS=ON
 cmake --build build-dev
 ```
 
@@ -444,17 +454,19 @@ During the development loop, run the CLI module directly from the source tree
 so that changes can be tested without reinstalling the package:
 
 ```bash
-python -m irislab.cli --image samples/blue-eyes.png
+PYTHONPATH=src python -m irislab.cli --image samples/blue-eyes.png
 ```
 
 ```bash
-python -m irislab.cli --image samples/blue-eyes.png --gpu
+PYTHONPATH=src python -m irislab.cli --image samples/blue-eyes.png --gpu
 ```
 
 !!! info "Package Integration Testing"
-    For package-level integration testing, build and install the `irislab-tools` 
-    Conda package from `meta.yaml`. Its generated console entry point then becomes 
-    available in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
+    For package-level integration testing, build and install the `irislab-tools`
+    Conda package from `meta.yaml`. Conda-build automatically builds `libirislab`
+    and the `_native` extension; manual CMake is only needed for the local
+    development loop. Its generated console entry point then becomes available
+    in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
 
 ### Inspect the Environment
 

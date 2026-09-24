@@ -64,7 +64,8 @@ RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
         alice \
     && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' \
         > /etc/sudoers.d/alice \
-    && chmod 0440 /etc/sudoers.d/alice
+    && chmod 0440 /etc/sudoers.d/alice \
+    && mkdir -p /opt/conda/conda-bld
 
 #
 # Download the MediaPipe Face Landmarker model used by iris.py.
@@ -90,8 +91,6 @@ COPY tests ./tests
 COPY recipe ./recipe
 COPY samples ./samples
 COPY README.md ./README.md
-
-ENV PYTHONPATH=/app/src
 
 #
 # Alice owns both the IrisLab project directory and the Conda installation.

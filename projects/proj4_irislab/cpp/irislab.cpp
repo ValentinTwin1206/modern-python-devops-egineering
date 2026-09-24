@@ -1,8 +1,8 @@
-#include "iriscolor.hpp"
+#include "irislab.hpp"
 
 #include <cmath>
 
-namespace iriscolor {
+namespace irislab {
 
 double delta_e(
     double l1,
@@ -23,4 +23,4 @@ double delta_e(
     );
 }
 
-}  // namespace iriscolor
+}  // namespace irislab

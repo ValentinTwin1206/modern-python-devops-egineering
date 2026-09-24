@@ -1,16 +1,16 @@
 #pragma once
 
 #if defined(_WIN32) || defined(__CYGWIN__)
-    #if defined(IRISCOLOR_BUILD_SHARED)
-        #define IRISCOLOR_API __declspec(dllexport)
+    #if defined(IRISLAB_BUILD_SHARED)
+        #define IRISLAB_API __declspec(dllexport)
     #else
-        #define IRISCOLOR_API __declspec(dllimport)
+        #define IRISLAB_API __declspec(dllimport)
     #endif
 #else
-    #define IRISCOLOR_API __attribute__((visibility("default")))
+    #define IRISLAB_API __attribute__((visibility("default")))
 #endif
 
-namespace iriscolor {
+namespace irislab {
 
 /// Calculate the CIE76 perceptual color difference between two CIELAB colors.
 ///
@@ -28,7 +28,7 @@ namespace iriscolor {
 ///       + (b1 - b2)^2
 ///     )
 ///
-IRISCOLOR_API double delta_e(
+IRISLAB_API double delta_e(
     double l1,
     double a1,
     double b1,
@@ -37,4 +37,4 @@ IRISCOLOR_API double delta_e(
     double b2
 );
 
-}  // namespace iriscolor
+}  // namespace irislab

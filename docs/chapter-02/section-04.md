@@ -45,9 +45,11 @@ A Conda package is built with a dedicated recipe directory alongside the project
 ├── cpp/
 │   ├── CMakeLists.txt
 │   ├── bindings.cpp
-│   ├── iriscolor.cpp
-│   └── iriscolor.hpp
+│   ├── irislab.cpp
+│   └── irislab.hpp
 ├── recipe/
+│   ├── build-irislab-tools.bat
+│   ├── build-irislab-tools.sh
 │   ├── build-libirislab.bat
 │   ├── build-libirislab.sh
 │   └── meta.yaml
@@ -93,15 +95,8 @@ outputs:
   # -------------------------------------------------------------------------
   - name: irislab-tools
 
-    script: >-
-      cmake -S "${SRC_DIR}/cpp" -B build-tools -G Ninja
-      -DCMAKE_BUILD_TYPE=Release
-      -DIRISLAB_BUILD_BINDINGS=ON
-      -DCMAKE_PREFIX_PATH="${PREFIX}"
-      && cmake --build build-tools
-      && mkdir -p "${SP_DIR}/irislab"
-      && cp "${SRC_DIR}"/src/irislab/*.py "${SP_DIR}/irislab/"
-      && cp build-tools/_native*.so "${SP_DIR}/irislab/"
+    script: build-irislab-tools.sh   # [unix]
+    script: build-irislab-tools.bat  # [win]
 
     build:
       entry_points:
@@ -161,11 +156,11 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
     ├── info-*.tar.zst
     │   └── info/
     │       ├── about.json
-    │       ├── index.json                 # depends: [] and run_exports
+    │       ├── index.json                 # depends: compiler runtimes and run_exports
     │       └── recipe/meta.yaml
     └── pkg-*.tar.zst
         ├── include/
-        │   └── iriscolor.hpp
+        │   └── irislab.hpp
         └── lib/
             └── libirislab.so
     ```
@@ -195,38 +190,45 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, use the already-built `mpe/proj4_irislab` image to create an interactive 
-Bash session. The command mounts the project source and build directory, then forwards the Cloudsmith 
-configuration into the container.
+For the Conda environment and C++ extension build, see [Python Conda Environments](../chapter-01/section-03.md).
+Its `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge`, and includes the compiler toolchain,
+MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj4_irislab` image:
 
-Create a host directory for package artifacts generated inside the container:
+=== "Image does not exist"
 
-```bash
-mkdir -p proj4_irislab/.build
-```
+    From the `projects/` directory, use `build.sh` to build and open the
+    interactive packaging container. The command enables GPU access and
+    forwards the Cloudsmith configuration:
 
-Start the container and mount the project and build directories:
+    ```bash
+    ./build.sh build \
+      --path proj4_irislab/Dockerfile.devEnv \
+      --gpus all \
+      --cloudsmith-workspace "<cloudsmith-repo>" \
+      --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
 
-```bash
-docker run -it \
-    -v "$PWD/proj4_irislab:/app" \
-    -v "$PWD/proj4_irislab/.build:/build" \
-    -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-    mpe/proj4_irislab \
-    /bin/bash
-```
+=== "Image already exists"
 
-> See [Development Workflow](./../chapter-01/section-03.md#development-workflow) for creating the image using the `build.sh` script
+    From the `projects/` directory, create the host directory for package
+    artifacts and run the existing image:
 
+    ```bash
+    mkdir -p proj4_irislab/.build
+    docker run -it \
+      -v "$PWD/proj4_irislab:/app" \
+      -v "$PWD/proj4_irislab/.build:/opt/conda/conda-bld" \
+      -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+      -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+      mpe/proj4_irislab \
+      /bin/bash
+    ```
 
 ### Install Packaging Tools
 
 Install the packaging tools in Conda's `base` environment rather than in the
 project's `irislab` environment. This separation keeps the *Packaging Workflow*
-independent from the *Development Workflow*. The installed `conda-build` package
-is the recipe-driven build tool, and `conda-package-handling` provides the `cph`
-command for listing package archives and inspecting their metadata and contents.
+independent from the *Development Workflow*.
 
 ```bash
 conda install \
@@ -235,6 +237,9 @@ conda install \
     conda-build \
     conda-package-handling
 ```
+
+- `conda-build`: Builds Conda packages from recipes.
+- `conda-package-handling`: Provides `cph` for listing package archives and inspecting their metadata and contents.
 
 The following command runs `pip` in Conda's `base` environment. It downloads
 the `cloudsmith-cli` package from PyPI and installs it for uploading packages
@@ -252,26 +257,39 @@ Activate the `base` environment before running the packaging command:
 conda activate base
 ```
 
-From the project root, build both packages with `conda-build`. The `--channel conda-forge` option 
+Clear previous (Conda) build artifacts from the default artifact output
+directory:
+
+```bash
+find "/opt/conda/conda-bld" -mindepth 1 -delete
+```
+
+From the project root, build both packages with `conda build`. The `--channel conda-forge` option
 provides the public compilers, CMake, Python, Pillow, and other dependencies required by the recipe.
 
 ```bash
 conda build recipe/ --channel conda-forge
 ```
 
+`conda-build` invokes the recipe scripts automatically. It first builds `libirislab`, then builds
+the `_native` Python extension against that package. You do not need to run CMake separately
+for the packaging workflow. `conda-build` writes packages to `/opt/conda/conda-bld` inside the
+container. The project `.build` directory is bind-mounted there, so the package artifacts remain
+available on the host.
+
 - `libirislab`: Provides the standalone native C++ library and public header.
 - `irislab-tools`: Provides the Python package, CLI, and pybind11 extension.
 
 ### Inspect the Package
 
-The two archives have different payloads and dependency metadata, so inspect them separately. The native package should have an empty direct dependency list and a `run_exports` entry. The Python package should declare an exact dependency on the matching `libirislab` build.
+The two archives have different payloads and dependency metadata, so inspect them separately. The native package should declare compiler runtime dependencies such as `libgcc` and `libstdcxx`, together with a `run_exports` entry. The Python package should declare an exact dependency on the matching `libirislab` build.
 
 === "libirislab"
 
     Resolve the native package created in the previous step:
 
     ```bash
-    LIBIRISLAB_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'libirislab-*.conda' -print -quit)"
+    LIBIRISLAB_PKG="$(find "/opt/conda/conda-bld" -type f -name 'libirislab-*.conda' -print -quit)"
     ```
 
     List the package contents:
@@ -292,7 +310,7 @@ The two archives have different payloads and dependency metadata, so inspect the
     Resolve the Python package created in the previous step:
 
     ```bash
-    IRISLAB_TOOLS_PKG="$(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f -name 'irislab-tools-*.conda' -print -quit)"
+    IRISLAB_TOOLS_PKG="$(find "/opt/conda/conda-bld" -type f -name 'irislab-tools-*.conda' -print -quit)"
     ```
 
     List the package contents:
@@ -331,7 +349,7 @@ repository-root/
 Upload the two archives created in the previous step so the exact native-library pin can be satisfied at install time:
 
 ```bash
-mapfile -t PACKAGES < <(find "${CONDA_BLD_PATH:-$HOME/conda-bld}" -type f \( \
+mapfile -t PACKAGES < <(find "/opt/conda/conda-bld" -type f \( \
   -name 'libirislab-*.conda' -o -name 'irislab-tools-*.conda' \
 \) -print)
 for PACKAGE in "${PACKAGES[@]}"; do

@@ -111,7 +111,7 @@ cmake \
   -S cpp \
   -B build-dev \
   -G Ninja \
-  -DIRISCOLOR_BUILD_BINDINGS=ON
+  -DIRISLAB_BUILD_BINDINGS=ON
 
 cmake --build build-dev
 
@@ -158,7 +158,7 @@ The project demonstrates a multi-output Conda recipe with two packages:
 
 | Package | Purpose |
 | --- | --- |
-| `libiriscolor` | Native C++ color-analysis library and headers |
+| `libirislab` | Native C++ color-analysis library and headers |
 | `irislab-tools` | Python application, CLI, and pybind11 extension |
 
 Build both packages with:
@@ -167,7 +167,7 @@ Build both packages with:
 conda build recipe/ --channel conda-forge
 ```
 
-`irislab-tools` depends on `libiriscolor`, allowing Conda to resolve the native dependency automatically.
+`irislab-tools` depends on `libirislab`, allowing Conda to resolve the native dependency automatically.
 
 Install the packaging and publication tools separately when you need to build
 or upload Conda packages:
@@ -204,10 +204,8 @@ Create and activate the environment:
 
 ```bash
 conda env create --file environment.yml
-
 conda activate irislab
-
 python -m pip install mediapipe
 ```
 
-The native `libiriscolor` dependency is installed automatically by Conda.
+The native `libirislab` dependency is installed automatically by Conda.

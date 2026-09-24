@@ -278,12 +278,12 @@ build_command() {
         fi
     fi
 
-    # Every run mounts the project's .build/ directory so artifacts produced
-    # inside the container (wheels, compiled binaries, etc.) surface on the host.
+    # Every run mounts the project's .build/ directory at Conda's build root so
+    # Conda packages and other build artifacts surface on the host.
     local build_artifact_dir="${build_context}/.build"
     mkdir -p "${build_artifact_dir}"
-    log "Bind-mount:      ${build_artifact_dir} -> /build"
-    run_cmd+=(--volume "${build_artifact_dir}:/build")
+    log "Bind-mount:      ${build_artifact_dir} -> /opt/conda/conda-bld"
+    run_cmd+=(--volume "${build_artifact_dir}:/opt/conda/conda-bld")
 
     run_cmd+=(--publish "${PORT_MAPPING}")
 

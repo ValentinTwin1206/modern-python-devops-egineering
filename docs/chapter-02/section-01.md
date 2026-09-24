@@ -113,30 +113,37 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, use the already-built `mpe/proj1_pyguard`
-image to create an interactive Bash session. The command mounts the project
-source and build directory, then forwards the Cloudsmith configuration into
-the container.
+The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`,
+`sudo`, `unzip`, `uv`, and `cloudsmith-cli`, then copies the project into `/app`.
+Choose the workflow that matches the local `mpe/proj1_pyguard` image:
 
-Create a host directory for package artifacts generated inside the container:
+=== "Image does not exist"
 
-```bash
-mkdir -p proj1_pyguard/.build
-```
+    From the `projects/` directory, use `build.sh` to build and open the
+    interactive PyGuard packaging container:
 
-Start the container and mount the project and build directories:
+    ```bash
+    ./build.sh build \
+        --path proj1_pyguard/Dockerfile.devEnv \
+        --cloudsmith-workspace "<cloudsmith-repo>" \
+        --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
 
-```bash
-docker run -it \
-    -v "$PWD/proj1_pyguard:/app" \
-    -v "$PWD/proj1_pyguard/.build:/build" \
-    --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-    mpe/proj1_pyguard \
-    /bin/bash
-```
+=== "Image already exists"
 
-> See [Development Workflow](./../chapter-01/section-02.md#development-workflow) for creating the image using the `build.sh` script
+    From the `projects/` directory, create the host directory for package
+    artifacts and run the existing image:
+
+    ```bash
+    mkdir -p proj1_pyguard/.build
+    docker run -it \
+        -v "$PWD/proj1_pyguard:/app" \
+        -v "$PWD/proj1_pyguard/.build:/build" \
+        --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+        --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+        mpe/proj1_pyguard \
+        /bin/bash
+    ```
 
 ### Create The Package
 
