@@ -38,8 +38,10 @@ ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
                               ${DIM}(e.g. proj3_license_service/Dockerfile).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
+        ${YELLOW}--gpus${RESET} ${CYAN}<GPU_REQUEST>${RESET}       GPU access passed to the container runtime, such as ${CYAN}all${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
+        ${YELLOW}--rm-container${RESET}       Remove the container automatically after it exits.
         ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}<WORKSPACE>${RESET}
                               Forward ${CYAN}CLOUDSMITH_REPOSITORY${RESET} into the container.
         ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}<API_KEY>${RESET}
@@ -55,7 +57,7 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
                               ${CYAN}"projects-.*"${RESET}.
 
 ${BLUE}${BOLD}EXAMPLES${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_heisenblue/Dockerfile.devEnv${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_redsticks/Dockerfile.devEnv${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj1_pyguard/Dockerfile.devEnv${RESET} ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}_YOUR_CLOUDSMITH_REPO_${RESET} ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}_YOUR_API_KEY_${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}
@@ -74,14 +76,12 @@ detect_container_engine() {
 
 image_tag_for() {
     local dockerfile_abs="$1"
-    local projects_name rel_path slug
+    local rel_path project_name
 
-    projects_name="$(basename -- "${PROJECTS_ROOT}")"
     rel_path="${dockerfile_abs#"${PROJECTS_ROOT}/"}"
-    slug="$(printf '%s/%s' "${projects_name}" "${rel_path}" \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -e 's|/|-|g' -e 's|\.|-|g')"
-    printf 'mpe/%s:latest\n' "${slug}"
+    project_name="${rel_path%%/*}"
+    project_name="$(printf '%s' "${project_name}" | tr '[:upper:]' '[:lower:]')"
+    printf 'mpe/%s\n' "${project_name}"
 }
 
 resolve_dockerfile_path() {
@@ -117,8 +117,10 @@ resolve_dockerfile_path() {
 parse_build_args() {
     DOCKERFILE_PATH=""
     PORT_MAPPING="8080:8080"
+    GPU_REQUEST=""
     BUILD_ONLY=0
     NO_CACHE=0
+    RM_CONTAINER=0
     CLOUDSMITH_WORKSPACE=""
     CLOUDSMITH_API_KEY=""
 
@@ -146,12 +148,25 @@ parse_build_args() {
                 PORT_MAPPING="${1#*=}"
                 shift
                 ;;
+            --gpus)
+                [[ $# -ge 2 ]] || die "--gpus requires a value"
+                GPU_REQUEST="$2"
+                shift 2
+                ;;
+            --gpus=*)
+                GPU_REQUEST="${1#*=}"
+                shift
+                ;;
             --build-only)
                 BUILD_ONLY=1
                 shift
                 ;;
             --rebuild)
                 NO_CACHE=1
+                shift
+                ;;
+            --rm-container)
+                RM_CONTAINER=1
                 shift
                 ;;
             --cloudsmith-workspace)
@@ -211,9 +226,18 @@ build_command() {
     container_name="$(printf '%s' "${image_tag}" \
         | sed -e 's|[^a-zA-Z0-9_.-]|-|g' -e 's|^-*||' -e 's|-*$||')"
 
+    local host_uid host_gid
     local build_cmd=("${CONTAINER_ENGINE}" build)
     [[ "${NO_CACHE}" -eq 1 ]] && build_cmd+=(--no-cache)
-    build_cmd+=(--file "${dockerfile_abs}" --tag "${image_tag}" "${build_context}")
+    build_cmd+=(--file "${dockerfile_abs}" --tag "${image_tag}")
+
+    if [[ "${is_dev_image}" -eq 1 ]]; then
+        host_uid="$(id -u)"
+        host_gid="$(id -g)"
+        build_cmd+=(--build-arg "HOST_UID=${host_uid}" --build-arg "HOST_GID=${host_gid}")
+    fi
+
+    build_cmd+=("${build_context}")
 
     log "Image tag:       ${BOLD}${image_tag}${RESET}"
     log "Dockerfile:      ${dockerfile_abs}"
@@ -225,6 +249,9 @@ build_command() {
     fi
 
     log "Building image..."
+    if [[ "${is_dev_image}" -eq 1 ]]; then
+        log "Build user:      UID ${host_uid}, GID ${host_gid}"
+    fi
     "${build_cmd[@]}"
 
     if [[ "${BUILD_ONLY}" -eq 1 ]]; then
@@ -232,12 +259,12 @@ build_command() {
         exit 0
     fi
 
-    local run_cmd=("${CONTAINER_ENGINE}" run --rm -it --name "${container_name}")
+    local run_cmd=("${CONTAINER_ENGINE}" run -it --name "${container_name}")
     local container_cmd=("/bin/bash")
-    local host_uid host_gid
 
-    host_uid="$(id -u)"
-    host_gid="$(id -g)"
+    if [[ "${RM_CONTAINER}" -eq 1 ]]; then
+        run_cmd+=(--rm)
+    fi
 
     if [[ "${is_dev_image}" -eq 1 ]]; then
         mount_source="${build_context}"
@@ -251,14 +278,18 @@ build_command() {
         fi
     fi
 
-    # Every run mounts the project's .build/ directory so artifacts produced
-    # inside the container (wheels, compiled binaries, etc.) surface on the host.
+    # Every run mounts the project's .build/ directory at Conda's build root so
+    # Conda packages and other build artifacts surface on the host.
     local build_artifact_dir="${build_context}/.build"
     mkdir -p "${build_artifact_dir}"
-    log "Bind-mount:      ${build_artifact_dir} -> /build"
-    run_cmd+=(--volume "${build_artifact_dir}:/build")
+    log "Bind-mount:      ${build_artifact_dir} -> /opt/conda/conda-bld"
+    run_cmd+=(--volume "${build_artifact_dir}:/opt/conda/conda-bld")
 
     run_cmd+=(--publish "${PORT_MAPPING}")
+
+    if [[ -n "${GPU_REQUEST}" ]]; then
+        run_cmd+=(--gpus "${GPU_REQUEST}")
+    fi
 
     # --cloudsmith-workspace maps to CLOUDSMITH_REPOSITORY, which the container tooling reads.
     if [[ -n "${CLOUDSMITH_WORKSPACE}" ]]; then
@@ -269,14 +300,6 @@ build_command() {
     if [[ -n "${CLOUDSMITH_API_KEY}" ]]; then
         log "Cloudsmith:      forwarding CLOUDSMITH_API_KEY"
         run_cmd+=(--env "CLOUDSMITH_API_KEY=${CLOUDSMITH_API_KEY}")
-    fi
-
-    if [[ "${is_dev_image}" -eq 1 ]]; then
-        run_cmd+=(--entrypoint /bin/bash --user root --env "HOST_UID=${host_uid}" --env "HOST_GID=${host_gid}")
-        container_cmd=(
-            "-lc"
-            "if id snake >/dev/null 2>&1; then desired_uid=\"\${HOST_UID:-}\"; desired_gid=\"\${HOST_GID:-}\"; current_uid=\"\$(id -u snake)\"; current_gid=\"\$(id -g snake)\"; if [[ -n \"\${desired_uid}\" && \"\${current_uid}\" != \"\${desired_uid}\" ]]; then existing_user=\"\$(getent passwd \"\${desired_uid}\" | cut -d: -f1 || true)\"; if [[ -n \"\${existing_user}\" && \"\${existing_user}\" != snake ]]; then userdel -f \"\${existing_user}\" >/dev/null 2>&1 || true; fi; fi; if [[ -n \"\${desired_gid}\" && \"\${current_gid}\" != \"\${desired_gid}\" ]]; then existing_group=\"\$(getent group \"\${desired_gid}\" | cut -d: -f1 || true)\"; if [[ -n \"\${existing_group}\" && \"\${existing_group}\" != snake ]]; then groupdel \"\${existing_group}\" >/dev/null 2>&1 || true; fi; groupmod -o -g \"\${desired_gid}\" snake >/dev/null 2>&1 || true; current_gid=\"\$(id -g snake)\"; fi; if [[ -n \"\${desired_uid}\" && \"\${current_uid}\" != \"\${desired_uid}\" ]]; then usermod -o -u \"\${desired_uid}\" -g \"\${current_gid}\" snake >/dev/null 2>&1 || true; fi; chown -R \"\$(id -u snake):\$(id -g snake)\" /home/snake 2>/dev/null || true; chmod 0777 /build 2>/dev/null || true; find /build -mindepth 1 -maxdepth 1 -exec chmod -R a+rwX {} + 2>/dev/null || true; exec sudo -E -H -u snake /bin/bash; else exec /bin/bash; fi"
-        )
     fi
 
     run_cmd+=("${image_tag}" "${container_cmd[@]}")

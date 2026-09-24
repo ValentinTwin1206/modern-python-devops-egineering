@@ -113,13 +113,37 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
-From the `projects/` directory, open the dedicated packaging container and forward the Cloudsmith configuration into the container session.
+The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`,
+`sudo`, `unzip`, `uv`, and `cloudsmith-cli`, then copies the project into `/app`.
+Choose the workflow that matches the local `mpe/proj1_pyguard` image:
 
-```bash
-../build.sh build --path proj1_pyguard/Dockerfile.devEnv \
-    --cloudsmith-workspace "<cloudsmith-repo>" \
-    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
-```
+=== "Image does not exist"
+
+    From the `projects/` directory, use `build.sh` to build and open the
+    interactive PyGuard packaging container:
+
+    ```bash
+    ./build.sh build \
+        --path proj1_pyguard/Dockerfile.devEnv \
+        --cloudsmith-workspace "<cloudsmith-repo>" \
+        --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
+
+=== "Image already exists"
+
+    From the `projects/` directory, create the host directory for package
+    artifacts and run the existing image:
+
+    ```bash
+    mkdir -p proj1_pyguard/.build
+    docker run -it \
+        -v "$PWD/proj1_pyguard:/app" \
+        -v "$PWD/proj1_pyguard/.build:/build" \
+        --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+        --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+        mpe/proj1_pyguard \
+        /bin/bash
+    ```
 
 ### Create The Package
 

@@ -1,17 +1,25 @@
 # DEVELOPMENT IMAGE:
-#   - uses ubuntu:24.04 with its APT-managed Python 3.12 and installs uv as the project workflow tool
-#   - includes ZIP/TAR inspection tools used to inspect wheel and source distribution artifacts
-#   - syncs the dev dependency group into a project-local .venv
+#   - uses Ubuntu 24.04 with its APT-managed Python 3.12
+#   - installs uv as the project workflow tool
+#   - includes ZIP/TAR inspection tools for package artifacts
 #   - opens an interactive shell in /app for library development
-# # # # # # # # # # #
 FROM ubuntu:24.04
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CLOUDSMITH_REPOSITORY=""
 
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+
+#
+# Configure the project workspace.
+#
+WORKDIR /app
+
+#
+# Install the OS packages required by the development workflow.
+#
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -19,23 +27,46 @@ RUN apt-get update \
         python3-venv \
         sudo \
         unzip \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash --groups sudo snake \
-    && printf 'snake ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/snake \
-    && chmod 0440 /etc/sudoers.d/snake
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+#
+# Create bob with the host user's numeric UID/GID so files written through the
+# bind mounts remain owned by the host user.
+#
+RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
+    && if [ -n "${existing_user}" ] && [ "${existing_user}" != bob ]; then \
+        userdel "${existing_user}"; \
+    fi \
+    && group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && if [ -z "${group_name}" ]; then \
+        groupadd --gid "${HOST_GID}" bob; \
+        group_name=bob; \
+    fi \
+    && useradd --uid "${HOST_UID}" --gid "${group_name}" \
+        --create-home --shell /bin/bash --groups sudo bob \
+    && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
+    && chmod 0440 /etc/sudoers.d/bob
+
+#
+# Install uv and the Cloudsmith publishing CLI.
+#
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN uv pip install --system --break-system-packages cloudsmith-cli
 
+#
+# Copy the files needed for the image's build-time project setup.
+#
 COPY pyproject.toml ./
 COPY README.md ./
 COPY src ./src
 
-RUN chown -R snake:snake /app
+# Ensure files copied into the image are owned by bob before USER takes effect.
+RUN group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && chown -R bob:"${group_name}" /app
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
-USER snake
+USER bob
 
 CMD ["/bin/bash"]

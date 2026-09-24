@@ -14,14 +14,17 @@ __pycache__/
 **/env/
 **/ENV/
 .conda/
+*.task
 
 # Packaging and build outputs
 build/
+build-dev/
 dist/
 site/
 *.egg-info/
 .eggs/
 pip-wheel-metadata/
+*.so
 
 # Per-project artifact directory bind-mounted at /build inside containers
 # managed by projects/build.sh

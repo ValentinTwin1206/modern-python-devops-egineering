@@ -1,0 +1,35 @@
+name: irislab
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  - python=3.12
+
+  # CLI
+  - click
+  - rich
+
+  # Image / numerical processing
+  - pillow
+  - numpy
+
+  # MediaPipe native runtime
+  - glib
+  - libgl
+  - libegl
+  - libgles
+
+  # Native C++ extension
+  - pybind11
+  - cmake
+  - ninja
+
+  # Development / testing
+  - pytest
+
+  # Packages not available from conda-forge
+  - pip
+  - pip:
+      - mediapipe

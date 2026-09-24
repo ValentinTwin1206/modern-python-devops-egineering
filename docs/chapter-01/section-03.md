@@ -1,24 +1,24 @@
-# Python Conda environments
+# Python Conda Environments
 
-This page covers Conda, both as a package manager and as an environment manager. Conda can replace the usual `pip` plus `venv` workflow when you need one tool to manage Python, Python packages, and non-Python packages together.
+This page covers Conda as both a package manager and an environment manager. Conda can replace the usual `pip` plus `venv` workflow when one tool needs to manage Python, Python packages, native libraries, and other non-Python dependencies.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is a small chemistry analysis library called `HeisenBlue`. It is built on [RDKit](https://www.rdkit.org/), [Pillow](https://python-pillow.org/), and a native [pybind11](https://pybind11.readthedocs.io/) extension. This makes it a good fit for Conda because the workflow combines Python packages, native libraries, and a compiled extension in one Conda environment.
+The applied project is `IrisLab`, a small image-based iris color analysis application. It uses MediaPipe Face Landmarker with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to determine perceptual color features and classify the eye color. The resulting color profile is compared with reference colors using a native C++ library that calculates CIE ΔE color distances and is exposed to Python through `pybind11`. This makes `IrisLab` a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local machine-learning dependencies together.
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_heisenblue/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab/README.md).
 
 ## Conda Environment Model
 
-Conda was first released in 2012 to solve environment and package management for Python projects that also depend on native libraries and non-Python packages. Unlike [`venv` Environments](./section-02.md), it can manage the Python interpreter version itself and install non-Python dependencies from Conda channels, so one Conda environment can bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
+Conda can manage the Python interpreter version itself and install non-Python dependencies from Conda channels. One Conda environment can therefore bundle the interpreter, Python packages, native shared libraries, headers, and other runtime files that would otherwise come from the host operating system.
 
-Conda is therefore more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and shared conventions for publishing binary scientific software. That ecosystem is a major reason projects such as [RDKit](https://github.com/rdkit/rdkit) recommend Conda for Python users, and it matters especially for scientists, analysts, and notebook users who need reliable tools without first becoming operating-system packaging experts.
+Conda is more than an environment directory. It is an ecosystem made of remote package repositories, channels such as `conda-forge`, a package manager, an environment manager, and conventions for publishing binary scientific software. This is especially useful for projects such as `IrisLab` that combine scientific Python packages, image processing, local machine-learning inference, and compiled C++ code within a single environment.
 
-The simplified diagram below compares how a plain `venv` workflow and a Conda workflow collect the HeisenBlue dependencies from different package sources.
+The simplified diagram compares a plain `venv` workflow with a Conda workflow:
 
 ```mermaid
 graph TB
@@ -30,20 +30,20 @@ graph TB
     PYPI --> VENV["venv + pip"]
     DEBIAN --> VENV_PY["Python 3.12"]
     VENV_PY --> VENV
-    VENV --> VENV_DEPS["Python packages/<br/>Pillow, pybind11, scikit-build-core, ..."]
-    DEBIAN --> HOST_DEPS["Host packages<br/>RDKit, CMake, C++ toolchain, ..."]
-    VENV_DEPS --> VENV_APP["HeisenBlue"]
+    VENV --> VENV_DEPS["Python packages / Pillow, mediapipe, pybind11"]
+    DEBIAN --> HOST_DEPS["Host packages / CMake, C++ toolchain"]
+    VENV_DEPS --> VENV_APP["IrisLab"]
     HOST_DEPS --> VENV_APP
 
     CONDA_INSTALLER --> CONDA["Conda"]
     CONDA_FORGE --> CONDA
-    CONDA --> CONDA_DEPS["One environment prefix<br/>Python 3.12, RDKit, scikit-build-core, ..."]
-    CONDA_DEPS --> CONDA_APP["HeisenBlue"]
+    CONDA --> CONDA_DEPS["One environment prefix / Python, Pillow, CMake"]
+    CONDA_DEPS --> CONDA_APP["IrisLab"]
 ```
 
 ### When to Use Conda?
 
-Because it can keep Python, native dependencies, and interpreter version constraints in one environment, Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and Jupyter notebook workflows that need reproducible kernels and compiled packages across machines. Popular workflow tools reflect this pattern, including [MLflow](https://github.com/mlflow/mlflow) Projects for data preprocessing, feature engineering, and training steps from a declared Conda environment, and [Snakemake](https://github.com/snakemake/snakemake) or [Nextflow](https://github.com/nextflow-io/nextflow) for provisioning dependencies in reproducible pipeline tasks.
+Conda is a strong fit for computer vision, numerical computing, geospatial processing, machine learning, and scientific workflows that need reproducible environments with compiled packages. It is particularly useful when Python bindings and native binaries must be installed and upgraded together.
 
 ### Tradeoffs
 
@@ -52,49 +52,58 @@ Because it can keep Python, native dependencies, and interpreter version constra
 - ✅ Manages the Python version as part of the environment.
 - ✅ Installs Python and non-Python packages together from Conda channels.
 - ✅ Keeps Python bindings and native binaries in one environment prefix.
-- ✅ Works well for scientific or compiled dependencies, including this OpenCV pipeline.
-- ✅ Fits teams already using Anaconda or other Conda-based tooling.
+- ✅ Works well for scientific or compiled dependencies.
 
 #### Cons
 
-- ⚠️ Significantly heavier than `venv` in tooling footprint and environment size.
-- ⚠️ Uses a separate ecosystem alongside PyPI, so you often need both `conda` and `pip`.
+- ⚠️ Heavier than `venv` in tooling footprint and environment size.
+- ⚠️ Uses a separate ecosystem alongside PyPI, so some projects need both `conda` and `pip`.
 - ⚠️ Dependency solving can be slower than simpler PyPI-only workflows.
 - ⚠️ Pure-Python projects are often simpler with `venv` plus `pip` or `uv`.
 
 ### Install Conda
 
-On Linux, Windows, and macOS, a common starting point is Miniconda. It provides the minimal pieces needed to run `conda` without installing the full Anaconda distribution. User installs typically live under `~/miniconda3` on Unix-like systems, while this section's Docker image is based on `continuumio/miniconda3` where Miniconda already lives at `/opt/conda`.
+Conda is available on Linux, Windows, and macOS. A common starting point is **Miniconda**, a minimal distribution 
+containing Conda, Python, and the packages required to run them.
 
-=== "Linux (Debian-based)"
+A user installation typically lives under `~/miniconda3` on Linux and macOS.
 
-    Download the Miniconda installer:
+=== "Linux"
+
+    Download the Miniconda installer for Linux x86-64:
 
     ```bash
-    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    curl -LsSf \
+      -o miniconda.sh \
+      https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     ```
 
-    Run the installer into a user-local prefix:
+    Install Miniconda into your home directory:
 
     ```bash
     bash miniconda.sh -b -p "$HOME/miniconda3"
     ```
 
-    Put Conda on `PATH` for the current shell:
+    Initialize Conda for Bash:
 
     ```bash
-    export PATH="$HOME/miniconda3/bin:$PATH"
+    "$HOME/miniconda3/bin/conda" init bash
     ```
 
-    !!! warning
+    Restart the shell or load the updated configuration:
 
-        To make `conda activate` work in future Bash shells, you can run:
+    ```bash
+    source ~/.bashrc
+    ```
 
-        ```bash
-        conda init bash
-        ```
+    Verify the installation:
 
-        This edits `~/.bashrc`. In a clean Ubuntu test, a new Bash shell came back with the `base` environment already active. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
+    ```bash
+    conda --version
+    ```
+
+    !!! note "ARM64 / AArch64"
+        On an ARM64 Linux system, use `Miniconda3-latest-Linux-aarch64.sh` instead.
 
 === "Windows"
 
@@ -104,80 +113,121 @@ On Linux, Windows, and macOS, a common starting point is Miniconda. It provides 
     winget install Anaconda.Miniconda3
     ```
 
-    Check that Conda is available:
+    Open a new terminal and verify the installation:
 
     ```powershell
     conda --version
     ```
 
-    !!! warning
-
-        To make `conda activate` work in future PowerShell sessions, you can run:
-
-        ```powershell
-        conda init powershell
-        ```
-
-        This changes future PowerShell startup behavior and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
-
 === "macOS"
 
-    Download the Miniconda installer for Apple Silicon:
+    For an Apple Silicon Mac, download the ARM64 installer:
 
     ```bash
-    curl -LsSf -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
+    curl -LsSf \
+      -o miniconda.sh \
+      https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
     ```
 
-    Run the installer into a user-local prefix:
+    Install Miniconda:
 
     ```bash
     bash miniconda.sh -b -p "$HOME/miniconda3"
     ```
 
-    Put Conda on `PATH` for the current shell:
+    Initialize Conda for the default Zsh shell:
 
     ```bash
-    export PATH="$HOME/miniconda3/bin:$PATH"
+    "$HOME/miniconda3/bin/conda" init zsh
     ```
 
-    !!! warning
+    Restart the shell or load the updated configuration:
 
-        To make `conda activate` work in future Zsh shells, you can run:
+    ```bash
+    source ~/.zshrc
+    ```
 
-        ```bash
-        conda init zsh
-        ```
+    Verify the installation:
 
-        This edits your shell startup file and can leave the `base` environment active by default. Recommend this only when you plan to work solely with Conda rather than mixing Conda with `venv`, `pip`, or other environment techniques.
+    ```bash
+    conda --version
+    ```
+
+    !!! note "Intel Macs"
+        On an Intel Mac, use `Miniconda3-latest-MacOSX-x86_64.sh` instead.
+
+!!! warning
+    Run `conda init bash`, `conda init powershell`, or `conda init zsh` only when you want Conda activation integrated into future shells. Initialization can leave the `base` environment active by default.
 
 ### Environment Layout
 
-#### Environment Name and Location
+#### Environment Definition
 
-Since Conda stores environments **outside** the project root, it is best practice to use a descriptive name such as `heisenblue-demo` instead of a generic name such as `venv` when creating a Conda environment:
+The dedicated `projects/proj4_irislab/environment.yml` file defines the `irislab` Conda environment. It records the channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native libraries, and development tools. A Conda environment can be created via `conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
 
-```bash
-conda create -y -n heisenblue-demo -c conda-forge python=3.12 rdkit pillow pip
+```yaml
+name: irislab
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  - python=3.12
+
+  # CLI
+  - click
+  - rich
+
+  # Image / numerical processing
+  - pillow
+  - numpy
+
+  # MediaPipe native runtime
+  - libgl
+  - libegl
+  - libgles
+
+  # Native C++ extension
+  - pybind11
+  - cmake
+  - ninja
+
+  # Development / testing
+  - pytest
+
+  # Packages not available from conda-forge
+  - pip
+  - pip:
+      - mediapipe
 ```
 
-By default, the environment is stored under `~/miniconda3` on Linux or macOS and `%UserProfile%\miniconda3` on Windows. 
+- `name`: Sets the Conda environment name to `irislab`.
+- `channels`: Tells Conda where to resolve Conda-managed packages.
+    - `conda-forge`: The community channel explicitly selected here for the project's scientific, machine-learning, and native packages.
+    - `nodefaults`: Prevents Conda from adding the Anaconda `defaults` channels from its global configuration. This keeps dependency resolution on `conda-forge` and avoids requiring Anaconda channel Terms of Service acceptance.
+- `dependencies`: Lists the packages that Conda should install. Version constraints can pin an exact version or define a range, using operators such as `=`, `==`, `<`, `<=`, `>`, and `>=`. For example, `python=3.12` requests Python 3.12, while leaving a package unpinned lets Conda resolve a compatible version from the selected channels.
+    - `pip`: Installs the `mediapipe` package, which is not installed from the Conda dependencies in this environment definition.
+
+#### Key Directories and Files
+
+After creating the environment described in [Environment Definition](#environment-definition), its directory layout looks like this:
 
 === "Linux (Debian-based)"
 
     ```text
     <conda-prefix>/
-    ├── bin/
-    │   └── conda
+    ├── bin/conda
     ├── envs/
-    │   └── heisenblue-demo/
+    │   └── irislab/
     │       ├── bin/
-    │       │   ├── heisenblue
     │       │   ├── python
-    │       │   └── python3.12
+    │       │   ├── python3.12
+    │       │   └── irislab
     │       ├── conda-meta/
     │       ├── include/python3.12/
     │       ├── lib/python3.12/site-packages/
-    │       └── x86_64-conda-linux-gnu/
+    │       └── lib/libirislab.so
     └── pkgs/
     ```
 
@@ -185,14 +235,11 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 
     ```text
     <conda-prefix>\
-    ├── condabin\
-    │   └── conda.bat
+    ├── condabin\conda.bat
     ├── envs\
-    │   └── heisenblue-demo\
+    │   └── irislab\
     │       ├── python.exe
-    │       ├── Scripts\
-    │       │   ├── heisenblue.exe
-    │       │   └── activate.bat
+    │       ├── Scripts\irislab.exe
     │       ├── Lib\site-packages\
     │       ├── Library\bin\
     │       └── conda-meta\
@@ -203,246 +250,239 @@ By default, the environment is stored under `~/miniconda3` on Linux or macOS and
 
     ```text
     <conda-prefix>/
-    ├── bin/
-    │   └── conda
+    ├── bin/conda
     ├── envs/
-    │   └── heisenblue-demo/
-    │       ├── bin/
-    │       │   ├── heisenblue
-    │       │   ├── python
-    │       │   └── python3.12
+    │   └── irislab/
+    │       ├── bin/python
+    │       ├── bin/irislab
     │       ├── conda-meta/
-    │       ├── include/python3.12/
     │       ├── lib/python3.12/site-packages/
-    │       └── lib/
+    │       └── lib/libirislab.dylib
     └── pkgs/
     ```
 
-#### Key Directories and Files
-
-- **Top-level Conda executable:** the main Conda command lives under the installation prefix, such as `~/miniconda3/bin/conda` on Linux or macOS, or `%UserProfile%\miniconda3\condabin\conda.bat` on Windows.
-
+- **Conda executable:** lives under the installation prefix, such as `~/miniconda3/bin/conda` or `%UserProfile%\miniconda3\condabin\conda.bat`.
 - **`<conda-prefix>/envs/<name>/`:** is the named environment directory.
-
-- **Environment-local executables:** Linux and macOS store them under `bin/`, while Windows uses `python.exe` at the environment root together with `Scripts\` for `pip.exe`, activation scripts, and console entry points.
-
-- **Python packages:** Linux and macOS store them under `lib/python3.12/site-packages/`, while Windows uses `Lib\site-packages\`. These directories contain Python packages installed from Conda channels or from `pip`.
-
-- **Native runtime files:** Conda also installs shared libraries and other runtime files into the environment, such as `lib/` on Linux or macOS and `Library\bin\` on Windows.
-
-- **`conda-meta/`:** stores Conda's package records and history for the environment.
-
+- **Environment-local executables:** Linux and macOS use `bin/`; Windows uses the environment root and `Scripts\`.
+- **Python packages:** Linux and macOS use `lib/python3.12/site-packages/`; Windows uses `Lib\site-packages\`.
+- **Native runtime files:** Conda installs shared libraries into `lib/` on Linux and macOS or `Library\bin\` on Windows.
+- **`conda-meta/`:** stores Conda package records and environment history.
 - **`pkgs/`:** stores the shared package cache for the Conda installation prefix.
 
-#### Environment Definition (`environment.yml`)
+## Development Workflow
 
-The `environment.yml` file describes the [respective Conda environment](#environment-layout) from outside and is stored **within the project tree** next to the source code and other project files.
+The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as its only system 
+package channel, and includes the compiler toolchain, MediaPipe model, and project files. 
+Choose the workflow that matches the state of the local `mpe/proj4_irislab` image:
 
-```yaml
-name: heisenblue-demo
-channels:
-  - conda-forge
-  # - defaults  # Served from repo.anaconda.com and added by default, so it usually does not need to be listed explicitly.
-dependencies:
-  - python=3.12
-    - rdkit
-    - pillow
-    - pybind11
-    - cmake
-    - ninja
-  - pip
-    - pytest
-    - karva
-```
+=== "Image does not exist"
 
-- `name`: sets the Conda environment name to `heisenblue-demo`.
-- `channels`: tells Conda from where to resolve Conda-managed packages.
+    From the repository's `projects/` directory, use `build.sh` to build the image and open 
+    the dedicated IrisLab development container. The command enables GPU access and forwards
+    the Cloudsmith configuration into the container session:
 
-    | Source | Kind | Examples |
-    | ------ | ---- | -------- |
-        | `conda-forge` | Community Conda channel | `python`, `rdkit`, `pillow`, `pybind11` |
-    | `defaults` | Anaconda-hosted Conda channel set, served from `repo.anaconda.com` | `python`, `numpy`, `pandas` |
+    ```bash
+    ./build.sh build \
+        --path proj4_irislab/Dockerfile.devEnv \
+        --gpus all \
+        --cloudsmith-workspace "<cloudsmith-repo>" \
+        --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
 
-- `dependencies`: lists the Conda-managed packages to install, including Python, RDKit, Pillow, the C++ build tools, and the project test tooling.
+=== "Image already exists"
 
-## Workflow
+    From the repository's `projects/` directory, run the existing image
+    directly:
 
-### Create and Activate
+    ```bash
+    docker run -it \
+        -v "$PWD/proj4_irislab:/app" \
+        -v "$PWD/proj4_irislab/.build:/build" \
+        mpe/proj4_irislab \
+        /bin/bash
+    ```
 
-The examples below show three ways to get to a working project setup. The Conda-based paths keep the Python bindings and native binaries inside the environment, while the non-Conda path splits Python packages and system libraries across different locations.
+!!! info "Local ML Inference"
+    `IrisLab` uses **MediaPipe Face and Iris Landmark models** to locate the eyes and irises in a portrait. Inference runs **locally inside the container** on the CPU, so GPU-enabled containers are optional and no image data is sent to a cloud service.
 
+    The detected iris landmarks are used to isolate the actual iris pixels. `IrisLab` then analyzes their color distribution with Python and NumPy before passing the resulting color information to the native C++ harmony algorithm.
+
+### Create the Environment
+
+The `irislab` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. In a real-world Python project, use a `pyproject.toml` file to define the Python project's metadata, dependencies, and build configuration, while keeping Conda-specific requirements such as the Python version, native libraries, and external build tools in `environment.yml`.
+    
 === "Create from `environment.yml`"
 
-    Create the environment from the section folder:
+    From the project root, create the `irislab` environment in the container's writable Conda prefix at `/opt/conda/envs/irislab` and install the dependencies listed in `environment.yml`:
 
     ```bash
-    conda env create -f environment.yml
+    conda env create --file environment.yml
     ```
 
-    > This command creates the environment and installs the listed packages.
-
-    Activate the environment:
+    After the environment has been created, activate it for the current shell:
 
     ```bash
-    conda activate heisenblue-demo
+    conda activate irislab
     ```
 
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
-    │   ├── bin/python
-    │   ├── lib/python3.12/site-packages/
-    │   │   ├── heisenblue/
-    │   │   ├── heisenblue/_native*.so
-    │   │   ├── PIL/
-    │   │   └── rdkit/
-    │   └── lib/libRDKit*.so
-    └── heisenblue/                         # project
-        ├── environment.yml
-        ├── cpp/
-        └── src/heisenblue/
-    ```
-    
 === "Create from scratch"
 
-    Create the same Conda-managed environment defined in `environment.yml`:
+    Create the `irislab` environment and install its dependencies directly
+    from the Conda command line:
 
     ```bash
-    conda create -y -n heisenblue-demo -c conda-forge \
-        python=3.12 \
-        rdkit \
-        pillow \
-        pybind11 \
-        cmake \
-        ninja \
-        pip \
-        pytest \
-        karva
+    conda create -y \
+        -n irislab \
+        -c conda-forge \
+            python=3.12 \
+            rdkit \
+            pillow \
+            rich \
+            click \
+            numpy \
+            glib \
+            libgl \
+            libegl \
+            libgles \
+            pybind11 \
+            cmake \
+            ninja \
+            pytest \
+            pip
     ```
 
-    Activate the environment:
+    After the environment has been created, activate it for the current shell:
 
     ```bash
-    conda activate heisenblue-demo
+    conda activate irislab
     ```
 
-    Install the project itself in editable mode:
+    And finally install the "pip-only" dependencies:
 
     ```bash
-    (heisenblue-demo) $ python -m pip install -e .
+    python -m pip install mediapipe
     ```
 
-    Snapshot the environment requirements back to YAML:
-
-    ```bash
-    (heisenblue-demo) $ conda env export --from-history > environment.yml
-    ```
-
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    ├── miniconda3/envs/heisenblue-demo/    # environment, managed by conda
-    │   ├── bin/python
-    │   ├── lib/python3.12/site-packages/
-    │   │   ├── heisenblue/
-    │   │   ├── heisenblue/_native*.so
-    │   │   ├── PIL/
-    │   │   └── rdkit/
-    │   └── lib/libRDKit*.so
-    └── heisenblue/                         # project
-        ├── environment.yml
-        ├── cpp/
-        └── src/heisenblue/
-    ```
-
-=== "Without `conda`"
-
-    On Ubuntu-based systems where Python 3.12 is not yet available, add an external package source first:
-
-    ```bash
-    sudo apt-get install -y software-properties-common
-    sudo add-apt-repository -y ppa:deadsnakes/ppa
-    sudo apt-get update
-    ```
-
-    Install Python 3.12, `venv` support, and the native build tools the project needs:
-
-    ```bash
-    sudo apt-get install -y \
-        python3.12 \
-        python3.12-venv \
-        build-essential \
-        cmake \
-        ninja-build
-    ```
-
-    Create and activate a virtual environment:
-
-    ```bash
-    python3.12 -m venv .venv && source .venv/bin/activate
-    ```
-
-    Install the Python-side tooling into the virtual environment:
-
-    ```bash
-    pip install pillow pybind11 scikit-build-core pytest karva
-    ```
-
-    A separate RDKit installation still has to come from outside the virtual environment, which is one reason Conda is the easier and more reproducible workflow for this project.
-
-    Filesystem excerpt:
-
-    ```text
-    ~/
-    └── heisenblue/                          # project
-        ├── .venv/                           # project environment, managed by venv/pip
-        │   ├── bin/python
-        │   └── lib/python3.12/site-packages/
-        │       └── heisenblue/
-        ├── cpp/
-        └── src/heisenblue/
-
-    /usr/                                 # OS filesystem
-    ├── bin/python3.12
-    ├── bin/cmake
-    └── bin/c++
-    ```
-
-### Add Packages
-
-Ensure that the dedicated Conda environment is active (see [Create and activate](#create-and-activate)).
-
-Add a package from a Conda channel:
+After the first activation, configure `irislab` as the default environment for
+future interactive Bash shells. This setting applies to `alice`, the development
+user created by the Dockerfile.
 
 ```bash
-(heisenblue-demo) $ conda install -c conda-forge <package>
+conda config --set default_activation_env irislab
+conda config --set auto_activate true
 ```
 
-Add a package from PyPI when it is not available from your chosen Conda channels:
+### Add Additional Packages
+
+Use the tab that matches the dependency change you want to make:
+
+=== "Update from `environment.yml`"
+
+    Ensure that `irislab` is active before synchronizing the environment:
+
+    ```bash
+    conda activate irislab
+    ```
+
+    Add the respective package to the `dependencies` entry:
+
+    ```yaml
+    dependencies:
+        - ruff
+    ```
+
+    To synchronize an existing environment with the definition file, update it
+    from the project root:
+
+    ```bash
+    conda env update --file environment.yml --prune
+    ```
+
+    Inspect the installed package records after the update:
+
+    ```bash
+    conda list
+    ```
+
+=== "Install an additional package"
+
+    Ensure that `irislab` is active before installing a package:
+
+    ```bash
+    conda activate irislab
+    ```
+
+    Add an additional development tool, such as `ruff`, from the `conda-forge`
+    channel:
+
+    ```bash
+    conda install -c conda-forge ruff
+    ```
+
+    Inspect the installed package records:
+
+    ```bash
+    conda list
+    ```
+
+### Run the Project
+
+With the `irislab` environment active, remove any previous CMake cache before
+configuring the native extension:
+
+Remove any previous development build and re-create it:
 
 ```bash
-(heisenblue-demo) $ python -m pip install <package>
+rm -rf build-dev && mkdir -p build-dev
 ```
 
-## Inspection
-
-Show the active environment name:
+Configure the `IrisLab` native extension with the installed CMake and Ninja toolchain and
+build it:
 
 ```bash
-echo $CONDA_DEFAULT_ENV
+cmake -S cpp -B build-dev -G Ninja -DIRISLAB_BUILD_BINDINGS=ON
+cmake --build build-dev
 ```
 
-List all Conda environments:
+Copy the compiled extension into the Python package:
 
 ```bash
-conda env list
+cp build-dev/_native*.so src/irislab/
 ```
 
-After activation, the environment's Python becomes the first interpreter on `PATH`, and imports resolve from the environment-specific package directory under the [Conda prefix](#environment-layout) instead of from the [project tree](#environment-definition-environmentyml). Show the active interpreter inside the Conda environment:
+During the development loop, run the CLI module directly from the source tree
+so that changes can be tested without reinstalling the package:
 
 ```bash
-(heisenblue-demo) $ python -c "import sys; print(sys.prefix); print(sys.executable)"
+PYTHONPATH=src python -m irislab.cli --image samples/blue-eyes.png
+```
+
+```bash
+PYTHONPATH=src python -m irislab.cli --image samples/blue-eyes.png --gpu
+```
+
+!!! info "Package Integration Testing"
+    For package-level integration testing, build and install the `irislab-tools`
+    Conda package from `meta.yaml`. Conda-build automatically builds `libirislab`
+    and the `_native` extension; manual CMake is only needed for the local
+    development loop. Its generated console entry point then becomes available
+    in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
+
+### Inspect the Environment
+
+Inspect the active Conda environment and its installation prefix:
+
+```bash
+conda info --envs
+conda list
+which python
+python -c "import sys; print(sys.prefix)"
+```
+
+### Test the Project
+
+Run the test suite against the current source tree with the project's test tool:
+
+```bash
+pytest tests/
 ```

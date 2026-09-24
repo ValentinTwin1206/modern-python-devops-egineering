@@ -125,12 +125,19 @@ The exact contents of `data.tar.*` depend on the package. A command-line tool mi
 
 ### Create the OS Package
 
-Use the helper script to open the Linux packaging environment.
+From the `projects/` directory, start the already-built
+`mpe/proj2_journal_admin` image and open its Linux packaging environment.
 
 ```bash
-../build.sh build --path proj2_journal_admin/Dockerfile.devEnv \
-    --cloudsmith-workspace "<cloudsmith-repo>" \
-    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+mkdir -p proj2_journal_admin/.build
+
+docker run -it \
+    -v "$PWD/proj2_journal_admin:/app" \
+    -v "$PWD/proj2_journal_admin/.build:/build" \
+    -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+    mpe/proj2_journal_admin \
+    /bin/bash
 ```
 
 Inside the container, synchronize the environment and build the wheel:
@@ -206,12 +213,17 @@ The directory tree below illustrates the generic structure of a Debian-compatibl
 - **`Release.gpg`** – Provides the detached GPG signature that APT uses to verify the `Release` file.
 - **`pool/{component}/...`** – Stores the uploaded `.deb` artifacts. During `apt install`, APT locates an artifact through `Packages.gz`, downloads it, and hands it to `dpkg`.
 
-From the `projects/` directory, open the dedicated Debian packaging container and forward the Cloudsmith configuration into the container session.
+From the `projects/` directory, start the already-built
+`mpe/proj2_journal_admin` image for the publication step.
 
 ```bash
-../build.sh build --path proj2_journal_admin/Dockerfile.devEnv \
-    --cloudsmith-workspace "<cloudsmith-repo>" \
-    --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+docker run -it \
+    -v "$PWD/proj2_journal_admin:/app" \
+    -v "$PWD/proj2_journal_admin/.build:/build" \
+    -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+    -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+    mpe/proj2_journal_admin \
+    /bin/bash
 ```
 
 You can upload the same `.deb` package into multiple Ubuntu distributions because Cloudsmith generates repository metadata independently for each target distribution. The `noble` and `resolute` segments tell Cloudsmith which distribution-specific metadata to generate.

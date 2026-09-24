@@ -1,0 +1,113 @@
+FROM ubuntu:26.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    CONDA_DIR=/opt/conda \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
+    CLOUDSMITH_REPOSITORY=""
+
+ENV PATH="${CONDA_DIR}/bin:${PATH}"
+
+WORKDIR /app
+
+#
+# Install the basic OS tools required for development and Miniconda.
+#
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+# Install a pinned Miniconda release system-wide under /opt/conda.
+#
+# Pinning the installer makes the development environment reproducible
+# and avoids the pip installer regression observed with Conda 26.7.x.
+#
+RUN curl -fsSL \
+        https://repo.anaconda.com/miniconda/Miniconda3-py312_26.5.3-2-Linux-x86_64.sh \
+        -o /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p "${CONDA_DIR}" \
+    && rm /tmp/miniconda.sh \
+    && conda config --system --set auto_activate_base false \
+    && (conda config --system --remove-key channels || true) \
+    && conda config --system --add channels conda-forge \
+    && conda config --system --set channel_priority strict \
+    && conda clean --all --yes
+
+#
+# Alice represents the developer working inside the development container.
+# Passwordless sudo is enabled intentionally for this teaching/dev environment.
+#
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+
+RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
+    && if [ -n "${existing_user}" ] && [ "${existing_user}" != alice ]; then \
+        userdel "${existing_user}"; \
+    fi \
+    && group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && if [ -z "${group_name}" ]; then \
+        groupadd --gid "${HOST_GID}" alice; \
+        group_name=alice; \
+    fi \
+    && useradd \
+        --uid "${HOST_UID}" \
+        --gid "${group_name}" \
+        --create-home \
+        --shell /bin/bash \
+        --groups sudo \
+        alice \
+    && printf 'alice ALL=(ALL) NOPASSWD:ALL\n' \
+        > /etc/sudoers.d/alice \
+    && chmod 0440 /etc/sudoers.d/alice \
+    && mkdir -p /opt/conda/conda-bld
+
+#
+# Download the MediaPipe Face Landmarker model used by iris.py.
+#
+# The model is stored outside the Python source tree and inference runs
+# locally inside the container.
+#
+RUN mkdir -p /app/models \
+    && curl -fsSL \
+        https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task \
+        -o /app/models/face_landmarker.task
+
+#
+# Copy the IrisLab project.
+#
+# The "irislab" Conda environment is intentionally NOT created during
+# the image build. Alice creates it interactively from environment.yml.
+#
+COPY environment.yml ./
+COPY src ./src
+COPY cpp ./cpp
+COPY tests ./tests
+COPY recipe ./recipe
+COPY samples ./samples
+COPY README.md ./README.md
+
+#
+# Alice owns both the IrisLab project directory and the Conda installation.
+# This allows her to create, update, and remove Conda environments
+# without requiring sudo.
+#
+RUN group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && chown -R alice:"${group_name}" \
+        /app \
+        /home/alice \
+        "${CONDA_DIR}"
+
+USER alice
+
+#
+# Configure Conda for Alice's interactive Bash shell.
+#
+RUN conda init bash
+
+CMD ["/bin/bash"]

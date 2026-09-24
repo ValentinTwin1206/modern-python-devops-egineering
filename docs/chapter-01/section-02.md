@@ -58,6 +58,26 @@ Because it is built in, lightweight, and close to standard Python packaging, `ve
 
 ### Environment Layout
 
+#### Environment Definition
+
+The project declares its package metadata and development dependencies in its 
+`pyproject.toml`. The file is the source of truth for the package name, supported 
+Python versions, build backend, runtime dependencies, and development dependency 
+group. Creating `.venv/` supplies the isolated interpreter, while `pip` or `uv` 
+reads this file when the project is installed.
+
+```toml
+[project]
+name = "pyguard"
+requires-python = ">=3.9"
+dependencies = []
+
+[dependency-groups]
+dev = ["karva>=0.0.1a5", "ruff>=0.15.12"]
+```
+
+#### Key Directories and Files
+
 The exact directory names vary by operating system, but each `venv` still contains an environment-local interpreter, console scripts, a package directory, headers, and `pyvenv.cfg`.
 
 === "Linux"
@@ -127,8 +147,6 @@ The exact directory names vary by operating system, but each `venv` still contai
     └── pyvenv.cfg
     ```
 
-### Key Directories and Files
-
 - **Executable directory:** on Linux and macOS, `.venv/bin/` contains the virtual environment's Python executables, `pip`, and shell activation scripts. On Windows, the equivalent directory is `.venv\Scripts\`, which holds `python.exe`, `pip.exe`, and activation scripts such as `Activate.ps1` and `activate.bat`. On Linux, a fresh `venv` commonly uses symlinks for the Python executables, so the environment-local `python3` can still point back to the base interpreter while the surrounding environment changes where packages and scripts are installed.
 
     Inspect the executable directory:
@@ -168,7 +186,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     command = /usr/bin/python3 -m venv /path/to/projects/proj1_pyguard/.venv
     ```
 
-### Activation and Import Path
+#### Activation and Import Path
 
 - **Environment-local interpreter:** activation puts the virtual environment's executable directory at the front of `PATH`. On Linux and macOS that means `.venv/bin/`; on Windows it means `.venv\Scripts\`. It does not change Python itself; it changes which executable the shell finds first when you run `python`, `python3`, `py`, or `pip`.
 
@@ -194,137 +212,117 @@ The exact directory names vary by operating system, but each `venv` still contai
     print(sys.base_prefix)
     ```
 
-## Workflow
+## Development Workflow
 
-### Create and Activate
+The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`, `unzip`, 
+`uv`, and `cloudsmith-cli`, then copies the project into `/app`. Choose the workflow that 
+matches the state of the local `mpe/proj1_pyguard` image:
 
-Create the environment from the section folder:
+=== "Image does not exist"
 
-=== "Linux and macOS"
+    From the repository's `projects/` directory, use `build.sh` to build and
+    open the dedicated PyGuard development container. The script mounts the
+    project at `/app` and its `.build/` directory at `/build` for build
+    artifacts:
+
+    ```bash
+    ./build.sh build \
+        --path proj1_pyguard/Dockerfile.devEnv
+    ```
+
+=== "Image already exists"
+
+    From the repository's `projects/` directory, run the existing image
+    directly:
+
+    ```bash
+    docker run -it \
+        -v "$PWD/proj1_pyguard:/app" \
+        -v "$PWD/proj1_pyguard/.build:/build" \
+        mpe/proj1_pyguard \
+        /bin/bash
+    ```
+
+### Create the Environment
+
+Create the project environment from the project root. Choose `uv` for the
+recommended workflow or `venv + pip` for the traditional workflow.
+
+=== "uv"
+
+    The following commands creates an *in-project* `.venv`, installs the project and 
+    all of its depencencies defined in the `pyproject.toml`:
+
+    ```bash
+    uv sync --all-groups
+    ```
+
+    > On later runs, `uv sync` updates the `.venv` and only creates it if missing.
+
+=== "venv + pip"
+
+    Create the project-local `.venv` environment:
 
     ```bash
     python3 -m venv .venv
     ```
 
-    Activate it:
+    Activate the environment, upgrade `pip`, and install the project from
+    `pyproject.toml`:
 
     ```bash
     source .venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install .
     ```
 
-=== "Windows"
+### Add Additional Packages
 
-    ```powershell
-    py -m venv .venv
+Add packages to the project environment and record them in `pyproject.toml`
+when using `uv`:
+
+=== "Update from `pyproject.toml`"
+
+    Add the respective package to `dependencies` entry in the `[project]` table:
+
+    ```toml
+    dependencies = [
+        "requests"
+    ]
     ```
 
-    Activate it in PowerShell:
+    To synchronize an existing virtual environment with the definition file, update it from project root:
 
-    ```powershell
-    .\.venv\Scripts\Activate.ps1
+    ```bash
+    uv sync --all-groups
     ```
 
-The new environment starts with the `pip` version supplied by the Python installation. Upgrade it before installing project dependencies.
+=== "Install an additional package"
 
-=== "pip"
+    Add a runtime package:
 
-	```bash
-	pip install --upgrade pip
-	```
-
-=== "uv"
-
-	```bash
-	uv pip install --upgrade pip
-	```
-
-### Install the Project
-
-=== "pip"
-
-	Install the project and its declared dependencies with `pip`:
-
-	```bash
-	pip install .
-	```
-
-=== "uv"
-
-	Install the project and its declared dependencies with `uv` into the active virtual environment:
-
-	```bash
-	uv pip install .
-	```
-
-### Install the project as an editable dependency
-
-As an alternative, the project can also be installed as a *editable* dependency quite easy:
-
-=== "pip"
-
-	Install the project and its declared dependencies with `pip`:
-
-	```bash
-	pip install -e .
-	```
-
-=== "uv"
-
-	Install the project and its declared dependencies with `uv` into the active virtual environment:
-
-	```bash
-	uv pip install -e .
-	```
-
-This creates a symlink within the ``lib`` folder of the virtual environment pointing to the implementation folder of the project.
-
-=== "Linux"
-
-    ```text
-    .venv/
-    ├── bin/
-    ├── include/
-    │   └── python3.x/
-    ├── lib/
-    │   └── python3.x/
-    │       └── site-packages/
-    │           ├── __editable__.pyguard-0.1.0.pth
-    │           ├── pip/
-    │           └── pip-*.dist-info/
-    ├── lib64/
-    └── pyvenv.cfg
+    ```bash
+    uv add requests
     ```
 
-=== "Windows"
+    Add a development-only package:
 
-    ```text
-    .venv\
-    ├── Include\
-    ├── Lib\
-    │   └── site-packages\
-    │       ├── pip\
-    │       └── pip-*.dist-info\
-    ├── Scripts\
-    └── pyvenv.cfg
+    ```bash
+    uv add --dev ruff
     ```
 
-=== "macOS"
+### Run the Project
 
-    ```text
-    .venv/
-    ├── bin/
-    ├── include/
-    │   └── python3.x/
-    ├── lib/
-    │   └── python3.x/
-    │       └── site-packages/
-    │           ├── __editable__.pyguard-0.1.0.pth
-    │           ├── pip/
-    │           └── pip-*.dist-info/
-    └── pyvenv.cfg
-    ```
+PyGuard is a library rather than a standalone command-line application. Use
+the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md)
+for the middleware and FastAPI examples. After installation, verify that the
+package can be imported from the active environment:
 
-## Inspection
+```bash
+python -c "import pyguard; print(pyguard.__file__)"
+```
+
+### Inspect the Environment
 
 Show the active prefixes:
 
