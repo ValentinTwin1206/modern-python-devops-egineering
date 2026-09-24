@@ -1,103 +1,118 @@
-# Development Environment
+# Python Service Orchestration
 
-## Overview
+In the previous [section](./section-01.mds), we introduced the frontend and started the frontend
+and backend separately with two `docker run` commands. 
 
-It is common practice to use virtual environment tools such as `venv`, Conda, or `virtualenv` when running Python projects locally. They isolate project packages from the system Python and from other projects, keeping dependency versions consistent and preventing conflicts. For many projects that level of isolation is sufficient.
+In this section, we replace that manual setup with [Docker Compose](https://docs.docker.com/compose/). Compose starts the components together and configures the shared network they use to communicate. This provides a simple way to showcase multi-component application startup, networking, and service discovery in one repeatable configuration.
 
-The *Depsight* project goes further by integrating [***Dev Containers***](https://containers.dev/), which define the full development environment as code rather than only isolating Python packages. Unlike a traditional virtual environment, a DevContainer also standardizes the OS layer, system tools, runtimes, editor setup, and the local toolchain used in CI. Because Depsight's CI pipeline also builds a production Docker image, the DevContainer uses Docker outside of Docker (DooD) so developers can build and test the container image locally without leaving the DevContainer.
+## Introduction
 
-| Capability | venv | DevContainer |
-|-------------|:---:|:---:|
-| Keep project packages separate from the system Python and other projects | ✅ | ✅ |
-| Guarantee every developer uses the exact same Python interpreter version | ❌ | ✅ |
-| Install OS-level libraries via `apt` (e.g. `gcc` for C extensions, `libpq` for Postgres) | ❌ | ✅ |
-| Ship tools like `uv`, `ruff`, or Nuitka compiler dependencies inside the environment | ❌ | ✅ |
-| Automatically install editor extensions and apply workspace settings for every developer | ❌ | ✅ |
-| Run the exact same OS, Python, and toolchain locally as the CI pipeline | ❌ | ✅ |
+Docker Compose is a tool for defining and running applications made up of multiple containers. A Compose file describes each service, its image or build configuration, ports, environment variables, dependencies, and networks. The [docker-compose.yaml](#applied-project) used in this section serves as the basis for the following explanations, which refer to its core components: 
 
----
+  * services
+  * networking
+  * service discovery
 
-## DevContainer Components
+### Services
 
-### DevContainer Configuration
+Each entry under `services` describes one container role. Compose also gives each service a network identity that other services can use.
 
-The `devcontainer.json` is the central configuration file. It instructs the IDE how to build the container image, which extensions to install, which ports to forward, and which environment variables and lifecycle commands to apply.
+In the Compose file, the `depends_on` setting in the `frontend` service expresses startup order, but it does not prove that the `backend` dependency is ready to accept requests. Applications that need readiness guarantees should use health checks, retries, or an explicit readiness check.
 
-```json
-{
-    "name": "Depsight DevContainer",
-    "build": {
-        "context": "..",
-        "dockerfile": "Dockerfile",
-        "args": {
-            "PYTHON_VERSION": "${localEnv:PYTHON_VERSION:3.12}",
-            "UV_VERSION": "${localEnv:UV_VERSION:0.11.1}"
-        }
-    },
-    "features": {
-        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-            "moby": false
-        }
-    },
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python"
-            }
-        }
-    },
-    "containerEnv": {
-        "APP_NAME": "DEPSIGHT",
-        "DEPSIGHT_ENV": "development"
-    },
-    "forwardPorts": [8000],
-    "mounts": [
-        "source=depsight-uv-cache,target=/home/vscode/.cache/uv,type=volume"
-    ],
-    "portsAttributes": {
-        "8000": {
-            "label": "MkDocs Dev Server",
-            "onAutoForward": "notify"
-        }
-    },
-    "postCreateCommand": "uv sync --all-groups",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
-}
+The `backend` service exposes port `8080`, and the `frontend` service exposes port `8501`. The frontend declares a dependency on the backend so Compose starts the backend first.
+
+### Networking
+
+In the Compose file, both services join the `license_service_network` network. The network uses the `172.20.0.0/24` subnet and assigns predictable addresses through the `BACKEND_IP` and `FRONTEND_IP` environment variables.
+
+The Compose file configures services to communicate by service name rather than by `localhost`. Therefore, the frontend uses `http://backend:8080` as its backend URL.
+
+The published ports are different from the internal service address: port `8501` makes the frontend available to the host, while port `8080` makes the backend available to the host. Container-to-container traffic uses the internal Compose network.
+
+### Service Discovery
+
+The Compose configuration provides internal DNS-based service discovery. A container can resolve another service using the service name from the Compose file, for example:
+
+`http://backend:8080`
+
+The name is resolved to the backend container's current private IP address. This is more stable than hard-coding an IP address because containers may be recreated and receive different addresses.
+
+## Applied Project
+
+**docker-compose.yaml**
+
+The `docker-compose.yml` file describes the complete application as a group of services. Docker Compose reads this file and uses it to create the containers, network, port mappings, and environment configuration.
+
+```yaml
+services:
+  
+  backend:
+    container_name: backend
+    image: license-service-backend:latest
+    ports:
+      - "8080:8080"
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.20.0.2}
+
+  frontend:
+    build: .
+    container_name: frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.20.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+
+
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
 ```
 
-- `build`: Points to the `Dockerfile` and passes build arguments. `${localEnv:PYTHON_VERSION:3.12}` reads `PYTHON_VERSION` from the host environment, and the value after the colon is used as the fallback default.
-- `features`: Adds pre-packaged capabilities from the [DevContainer Features registry](https://containers.dev/features). Here, `docker-outside-of-docker` installs the Docker CLI and mounts the host Docker socket so the project image can be built from inside the DevContainer.
-- `containerEnv`: Injects environment variables into the running container so they are available to every process.
-- `forwardPorts`: Exposes container ports to the host so local tools and browsers can access them.
-- `workspaceFolder`: Sets the path inside the container where the project is mounted. If omitted, the Dev Containers extension defaults to `/workspaces/<repo-name>`.
-- `postCreateCommand`: Runs after the workspace has been mounted and uses `workspaceFolder` as its working directory.
+The most important configuration keys are:
 
-!!! info "Running a Python `venv` inside the DevContainer by default"
+- `services` — Defines the containers that make up the application.
+- `image` — Selects an existing container image for a service.
+- `build` — Builds a service image from a local Dockerfile.
+- `container_name` — Assigns a readable name to the container.
+- `depends_on` — Defines service startup order.
+- `ports` — Maps host ports to container ports.
+- `networks` — Connects services to a shared Docker network.
+- `ipv4_address` — Assigns a fixed address within a configured network.
+- `environment` — Passes configuration values into the container.
+- `ipam` and `subnet` — Configure the address range of a Docker network.
 
-    `uv sync --all-groups` runs as the `postCreateCommand` and creates a `.venv/` directory named after the project (`prompt = depsight` in `.venv/pyvenv.cfg`). The `ms-python.python` extension then auto-detects the `.venv/` directory and activates it in every new integrated terminal — no manual step needed.
+## Bootstrap the license-service
 
+The complete application can be started from the `projects/proj10_license_service_frontend` directory. The Compose file expects the backend image to be available locally, so build that image first from the backend project. The additional PyGuard build context is required by the backend Dockerfile:
 
----
+```shell
+cd projects/proj10_license_service_frontend
 
-### Container Image
+docker build \
+  --build-context pyguard=../proj1_pyguard \
+  -t license-service-backend:latest \
+  ../proj3_license_service
+```
 
-The `Dockerfile` defines the content of the container image — the pre-installed system tools, users, and their permissions — while `devcontainer.json` controls how the IDE integrates with that image and which lifecycle commands to run.
+Then start the frontend and backend together with Docker Compose. The `--build` option builds the frontend image from its Dockerfile before starting both services:
 
-When `devcontainer.json` includes a `build` block, the IDE builds the image from the Dockerfile before starting the container. Without one, DevContainers use a pre-built image directly.
+```shell
+docker compose up --build
+```
 
-Depsight's Dockerfile is intentionally minimal — it extends the [Microsoft DevContainer base image](https://mcr.microsoft.com/en-us/catalog?search=devcontainers) and only adds what it doesn't already include:
+After the containers have started, open the frontend at `http://localhost:8501`. The frontend reaches the backend through the Compose network at `http://backend:8080`, while the backend is also available from the host at `http://localhost:8080`.
 
-```dockerfile
-ARG PYTHON_VERSION="3.12"
-FROM mcr.microsoft.com/devcontainers/python:${PYTHON_VERSION}
+Stop and remove the containers and network with:
 
-ARG UV_VERSION="0.11.1"
-RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh \
-    | UV_INSTALL_DIR=/usr/local/bin sh
-
-ENV PYTHONUNBUFFERED=1
-ENV APP_NAME=DEPSIGHT
-ENV DEPSIGHT_ENV=development
-
-EXPOSE 8000
+```shell
+docker compose down
 ```

@@ -6,11 +6,15 @@ This page explains how a Dev Container turns a Python project environment into a
 
 ### Project Setup
 
-The applied project is a small image-processing CLI called `Pixelpack Project`. It is built on [Pillow](https://pillow.readthedocs.io/) and [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
+The applied project continues the orchestration of the [License Service Orchestration](./../../projects/proj1_license_service_frontend/README.md). It introduces an additional *(JavaScript dominated)* Dev Container that includes [Artillery](https://www.artillery.io/) and [Playwright](https://playwright.dev/), two full-stack development tools for load and UI testing.
+
+This project is a good example of when Dev Containers can be useful. Instead of installing only a few isolated packages, the project requires a complete end-to-end testing environment with several tools and dependencies. Setting up this environment can involve deep and potentially time-consuming installations. A Dev Container provides a consistent, reproducible environment in which all of these tools can be installed and used together.
+
+The `devcontainer.json` configuration also shows how a Dev Container can be integrated into an existing Docker Compose setup. In this case, the Dev Container works alongside the backend and frontend services defined in the Compose configuration, allowing the entire application stack to be developed and tested as one environment.
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md).
+Application, (frontend/backend) tests and bootstrapping commands are documented in the [README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj11_license_service_devcontainer/README.md).
 
 ## Dev Containers Environment Model
 
@@ -22,7 +26,7 @@ Inside the container, VS Code installs a `~/.vscode-server/` component that enab
 
 ### When to Use Dev Containers?
 
-As described in the [Dev Containers environment model](#dev-containers-environment-model), Dev Containers are a strong fit for projects that need more than Python package isolation. Examples include projects with native extensions that need a C toolchain and matching system libraries, compilation steps such as Nuitka or Cython, database clients, browser tooling, or multiple language runtimes.
+As described in the [Dev Containers environment model](#dev-containers-environment-model), Dev Containers are a strong fit for projects that need more than Python package isolation but a whole toolchain provisioning like a complete end-to-end testing environment with the required JavaScript runtime, Artillery, Playwright, browser dependencies, editor integration, and supporting configuration. s
 
 | Capability | `venv` | Conda | Dev Containers |
 | ---------- | ------ | ----- | -------------- |
@@ -186,49 +190,54 @@ The `devcontainer.json` file is the central configuration file. It tells the IDE
 The `Dockerfile` defines the content of the container image, such as preinstalled system tools, users, shells, and permissions, while `devcontainer.json` controls how the IDE integrates with that image and which lifecycle commands to run.
 
 ```dockerfile
-# DEVELOPMENT IMAGE:
-#   - uses the Ubuntu 24.04 Dev Containers base image
-#   - installs CPython, PyPy, uv, and Nuitka tooling
-#   - runs editor terminals and lifecycle commands as vscode
-# # # # # # # # # # #
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
 
-# Avoid interactive APT prompts during image build.
-ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Put user-level tools installed by uv on PATH.
-ENV PATH="/home/vscode/.local/bin:${PATH}"
+# Optional: proxy support for apt-get and npm during build
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+# Set Playwright browsers path to shared location (outside node_modules)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Install Python runtimes, the native tools Nuitka needs, and the system
-# libraries Pillow links against for JPEG, PNG, and zlib support.
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
-		build-essential \
-		ca-certificates \
-		curl \
-		git \
-		libjpeg-dev \
-		libpng-dev \
-		patchelf \
-		pypy3 \
-		pypy3-venv \
-		python3 \
-		python3-dev \
-		python3-pip \
-		python3-venv \
-		zlib1g-dev \
-	&& rm -rf /var/lib/apt/lists/*
+# 1. SYSTEM PACKAGES
+USER root
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y \
+        dnsutils \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install user-level tools as the same account VS Code uses.
-USER vscode
+# Install Bun and create symlinks for both bun and bunx in /usr/local/bin
+# The development network intercepts TLS with a CA that is not in the base image.
+RUN curl -kfsSL https://bun.com/install \
+    | sed 's/curl --fail/curl --insecure --fail/' \
+    | bash \
+    && cp /root/.bun/bin/bun /usr/local/bin/bun \
+    && cp /root/.bun/bin/bunx /usr/local/bin/bunx
 
-# Install Nuitka as a user-level uv tool.
-RUN uv tool install nuitka
+# Install Playwright and Artillery globally
+RUN mkdir -p /ms-playwright \
+    && npm install -g @playwright/test@1.58.0 \
+    artillery \
+    && apt-get update \
+    && npx playwright install --with-deps \
+    && chown -R node:node /ms-playwright
 
-# Keep the final image user aligned with devcontainer.json.
-USER vscode
+USER node
+WORKDIR /workspace
+
+# Ensure local node_modules binaries are in the path
+ENV PATH=/workspace/node_modules/.bin:$PATH
+
+EXPOSE 9323
+
+CMD ["sleep", "infinity"]
+
 ```
 
 #### Microsoft's DevContainer base images

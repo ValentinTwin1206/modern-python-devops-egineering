@@ -1,0 +1,21 @@
+config:
+  target: "http://backend:8080"
+
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      rampTo: 5
+      name: "License creation spike"
+
+  processor: "./helpers/test-helpers.cjs"
+
+scenarios:
+  - name: "Create license"
+    flow:
+      - post:
+          url: "/licenses"
+          qs:
+            user: "artillery-spike"
+          headers:
+            x-api-key: "artillery-load-test-key"
+          afterResponse: "checkResponse"

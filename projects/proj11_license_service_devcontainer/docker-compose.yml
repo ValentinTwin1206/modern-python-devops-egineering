@@ -1,0 +1,51 @@
+services:
+  
+  # dev container
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: example_devcontainer
+    env_file:
+      - .env-dev
+    volumes:
+      - .:/workspace:cached
+    ports:
+      - "9323:9323"
+    networks:
+      license_service_network:
+        ipv4_address: ${DEVCONTAINER_IP:-172.20.0.5}
+    command: sleep infinity
+
+  # backend service
+  backend:
+    container_name: backend
+    image: license-service-backend:latest
+    ports:
+      - "8080:8080"
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.20.0.2}
+
+  # frontend service
+  frontend:
+    build:
+      context: ../proj10_license_service_frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.20.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+
+
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

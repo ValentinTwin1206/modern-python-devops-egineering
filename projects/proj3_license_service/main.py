@@ -1,4 +1,5 @@
 import uvicorn
+import logging
 
 from fastapi  import Depends, FastAPI, HTTPException, responses, Request as FastAPIRequest
 from pydantic import BaseModel
@@ -6,6 +7,13 @@ from pydantic import BaseModel
 from database import create_database
 from helpers  import generate_license_key, require_admin
 
+# ========================================== 
+# Logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("license-service")
 
 # ==========================================
 # Create the database instance and application instance
@@ -41,15 +49,40 @@ async def security_middleware(
         source=request.client.host,
     )
 
+    logger.info( 
+        "Request: %s %s from %s", 
+        request.method, 
+        request.url.path, 
+        request.client.host, 
+    )
+
+
     try:
         guard.before_request(guard_request)
     except RequestBlocked as exc:
+        logger.warning( 
+            "Request blocked: %s %s from %s | reason=%s", 
+            request.method, 
+            request.url.path, 
+            request.client.host, 
+            str(exc), 
+        )
+
         return responses.JSONResponse(
             status_code=429,
             content={"detail": str(exc)},
         )
 
-    return await call_next(request)
+    response = await call_next(request)
+
+    logger.info( 
+        "Response: %s %s -> %s", 
+        request.method, 
+        request.url.path, 
+        response.status_code, 
+    )
+
+    return response
 
 
 # ==========================================
@@ -80,6 +113,9 @@ def root():
 )
 def create_license(user: str):
     """Create and store a new license for an authorized user."""
+
+    logger.info("Creating license for user=%s", user)
+
     license_key = generate_license_key()
 
     db = database.get_connection()
@@ -94,6 +130,12 @@ def create_license(user: str):
         )
 
         db.commit()
+
+        logger.info( "License created successfully for user=%s", user, )
+    
+    except Exception as e:
+        logger.exception( "Failed to create license for user=%s", user, )
+
     finally:
         db.close()
 
@@ -106,6 +148,8 @@ def create_license(user: str):
 @app.get("/licenses/{license_key}", response_model=LicenseCheckResponse)
 def check_license(license_key: str):
     """Check whether a license exists and is currently active."""
+    logger.info("Checking license")
+
     db = database.get_connection()
 
     try:
@@ -121,7 +165,10 @@ def check_license(license_key: str):
         db.close()
 
     if license is None or not license["active"]:
+        logger.warning( "Inactive license checked for user=%s", license["user"], )
         return LicenseCheckResponse(valid=False)
+
+    logger.info( "Valid license checked for user=%s", license["user"], )
 
     return LicenseCheckResponse(
         valid=True,
@@ -131,10 +178,11 @@ def check_license(license_key: str):
 
 def main():
     """Initialize the database and start the FastAPI service."""
-    print("Initializing database...")
+    logger.info("Initializing database...")
     database.init()
 
-    print("Starting license service...")
+    logger.info("Starting license service...")
+
 
     uvicorn.run(
         app,

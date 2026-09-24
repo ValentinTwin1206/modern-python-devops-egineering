@@ -1,0 +1,15 @@
+[project]
+name = "license-service-frontend"
+version = "0.1.0"
+description = "Streamlit frontend for the license service"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.32",
+    "streamlit>=1.40",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
