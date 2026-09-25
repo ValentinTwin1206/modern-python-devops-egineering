@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "workspaceFolder": "/workspaces/proj5_pixelpack",
+    "workspaceFolder": "/workspaces/proj5_servercli",
     "customizations": {
         "vscode": {
             "extensions": [

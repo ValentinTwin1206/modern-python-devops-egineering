@@ -1,0 +1,18 @@
+Source: server-cli
+Section: admin
+Priority: optional
+Maintainer: Modern Python Engineering <maintainers@example.invalid>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
+
+Package: server-cli
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: command-line client for a server API
+ server-cli is a Click-based command-line client for server administration.
+ The Debian package contains a standalone Nuitka executable and does not need
+ a Python interpreter or network access to install.

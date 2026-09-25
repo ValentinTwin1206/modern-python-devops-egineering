@@ -6,11 +6,11 @@ Python binaries package a Python application into an executable form for users w
 
 ### Project Setup
 
-The applied project is a small image-processing CLI called `Pixelpack Project`. It is built on [Pillow](https://pillow.readthedocs.io/) and [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
+The applied project is a small server administration CLI called `Server CLI`. It is built on [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_pixelpack/README.md).
+Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_servercli/README.md).
 
 ## Building Blocks
 
@@ -50,13 +50,13 @@ A typical Python binary project is structured to separate application code, pack
 
 ### Build Configuration
 
-`Pixelpack` does not use a separate binary manifest file. The project metadata lives in `pyproject.toml`, while the packaging workflow passes Nuitka build flags on the command line. The configuration below shows the real project manifest and commented placeholders for binary-specific options that teams may choose to move into project-local configuration.
+`Server CLI` does not use a separate binary manifest file. The project metadata lives in `pyproject.toml`, while the packaging workflow passes Nuitka build flags on the command line. Nuitka is installed by the Dev Container Dockerfile as a platform-specific build tool and is intentionally not listed in the project dependency metadata.
 
 ```toml
 [project]
-name = "pixelpack"
+name = "server-cli"
 version = "1.0.0"
-description = "Pillow + Click image-processing CLI distributed as a Nuitka-compiled standalone binary"
+description = "Click server administration CLI distributed as a Nuitka-compiled Debian executable"
 authors = [
     { name = "Julius Pravtchev" },
     { name = "Valentin Pravtchev" }
@@ -65,34 +65,29 @@ license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.1.7",
-    "pillow>=10.4.0",
 ]
+
+[project.scripts]
+server-cli = "server_cli.cli:main"
 
 [dependency-groups]
 dev = [
     "karva>=0.0.1a5",
-    "nuitka>=2.4",
     "ruff>=0.15.12",
 ]
 
 [tool.uv]
-package = false
+package = true
 
-# Optional project-local binary-build settings could be tracked separately.
-# [tool.nuitka]
-# onefile = true
-# output-dir = "dist"
-# output-filename = "pixelpack"
-# include-package = ["PIL", "click"]
 ```
 
 - `[project]`: Defines the application identity, Python version support, and runtime dependencies that the build command installs into the build environment.
-- `[dependency-groups]`: Records development-only tooling such as Nuitka and Ruff.
-- `[tool.uv]`: Marks that `uv` should manage the environment but not treat the project itself as a wheel-built package.
-- `[tool.nuitka]`: Illustrates where a team could centralize additional binary-build settings if it wanted to move them out of the CLI invocation.
+- `[dependency-groups]`: Records development-only testing and linting tools.
+- `[tool.uv]`: Marks that `uv` should install the project into the development environment.
+- Binary build options are kept in `scripts/build-executable.sh` so Nuitka remains a container-level build tool rather than a project dependency.
 
 !!! note
-    Nuitka can store project options in `pyproject.toml`. Chapter 04 covers [`pyproject.toml` project configuration](../chapter-04/section-01.md) in more detail.
+    This project intentionally keeps Nuitka out of `pyproject.toml`; the Dev Container installs it with `uv tool install nuitka`.
 
 ### Package Layout
 
@@ -113,37 +108,35 @@ sudo npm install -g @devcontainers/cli
 From the `projects/` directory, start the dedicated development container.
 
 ```bash
-devcontainer up --workspace-folder proj5_pixelpack
+devcontainer up --workspace-folder proj5_servercli
 ```
 
 Open a shell in the running development container.
 
 ```bash
-devcontainer exec --workspace-folder proj5_pixelpack \
+devcontainer exec --workspace-folder proj5_servercli \
     --remote-env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
     --remote-env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
     bash
 ```
 
-The Dev Container image already includes the binary build tooling, including PyInstaller, Nuitka, and the Cloudsmith CLI.
+The Dev Container image already includes Nuitka, the native compiler toolchain,
+and Debian packaging tools. Nuitka is available as the `nuitka` command but is
+not installed through the project's Python dependency metadata.
 
 ### Create the Binary
 
 Build the executable.
 
-=== "PyInstaller"
-
-    ```bash
-    pyinstaller --onefile src/pixelpack/cli.py
-    ```
-
 === "Nuitka"
 
     ```bash
-    python -m nuitka \
+    nuitka \
         --onefile \
-        --standalone \
-        src/pixelpack/cli.py
+        --output-dir=.build \
+        --output-filename=server-cli \
+        --include-package=server_cli \
+        src/server_cli/cli.py
     ```
 
 The resulting executable is written to the build output directory.
@@ -155,25 +148,25 @@ A Linux standalone executable is an ELF binary, while a Windows executable (`.ex
 Identify the executable file format and target architecture.
 
 ```bash
-file dist/pixelpack
+file .build/server-cli
 ```
 
 Inspect the ELF header, including the binary class, machine architecture, entry point, and program-header layout.
 
 ```bash
-readelf -h dist/pixelpack
+readelf -h .build/server-cli
 ```
 
 List the shared libraries the executable expects from the target system.
 
 ```bash
-ldd dist/pixelpack
+ldd .build/server-cli
 ```
 
 Generate a checksum that can be published with the binary so consumers can verify the downloaded artifact.
 
 ```bash
-sha256sum dist/pixelpack
+sha256sum .build/server-cli
 ```
 
 ### Publish the Binary
@@ -185,17 +178,17 @@ For a managed download endpoint, upload the compiled binary to a Cloudsmith Raw 
 Upload the Linux or Windows binary to the target raw repository and assign a release version.
 
 ```bash
-cloudsmith push raw "${CLOUDSMITH_REPOSITORY}" ./dist/pixelpack --name pixelpack --version 1.0.0
+cloudsmith push raw "${CLOUDSMITH_REPOSITORY}" ./.build/server-cli --name server-cli --version 1.0.0
 ```
 
 ```powershell
-cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\dist\pixelpack.exe --name pixelpack.exe --version 1.0.0
+cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\.build\server-cli.exe --name server-cli.exe --version 1.0.0
 ```
 
 After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.
 
 ```text
-https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/pixelpack
+https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/server-cli
 ```
 
 ## Consumer Workflow
@@ -207,11 +200,11 @@ Users typically install the binary by downloading the appropriate release artifa
 === "Linux executable"
 
     ```bash
-    chmod +x pixelpack && ./pixelpack --help
+    chmod +x server-cli && ./server-cli --help
     ```
 
 === "Windows executable"
 
     ```powershell
-    .\pixelpack.exe --help
+    .\server-cli.exe --help
     ```

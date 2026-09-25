@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+PACKAGE := server-cli
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+override_dh_auto_build:
+override_dh_auto_test:
+
+override_dh_auto_install:
+	set -eu; \
+	if [ ! -x .build/server-cli ]; then \
+		echo "No executable found at .build/server-cli" >&2; \
+		exit 1; \
+	fi; \
+	install -D -m 0755 .build/server-cli \
+		debian/$(PACKAGE)/usr/lib/$(PACKAGE)/server-cli

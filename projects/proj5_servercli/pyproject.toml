@@ -1,0 +1,38 @@
+[project]
+name = "server-cli"
+version = "1.0.0"
+description = "Click server administration CLI distributed as a Nuitka-compiled Debian executable"
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1.7",
+]
+
+[project.scripts]
+server-cli = "server_cli.cli:main"
+
+[dependency-groups]
+dev = [
+    "karva>=0.0.1a5",
+    "ruff>=0.15.12",
+]
+
+[tool.uv]
+# The Debian package ships a Nuitka-compiled binary. uv still installs the
+# project into the development environment so the local console script works.
+package = true
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
