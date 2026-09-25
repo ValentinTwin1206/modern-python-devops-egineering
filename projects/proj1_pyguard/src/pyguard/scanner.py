@@ -5,6 +5,8 @@ from .rules import (
     SecurityRule,
 )
 
+from . import logger
+
 
 class SecurityScanner:
     def __init__(self, protected_paths=None):

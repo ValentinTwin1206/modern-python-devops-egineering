@@ -1,0 +1,35 @@
+{
+  "name": "License Service DevContainer",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "runServices": [
+    "backend",
+    "frontend",
+    "devcontainer"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-playwright.playwright"
+      ]
+    }
+  },
+  "forwardPorts": [
+    8080,
+    8501
+  ],
+  "portsAttributes": {
+    "8080": {
+      "label": "Backend",
+      "onAutoForward": "silent"
+    },
+    "8501": {
+      "label": "Frontend",
+      "onAutoForward": "silent"
+    }
+  },
+  "remoteUser": "node",
+  "overrideCommand": false
+}

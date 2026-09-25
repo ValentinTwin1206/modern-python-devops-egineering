@@ -1,25 +1,34 @@
-# Depsight — A Real-World Python Project
+# An OIDC-Enabled License Service
 
 ## Introduction
 
-Chapter 04 walks through a complete, production-style Python project: the
-[**Depsight - Dependency Manager**](https://github.com/ValentinTwin1206/depsight-dependency-manager) project. It brings together the
-environment, packaging, and tooling concepts from the earlier chapters by
-starting with the project overview, then moving through the development
-environment, CLI architecture, distribution, and CI/CD. Each section adds a
-practical layer to the same application, so the chapter shows how a modern
-Python project grows from local development into a modular CLI that can be
-packaged, published, containerized, and maintained through automated
-delivery workflows.
+Chapter 04 brings together the concepts from the previous chapters in one
+integrated project: an OIDC-enabled license service. It builds on the
+[PyGuard security middleware](../../projects/proj1_pyguard/README.md), which
+was previously used to demonstrate virtual environments and Python wheels, and
+the [License Service](../../projects/proj3_license_service/README.md), which
+served as a practical example of `uv` workspaces and containerized Python
+applications.
+
+The final project extends this foundation with several additional components:
+a small [Streamlit](https://streamlit.io/) frontend, an OIDC authentication workflow backed by a
+[Keycloak](https://www.keycloak.org/) instance, and a comprehensive dev container containing the tools
+needed to test the complete system. Docker Compose orchestrates these
+components and connects them into one development environment.
+
+Although the project continues to apply Python development practices, this
+chapter places greater emphasis on system-level understanding. It shows how
+applications, middleware, authentication, containers, development tools, and
+orchestration work together to form a complete, testable system.
 
 ## Overview
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary | Project | Notebook |
-|---------|---------|---------|-----------|
-| [Section 01](./section-01.md) | Project Overview | Depsight | |
-| [Section 02](./section-02.md) | Development Environment | Depsight | |
-| [Section 03](./section-03.md) | CLI Architecture | Depsight | |
-| [Section 04](./section-04.md) | Distribution | Depsight | |
-| [Section 05](./section-05.md) | CI/CD | Depsight | |
+| Section | Summary | Project |
+|---------|---------|---------|
+| [Section 01](./section-01.md) | Frontend | OIDC License Service |
+| [Section 02](./section-02.md) | Project Orchestration | OIDC License Service |
+| [Section 03](./section-03.md) | OIDC | OIDC License Service |
+| [Section 04](./section-04.md) | Dev Container | OIDC License Service |
+| [Section 05](./section-05.md) | End-to-End Testing | OIDC License Service |
