@@ -4,7 +4,11 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "workspaceFolder": "/workspaces/proj5_servercli",
+    "workspaceFolder": "/workspaces/modern-python-engineering/projects/proj5_servercli",
+    "runArgs": [
+        "--name",
+        "mpe-proj5_server_cli"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -19,6 +23,6 @@
             }
         }
     },
-    "postCreateCommand": "uv sync --group dev",
-    "remoteUser": "vscode"
+    "postCreateCommand": "uv venv --clear && uv sync --group dev",
+    "remoteUser": "bob"
 }

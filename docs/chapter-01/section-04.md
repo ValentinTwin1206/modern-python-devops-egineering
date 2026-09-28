@@ -36,9 +36,9 @@ Dev Containers are a strong fit for machine-learning, data-science, and scientif
 
 #### Pros
 
-- ✅ Captures the operating system, tools, editor integration, and project setup in one reproducible boundary.
-- ✅ Keeps host machine dependencies to a minimum while still giving a full development environment.
-- ✅ Makes native build toolchains and multi-runtime setups such as CPython plus PyPy straightforward.
+- ✅ Reproduces the operating system, tools, and project setup.
+- ✅ Minimizes host machine dependencies.
+- ✅ Simplifies native toolchains and multi-runtime setups.
 
 #### Cons
 
@@ -102,7 +102,7 @@ The system requirements are a supported host operating system, a container runti
 
 #### Environment Definition
 
-The Dev Container environment is defined by a `.devcontainer/devcontainer.json` file and, when needed, a `Dockerfile`, Features, or Templates. The configuration describes how to build the image, mount the workspace, install editor support, and prepare the development environment. The `devcontainer.json` file is the central configuration file that tells a compatible IDE or CLI how to build and start the development container.
+The Dev Container environment is defined by a `.devcontainer/devcontainer.json` file and, when needed, a `Dockerfile`, Features, or Templates. The configuration describes how to build the image, mount the workspace, declare editor support, and prepare the development environment. The `devcontainer.json` file is the central configuration file that tells a compatible IDE or CLI how to build and start the development container. The CLI handles the container, Features, and lifecycle commands, while an IDE integration handles IDE-specific customizations such as extensions and plugins.
 
 ```json
 {
@@ -112,6 +112,10 @@ The Dev Container environment is defined by a `.devcontainer/devcontainer.json` 
 		"context": ".."
 	},
 	"workspaceFolder": "/workspaces/project",
+	"runArgs": [
+		"--name",
+		"mpe-proj5_server_cli"
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -130,8 +134,8 @@ The Dev Container environment is defined by a `.devcontainer/devcontainer.json` 
 			]
 		}
 	},
-	"postCreateCommand": "uv sync",
-	"remoteUser": "vscode"
+	"postCreateCommand": "uv venv --clear && uv sync --group dev",
+	"remoteUser": "bob"
 }
 ```
 
@@ -140,14 +144,15 @@ The Dev Container environment is defined by a `.devcontainer/devcontainer.json` 
 	- `dockerfile`: Selects the `Dockerfile`. Microsoft publishes [Dev Container base images](https://mcr.microsoft.com/en-us/catalog?search=devcontainers) for environments such as Python, JavaScript, and Rust. They provide a ready non-root user, common development tools, and editor integration.
 	- `context`: Sets the files available during the image build, usually the project root.
 - `workspaceFolder`: Sets the path where the project is opened inside the container.
-- `customizations`:
-	- `vscode`: 
-		- `extensions`: Installs VS Code extensions such as Python, Pylance, and Ruff.
+- `customizations`: Declares IDE-specific configuration for integrations that support it. The `devcontainer` CLI does not install these extensions or plugins itself.
+	- `vscode`:
+		- `extensions`: Requests VS Code extensions such as Python, Pylance, and Ruff from the VS Code Dev Container integration.
 		- `settings`: Applies VS Code settings, including the container's Python interpreter.
 	- `jetbrains`:
-		- `plugins`: Installs JetBrains plugins such as Python.
-- `postCreateCommand`: Runs project setup commands after the workspace is mounted.
-- `remoteUser`: Selects the user for terminals, tools, and lifecycle commands.
+		- `plugins`: Requests JetBrains plugins such as Python from the JetBrains Dev Container integration.
+- `runArgs`: Passes Docker run arguments to the container. The `--name` argument gives the container the stable name `mpe-proj5_server_cli`.
+- `postCreateCommand`: Clears any stale mounted environment, creates a project-local `.venv` with the Ubuntu system Python, and installs the project and development dependencies with the project interpreter after the workspace is mounted.
+- `remoteUser`: Selects the user for terminals, tools, and lifecycle commands. This example uses `bob`, which is renamed from the base image's host-mapped `vscode` account. Renaming the existing account preserves its UID/GID, so lifecycle commands can modify files in the bind-mounted workspace.
 
 ##### Container image
 
@@ -156,8 +161,8 @@ The `Dockerfile` defines the content of the container image, such as preinstalle
 ```dockerfile
 # DEVELOPMENT IMAGE:
 #   - uses the Ubuntu 24.04 Dev Containers base image
-#   - installs CPython, uv, Nuitka, and Debian packaging tooling
-#   - runs editor terminals and lifecycle commands as vscode
+#   - installs CPython build headers, uv, Nuitka, and Debian packaging tooling
+#   - uses the base image's host-mapped UID/GID under the bob account
 # # # # # # # # # # #
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
@@ -165,7 +170,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Put user-level tools installed by uv on PATH.
-ENV PATH="/home/vscode/.local/bin:${PATH}"
+ENV PATH="/home/bob/.local/bin:${PATH}"
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
@@ -184,17 +189,23 @@ RUN apt-get update \
 		python3 \
 		python3-dev \
 		python3-venv \
+		sudo \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Install user-level tools as the same account VS Code uses.
-USER vscode
+# Keep the base image's host-mapped UID/GID while using the project's bob name.
+USER root
+RUN usermod --login bob --home /home/bob --move-home vscode \
+	&& groupmod --new-name bob vscode
+
+# Install user-level tools as the same account the container uses.
+USER bob
 
 # Install Nuitka as a user-level uv tool. It is intentionally not a
 # pyproject.toml dependency because it is a container build tool.
 RUN uv tool install nuitka
 
 # Keep the final image user aligned with devcontainer.json.
-USER vscode
+USER bob
 ```
 
 !!! warning "Keep project setup commands out of the `Dockerfile`"
@@ -216,9 +227,9 @@ flowchart LR
 	class A,B,C,D,E,F,G lifecycle;
 ```
 
-- `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to install project dependencies with commands such as `uv sync --group dev` or `npm install`. 
-- `postStartCommand`: runs each time the container starts, including later restarts.
-- `postAttachCommand`: runs each time the IDE attaches to the running container, including later reconnects, which makes it useful for editor-session setup tasks.
+- `postCreateCommand`: runs once after the container is created and the project has been mounted into `workspaceFolder`. It is typically used to create the project environment and install dependencies with commands such as `uv venv --clear && uv sync --group dev` or `npm install`.
+- `postStartCommand`: runs each time the container starts, including later restarts. It is useful for repeatable startup tasks such as launching a local service or refreshing a development process.
+- `postAttachCommand`: runs each time the IDE attaches to the running container, including later reconnects. It is useful for editor-session setup tasks that should happen after the development environment is ready for interaction.
 
 #### Key Directories and Files
 
@@ -241,39 +252,65 @@ project-root/
 
 ## Development Workflow
 
-### Activate the Environment
+### Create the Environment
 
-Start the environment from a shell with the globally installed CLI. This
-project intentionally uses `devcontainer up` rather than `projects/build.sh`:
-`build.sh` accepts project Dockerfiles and `Dockerfile.devEnv` files, but
-explicitly rejects `.devcontainer/Dockerfile` images.
+Build the image with the stable tag `mpe/proj5_server_cli`:
 
 ```bash
-devcontainer up --workspace-folder projects/proj5_servercli
+devcontainer build \
+	--workspace-folder projects/proj5_servercli \
+	--image-name mpe/proj5_server_cli
 ```
 
-Open a shell inside the running container and activate the virtual environment
-created by `uv`:
+Create the container from the Dev Container configuration:
+
+```bash
+devcontainer up	--workspace-folder projects/proj5_servercli
+```
+
+> `runArgs` inside `devcontainer.json` gives it the stable name `mpe-proj5_server_cli`
+
+Open a `bash` shell inside the running container:
 
 ```bash
 devcontainer exec --workspace-folder projects/proj5_servercli bash
 ```
 
+Activate the automatically created `.venv` project environment:
+
 ```bash
 source .venv/bin/activate
 ```
 
-### Installing Dependencies
+> See [*Create the Environment*](section-02.md#create-the-environment) in *Section 01* for creation of `.venv` by `uv`
 
-The first container creation runs the following command automatically through
-`postCreateCommand`:
+### Add Additional Dependencies
 
-```bash
-uv sync --group dev
-```
+Use the appropriate tab for Python dependencies or system tools.
 
-Run the same command inside the container after changing `pyproject.toml` or
-when the lockfile and environment need to be synchronized.
+=== "Python dependencies"
+
+	Add a package to the project and synchronize the project environment that uses the Ubuntu system Python:
+
+	```bash
+	uv add package-name
+	uv sync --group dev
+	```
+
+	Run `uv sync --group dev` after editing
+	`pyproject.toml` or updating the lockfile.
+
+=== "System tools"
+
+	Install operating-system packages inside the container:
+
+	```bash
+	sudo apt-get update
+	sudo apt-get install -y package-name
+	```
+
+	Use `apt` for compilers, libraries, and command-line tools rather than
+	Python packages.
 
 ### Run the Project
 
@@ -285,26 +322,50 @@ server-cli --help
 
 ### Inspect the Environment
 
-Run these commands inside the container to inspect its workspace, user,
-interpreter, and Dev Container definition.
+Run these commands inside the container to inspect its workspace, `bob` user,
+system interpreter, project environment, and Dev Container definition.
+
+Print the current workspace directory to confirm where the project is mounted:
 
 ```bash
 pwd
 ```
 
-Show the current user inside the container:
+Show the current user inside the container and confirm that the session runs as
+`bob`:
 
 ```bash
 whoami
 ```
 
-Show the default Python interpreter inside the container:
+Show the numeric user and group IDs used for bind-mounted workspace files:
+
+```bash
+id
+```
+
+Locate the system Python interpreter available in the container:
 
 ```bash
 which python3
 ```
 
-Show the active container configuration file:
+Confirm the system interpreter version:
+
+```bash
+python3 --version
+```
+
+Confirm that the project environment uses the system interpreter:
+
+```bash
+source .venv/bin/activate
+python --version
+python -c 'import sys; print(sys.executable); print(sys.implementation.name)'
+uv run python -c 'import sys; print(sys.executable)'
+```
+
+Display the active Dev Container configuration from the mounted workspace:
 
 ```bash
 cat .devcontainer/devcontainer.json

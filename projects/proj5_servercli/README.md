@@ -58,7 +58,7 @@ by the project workflow:
 Ubuntu 24.04
       |
       v
-Python and uv
+Ubuntu system Python and uv
       |
       +-- Click application dependencies
       +-- Karva and Ruff
@@ -89,12 +89,16 @@ Open a shell inside the running container:
 devcontainer exec --workspace-folder . bash
 ```
 
-The container synchronizes the environment with `uv sync --group dev` after it
-is created. Run the same command manually after changing dependencies:
+The container creates its project environment with the system Python supplied
+by Ubuntu 24.04 and then synchronizes the project dependencies into that
+environment. The project environment is created with:
 
 ```bash
+uv venv --clear
 uv sync --group dev
 ```
+
+Run the same command manually after changing dependencies.
 
 ## Run Server CLI
 
