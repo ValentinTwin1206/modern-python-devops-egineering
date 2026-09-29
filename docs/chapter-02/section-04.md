@@ -19,7 +19,7 @@ The recipe produces two Conda packages:
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md).
 
 ## Building Blocks
 
@@ -185,14 +185,32 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
             │   └── _native.<platform>.so
     ```
 
+## Tradeoffs
+
+### Pros
+
+- ✅ Manages Python and native dependencies
+- ✅ Supports compiled libraries
+- ✅ Creates isolated environments
+- ✅ Provides platform-specific channels
+
+### Cons
+
+- ⚠️ Dependency solving can be slow
+- ⚠️ Requires platform-specific builds
+- ⚠️ Mixing pip can reduce reproducibility
+- ⚠️ Channel priorities add complexity
+
 ## Packaging Workflow
 
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
+### Create the Environment
+
 For the Conda environment and C++ extension build, see [Python Conda Environments](../chapter-01/section-03.md).
 Its `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge`, and includes the compiler toolchain,
-MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj4_irislab` image:
+MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj3_irislab` image:
 
 === "Image does not exist"
 
@@ -202,7 +220,7 @@ MediaPipe model, and project files. Choose the workflow that matches the local `
 
     ```bash
     ./build.sh build \
-      --path proj4_irislab/Dockerfile.devEnv \
+      --path proj3_irislab/Dockerfile.devEnv \
       --gpus all \
       --cloudsmith-workspace "<cloudsmith-repo>" \
       --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
@@ -214,17 +232,15 @@ MediaPipe model, and project files. Choose the workflow that matches the local `
     artifacts and run the existing image:
 
     ```bash
-    mkdir -p proj4_irislab/.build
+    mkdir -p proj3_irislab/.build
     docker run -it \
-      -v "$PWD/proj4_irislab:/app" \
-      -v "$PWD/proj4_irislab/.build:/opt/conda/conda-bld" \
+      -v "$PWD/proj3_irislab:/app" \
+      -v "$PWD/proj3_irislab/.build:/opt/conda/conda-bld" \
       -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
       -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-      mpe/proj4_irislab \
+      mpe/proj3_irislab \
       /bin/bash
     ```
-
-### Install Packaging Tools
 
 Install the packaging tools in Conda's `base` environment rather than in the
 project's `irislab` environment. This separation keeps the *Packaging Workflow*

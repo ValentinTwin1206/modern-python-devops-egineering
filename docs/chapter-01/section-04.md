@@ -10,7 +10,7 @@ The applied project is a small server administration CLI called `Server CLI`. It
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_servercli/README.md).
+Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md).
 
 ## Dev Containers Environment Model
 
@@ -258,14 +258,14 @@ Build the image with the stable tag `mpe/proj5_server_cli`:
 
 ```bash
 devcontainer build \
-	--workspace-folder projects/proj5_servercli \
+    --workspace-folder projects/proj4_servercli \
 	--image-name mpe/proj5_server_cli
 ```
 
 Create the container from the Dev Container configuration:
 
 ```bash
-devcontainer up	--workspace-folder projects/proj5_servercli
+devcontainer up	--workspace-folder projects/proj4_servercli
 ```
 
 > `runArgs` inside `devcontainer.json` gives it the stable name `mpe-proj5_server_cli`
@@ -273,7 +273,7 @@ devcontainer up	--workspace-folder projects/proj5_servercli
 Open a `bash` shell inside the running container:
 
 ```bash
-devcontainer exec --workspace-folder projects/proj5_servercli bash
+devcontainer exec --workspace-folder projects/proj4_servercli bash
 ```
 
 Activate the automatically created `.venv` project environment:

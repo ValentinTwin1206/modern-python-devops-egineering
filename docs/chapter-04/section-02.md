@@ -1,6 +1,6 @@
 # Python Service Orchestration
 
-In the previous [section](./section-01.mds), we introduced the frontend and started the frontend
+In the previous [section](./section-01.md), we introduced the frontend and started the frontend
 and backend separately with two `docker run` commands. 
 
 In this section, we replace that manual setup with [Docker Compose](https://docs.docker.com/compose/). Compose starts the components together and configures the shared network they use to communicate. This provides a simple way to showcase multi-component application startup, networking, and service discovery in one repeatable configuration.
@@ -100,7 +100,7 @@ cd projects/proj10_license_service_frontend
 docker build \
   --build-context pyguard=../proj1_pyguard \
   -t license-service-backend:latest \
-  ../proj3_license_service
+  ../proj2_license_service
 ```
 
 Then start the frontend and backend together with Docker Compose. The `--build` option builds the frontend image from its Dockerfile before starting both services:

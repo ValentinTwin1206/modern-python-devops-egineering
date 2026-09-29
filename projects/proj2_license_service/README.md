@@ -49,7 +49,7 @@ uv run pytest
 In case ``PyGuard`` should be installed from its local dependency
 
 ```bash
-docker build --build-context pyguard=../../proj1_pyguard -t license-service-backend:latest ../../proj2_license_service
+docker build --build-context pyguard=../proj1_pyguard -t license-service-backend:latest .
 ```
 
 ## API

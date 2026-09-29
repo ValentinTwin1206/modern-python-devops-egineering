@@ -10,7 +10,7 @@ The applied project is a small FastAPI service called `License Service`. It gene
 
 ### Run the Project
 
-Application, install, and test commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md).
+Application, install, and test commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md).
 
 ## Building Blocks
 
@@ -94,12 +94,32 @@ OCI container images follow the [OCI Image Format Specification](https://github.
 
 On a host machine, an OCI image is not stored as one ordinary project file. It is persisted through the container manager's internal storage logic, which manages image metadata, shared filesystem layers, and writable container layers. To inspect or move that content as a file, use a dedicated export format such as the [**OCI image-layout TAR archive**](#inspect-the-package), [**Docker image TAR archive**](#inspect-the-package) or as a flat filesystem archive from a container (`docker export`).
 
+## Tradeoffs
+
+### Pros
+
+- ✅ Bundles the application and runtime
+- ✅ Isolates dependencies from the host
+- ✅ Runs consistently across container platforms
+- ✅ Supports reliable rollbacks
+
+### Cons
+
+- ⚠️ Requires container infrastructure
+- ⚠️ Images can be large
+- ⚠️ Base images require regular patching
+- ⚠️ Data and secrets need separate management
+
 ## Packaging Workflow
 
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and access to its Docker registry. Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`, before you publish.
 
-### Setup the Local Environment
+### Create the Environment
+
+License Service uses a runtime `Dockerfile`, not a Dev Container. The image
+build installs `uv` and the application dependencies as part of the image
+creation, so the host only needs Docker and the project source tree.
 
 First, confirm that Docker is installed and running on the host machine:
 
@@ -110,7 +130,7 @@ docker version
 Move into the License Service project directory:
 
 ```bash
-cd projects/proj3_license_service
+cd projects/proj2_license_service
 ```
 
 Set the Cloudsmith repository that will receive the published image:
@@ -119,7 +139,7 @@ Set the Cloudsmith repository that will receive the published image:
 export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
 ```
 
-### Create the Container
+### Create the Package
 
 The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
 
@@ -148,7 +168,7 @@ The same `Dockerfile` can produce different output formats depending on the buil
       .
     ```
 
-### Inspect The Package
+### Inspect the Package
 
 The inspection command depends on the output format created in the previous step. A local Docker image is inspected through the container manager's image store, while an OCI image archive is inspected as files inside the TAR archive.
 
@@ -194,7 +214,7 @@ The inspection command depends on the output format created in the previous step
     - `index.json`: Acts as the archive entry point. It points to the image manifest stored under `blobs/sha256/` and can associate that manifest with a tag.
     - `blobs/sha256/<digest>`: Stores all content-addressed image objects. Some blobs are JSON documents, such as the image manifest and image configuration, while other blobs are compressed filesystem layers.
 
-### Publish the Container
+### Publish the Package
 
 Published images are addressed by a repository and tag, such as `python:3.12-slim`, while registries resolve that tag to an immutable digest such as `sha256:<digest>`. Tags are readable and convenient, but they can be reassigned; pulling by digest, for example `docker pull python@sha256:<digest>`, guarantees the same image content across environments.
 

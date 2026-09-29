@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <Product Id="*"
+           Name="Server CLI"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="Modern Python Engineering"
+           UpgradeCode="D5743C73-4CA2-4D94-BE2B-EF77834DBA91">
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="Server CLI $(var.ProductVersion) installer"
+             Manufacturer="Modern Python Engineering" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ValentinTwin1206/modern-python-devops-egineering" />
+
+    <Feature Id="MainFeature" Title="Server CLI" Level="1">
+      <ComponentRef Id="ServerCliExecutable" />
+    </Feature>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="ServerCLI">
+          <Component Id="ServerCliExecutable" Guid="FD864F90-ED09-412B-9551-AABF493B8C68">
+            <File Id="ServerCliExe"
+                  Source="$(var.ServerCliExecutable)"
+                  Name="server-cli.exe"
+                  KeyPath="yes" />
+            <Environment Id="UpdatePath"
+                         Name="PATH"
+                         Value="[INSTALLFOLDER]"
+                         Permanent="no"
+                         Part="last"
+                         Action="set"
+                         System="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+  </Product>
+</Wix>

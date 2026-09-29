@@ -36,7 +36,7 @@ ${BLUE}${BOLD}COMMANDS${RESET}
 
 ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
-                              ${DIM}(e.g. proj3_license_service/Dockerfile).${RESET}
+                               ${DIM}(e.g. proj2_license_service/Dockerfile).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
         ${YELLOW}--gpus${RESET} ${CYAN}<GPU_REQUEST>${RESET}       GPU access passed to the container runtime, such as ${CYAN}all${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
@@ -58,7 +58,7 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
 
 ${BLUE}${BOLD}EXAMPLES${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_redsticks/Dockerfile.devEnv${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
+    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj5_historic_calculator/2022/Dockerfile${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj1_pyguard/Dockerfile.devEnv${RESET} ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}_YOUR_CLOUDSMITH_REPO_${RESET} ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}_YOUR_API_KEY_${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}
 EOF

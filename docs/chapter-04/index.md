@@ -4,9 +4,9 @@
 
 Chapter 04 brings together the concepts from the previous chapters in one
 integrated project: an OIDC-enabled license service. It builds on the
-[PyGuard security middleware](../../projects/proj1_pyguard/README.md), which
+[PyGuard security middleware](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md), which
 was previously used to demonstrate virtual environments and Python wheels, and
-the [License Service](../../projects/proj3_license_service/README.md), which
+the [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md), which
 served as a practical example of `uv` workspaces and containerized Python
 applications.
 

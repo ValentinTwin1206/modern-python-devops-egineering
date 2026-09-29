@@ -108,13 +108,32 @@ A Python wheel is a ZIP archive with a `.whl` extension. It bundles the importab
 
 The filename tags tell the package manager which Python interpreter, ABI, and platform can use the wheel. A pure-Python wheel commonly ends in `py3-none-any.whl`, while a wheel with compiled extensions uses more specific tags.
 
+## Tradeoffs
+
+### Pros
+
+- ✅ Standard Python package format
+- ✅ Fast, build-free installation
+- ✅ Portable for pure-Python projects
+- ✅ Integrates with Python dependency solvers
+
+### Cons
+
+- ⚠️ Requires a compatible Python environment
+- ⚠️ Native code needs platform-specific wheels
+- ⚠️ System libraries remain unmanaged
+- ⚠️ Applications still need environment management
+
 ## Packaging Workflow
+
+### Create the Environment
 
 !!! info
     This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
 The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`,
-`sudo`, `unzip`, `uv`, and `cloudsmith-cli`, then copies the project into `/app`.
+`sudo`, `unzip`, and `uv`, then copies the project into `/app`. Cloudsmith CLI
+is installed in the workflow because it is only needed for publication.
 Choose the workflow that matches the local `mpe/proj1_pyguard` image:
 
 === "Image does not exist"
@@ -145,7 +164,15 @@ Choose the workflow that matches the local `mpe/proj1_pyguard` image:
         /bin/bash
     ```
 
-### Create The Package
+Install the project dependencies and the publication tool inside the running
+container:
+
+```bash
+uv sync --all-groups
+uv tool install cloudsmith-cli
+```
+
+### Create the Package
 
 Modern Python builds split responsibilities between a **build frontend** and a **build backend**. The frontend is the command-line tool you run, while the backend is the project-specific implementation that produces the wheel (`.whl`) and source distribution (`.tar.gz`). PEP 517 defines the interface between both sides, and PEP 518 defines the `[build-system]` table in `pyproject.toml` where the backend and its requirements are declared.
 
@@ -169,7 +196,7 @@ List the generated distribution files in the `dist/` directory.
 ls dist/
 ```
 
-### Inspect The Package
+### Inspect the Package
 
 A wheel (`.whl`) is a **ZIP archive** with Python modules and a `*.dist-info/` metadata directory. The source distribution created next to it is a gzip-compressed TAR archive (`.tar.gz`) that stores the source tree used to rebuild the package.
 
@@ -197,7 +224,7 @@ List the files inside the source distribution TAR archive.
 tar -tzf dist/pyguard-0.1.0.tar.gz
 ```
 
-### Publish The Package
+### Publish the Package
 
 Once you have inspected the wheel package, upload it to the proprietary Python repository hosted on Cloudsmith.
 

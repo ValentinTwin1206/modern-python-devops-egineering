@@ -1,210 +1,290 @@
-# Python Binaries
+# Windows MSI Packages
 
-Python binaries package a Python application into an executable form for users who may not manage Python environments directly. They are useful for command-line tools that need simple installation and predictable startup behavior.
+Windows Installer packages distribute applications as `.msi` databases that Windows can install, upgrade, repair, and remove. This bonus section compiles Server CLI into a Windows executable, packages it with WiX, and makes the installer discoverable through WinGet.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is a small server administration CLI called `Server CLI`. It is built on [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
+The applied project is the Click-based `Server CLI`, exposed on Windows as `server-cli.exe`. Nuitka first compiles the Python application into a platform-specific executable. WiX then places that executable under `Program Files`, adds its directory to the machine `PATH`, and creates a transactional MSI installer.
+
+Unlike an installer that embeds an ordinary Python distribution and an unpacked wheel, this MSI contains the already-compiled Nuitka executable. Users do not need Python, `uv`, or network access when Windows Installer installs the package.
 
 ### Run the Project
 
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_servercli/README.md).
+Application, test, lint, executable-build, and MSI commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md).
 
 ## Building Blocks
 
-### Overview
-
-Python binary distributions transform an application into a platform-specific executable that can run without a separately managed Python environment. Packaging tools bundle or compile the application together with the interpreter and required dependencies, producing an ELF binary on Linux, a PE executable on Windows, or a Mach-O binary on macOS. Standalone binaries are typically used for command-line applications, desktop software, internal business tools, and utilities distributed to users who do not manage Python installations.
-
-Binary distribution connects four building blocks: the executable carries the runnable payload, packaging configuration controls how the artifact is assembled and identifies its release, a delivery mechanism places it on the target system, and a remote repository hosts versioned downloads. A standalone executable does not require a dedicated package manager, although projects often wrap it in an [operating-system package](./section-02/index.md) when managed installation and upgrades are required.
-
-| Building Block | Role | Common Examples |
-|----------------|------|-----------------|
-| Package Format | Stores native machine code or a bundled Python runtime and application payload for one target platform. | ELF executable, Windows PE `.exe`, macOS Mach-O executable |
-| Maintainer / Metadata File | Configures included modules, resources, entry points, version information, and build behavior. | PyInstaller `.spec`, Nuitka settings in `pyproject.toml` |
-| Package Manager | Delivers or installs the executable; no dedicated manager is required for direct downloads. | Direct download, `curl`, optional OS package manager |
-| Remote Repository | Hosts versioned binaries and checksums for users or automation to download. | GitHub Releases, Cloudsmith Raw, object storage |
+| Building Block | Role | Server CLI Example |
+|----------------|------|--------------------|
+| Package Format | Stores installer tables and the compressed application payload. | `.msi` |
+| Maintainer File | Defines product identity, version, install location, components, and upgrade behavior. | `msi/wix/Product.wxs` |
+| Package Manager | Discovers the package and delegates installation to Windows Installer. | WinGet, `msiexec` |
+| Remote Repository | Hosts the MSI and the manifest metadata that points to it. | Cloudsmith Raw, WinGet source |
 
 ### Project Layout
 
-A typical Python binary project is structured to separate application code, packaging configuration, and operating-system-specific packaging metadata:
-
 ```text
-{project_root}/
-├── LICENSE
-├── README.md
+proj4_servercli/
+├── msi/
+│   ├── scripts/
+│   │   └── build-msi.ps1
+│   └── wix/
+│       └── Product.wxs
+├── scripts/
+│   └── build-executable.ps1
+├── src/server_cli/
+├── Dockerfile.windows
 ├── pyproject.toml
-├── src/
-├── tests/
 └── uv.lock
 ```
 
-* `src/`: Contains the application source code.
-* `tests/`: Contains automated tests.
-* `pyproject.toml`: The central configuration file for modern Python packaging, defining metadata, dependencies, and build configuration.
-* `uv.lock`: Dependency lock file used to reproduce builds.
-* `README.md`: Project documentation and usage instructions.
-* `LICENSE`: Defines the legal terms under which the project can be used and distributed.
+- `Dockerfile.windows`: Provides Python, `uv`, Nuitka, Visual C++ Build Tools, WiX, and Cloudsmith CLI on Windows Server Core.
+- `scripts/build-executable.ps1`: Uses Nuitka to produce `.build/server-cli.exe`.
+- `msi/wix/Product.wxs`: Defines the MSI product, executable component, install directory, upgrades, and `PATH` integration.
+- `msi/scripts/build-msi.ps1`: Compiles and links the WiX source into `.build/server-cli-<version>.msi`.
 
-### Build Configuration
+### Package Manifest
 
-`Server CLI` does not use a separate binary manifest file. The project metadata lives in `pyproject.toml`, while the packaging workflow passes Nuitka build flags on the command line. Nuitka is installed by the Dev Container Dockerfile as a platform-specific build tool and is intentionally not listed in the project dependency metadata.
+The WiX product definition identifies the package and includes the compiled executable as its key component:
 
-```toml
-[project]
-name = "server-cli"
-version = "1.0.0"
-description = "Click server administration CLI distributed as a Nuitka-compiled Debian executable"
-authors = [
-    { name = "Julius Pravtchev" },
-    { name = "Valentin Pravtchev" }
-]
-license = "Apache-2.0"
-requires-python = ">=3.12"
-dependencies = [
-    "click>=8.1.7",
-]
-
-[project.scripts]
-server-cli = "server_cli.cli:main"
-
-[dependency-groups]
-dev = [
-    "karva>=0.0.1a5",
-    "ruff>=0.15.12",
-]
-
-[tool.uv]
-package = true
-
+```xml
+<Product Id="*"
+         Name="Server CLI"
+         Language="1033"
+         Version="$(var.ProductVersion)"
+         Manufacturer="Modern Python Engineering"
+         UpgradeCode="D5743C73-4CA2-4D94-BE2B-EF77834DBA91">
+  <Package InstallerVersion="500"
+           Compressed="yes"
+           InstallScope="perMachine" />
+  <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+  <MediaTemplate EmbedCab="yes" />
+</Product>
 ```
 
-- `[project]`: Defines the application identity, Python version support, and runtime dependencies that the build command installs into the build environment.
-- `[dependency-groups]`: Records development-only testing and linting tools.
-- `[tool.uv]`: Marks that `uv` should install the project into the development environment.
-- Binary build options are kept in `scripts/build-executable.sh` so Nuitka remains a container-level build tool rather than a project dependency.
-
-!!! note
-    This project intentionally keeps Nuitka out of `pyproject.toml`; the Dev Container installs it with `uv tool install nuitka`.
+The stable `UpgradeCode` associates releases of the same product, while the generated product ID identifies one specific MSI release. `MajorUpgrade` permits a newer release to replace an older one and prevents accidental downgrades.
 
 ### Package Layout
 
-A standalone executable is a native binary rather than a general-purpose archive. Linux commonly uses the ELF format, while Windows uses PE/COFF. Both formats divide the file into headers and sections that the operating-system loader uses to map code and data into memory. Thus, unlike `.whl`, `.deb`, or `.conda` packages, an executable does not have one portable internal directory layout.
+An MSI is a Windows Installer database in the Compound File Binary format. Its tables describe products, features, directories, files, components, and installation actions; an embedded cabinet carries `server-cli.exe`.
 
-## Packaging Workflow
-
-!!! info
-    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container shell.
-
-Install the Dev Container CLI on the host first.
-
-```bash
-sudo apt-get update && sudo apt-get install -y nodejs npm
-sudo npm install -g @devcontainers/cli
+```text
+C:\Program Files\ServerCLI\
+└── server-cli.exe
 ```
 
-From the `projects/` directory, start the dedicated development container.
+Windows Installer tracks the executable as a component so it can upgrade, repair, and remove it consistently.
 
-```bash
-devcontainer up --workspace-folder proj5_servercli
-```
+### Python Binaries
 
-Open a shell in the running development container.
+Python binary tools collect an application, imported dependencies, and the runtime components needed to launch it as a platform-specific executable. Both approaches below can produce one `.exe`, but the result must be built on Windows for the intended Windows architecture.
 
-```bash
-devcontainer exec --workspace-folder proj5_servercli \
-    --remote-env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --remote-env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-    bash
-```
+=== "PyInstaller"
 
-The Dev Container image already includes Nuitka, the native compiler toolchain,
-and Debian packaging tools. Nuitka is available as the `nuitka` command but is
-not installed through the project's Python dependency metadata.
+    PyInstaller bundles the Python interpreter, application bytecode, imports, and resources. It emphasizes application collection and does not compile the entire Python program to native C code.
 
-### Create the Binary
-
-Build the executable.
+    ```powershell
+    uv run pyinstaller `
+        --onefile `
+        --name server-cli `
+        --paths src `
+        src\server_cli\cli.py
+    ```
 
 === "Nuitka"
 
-    ```bash
-    nuitka \
-        --onefile \
-        --output-dir=.build \
-        --output-filename=server-cli \
-        --include-package=server_cli \
-        src/server_cli/cli.py
+    Nuitka translates Python modules into C and invokes a native compiler. It also follows imports and includes required runtime components, but Server CLI's Python modules become compiled machine code.
+
+    ```powershell
+    powershell -ExecutionPolicy Bypass `
+        -File .\scripts\build-executable.ps1
     ```
 
-The resulting executable is written to the build output directory.
+    The script invokes Nuitka with the project entry point:
 
-### Inspect The Package
+    ```powershell
+    nuitka `
+        --onefile `
+        --output-dir=.build `
+        --output-filename=server-cli.exe `
+        --include-package=server_cli `
+        src\server_cli\cli.py
+    ```
 
-A Linux standalone executable is an ELF binary, while a Windows executable (`.exe`) uses the PE/COFF format. These files are not archives like wheels, Debian packages, or Conda packages; inspection focuses on the executable header, linked shared libraries, embedded runtime behavior, and file identity.
+## Tradeoffs
 
-Identify the executable file format and target architecture.
+### Pros
 
-```bash
-file .build/server-cli
-```
+- ✅ Integrates with the Windows lifecycle
+- ✅ Supports upgrades, repair, and removal
+- ✅ Enables discovery through WinGet
+- ✅ Runs without a separate Python installation
 
-Inspect the ELF header, including the binary class, machine architecture, entry point, and program-header layout.
+### Cons
 
-```bash
-readelf -h .build/server-cli
-```
+- ⚠️ Releases may become stale
+- ⚠️ Requires a Windows build environment
+- ⚠️ WiX configuration adds complexity
+- ⚠️ MSI and WinGet publishing are separate workflows
 
-List the shared libraries the executable expects from the target system.
+## Packaging Workflow
 
-```bash
-ldd .build/server-cli
-```
+### Create the Environment
 
-Generate a checksum that can be published with the binary so consumers can verify the downloaded artifact.
-
-```bash
-sha256sum .build/server-cli
-```
-
-### Publish the Binary
-
-Once you have inspected the binary build, upload it to the proprietary raw repository hosted on Cloudsmith.
-
-For a managed download endpoint, upload the compiled binary to a Cloudsmith Raw repository.
-
-Upload the Linux or Windows binary to the target raw repository and assign a release version.
-
-```bash
-cloudsmith push raw "${CLOUDSMITH_REPOSITORY}" ./.build/server-cli --name server-cli --version 1.0.0
-```
+This workflow requires Docker Desktop configured to run Windows containers. From Windows PowerShell, switch to the Windows engine and confirm its operating-system type:
 
 ```powershell
-cloudsmith push raw "$env:CLOUDSMITH_REPOSITORY" .\.build\server-cli.exe --name server-cli.exe --version 1.0.0
+& "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchWindowsEngine
+docker info --format "{{.OSType}}"
 ```
 
-After the upload finishes, Cloudsmith serves the binary through a stable download URL that you can share in release notes, internal portals, or installation scripts.
+Move to `projects\proj4_servercli`, build the image, and create the output directory:
+
+```powershell
+docker build -f Dockerfile.windows -t server-cli-msi-builder .
+New-Item -ItemType Directory -Path .build -Force
+```
+
+Start the container with the source and artifact directories mounted:
+
+```powershell
+docker run --rm -it `
+    -v "$($PWD.ProviderPath):C:\workspace" `
+    -v "$($PWD.ProviderPath)\.build:C:\workspace\.build" `
+    -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" `
+    -e CLOUDSMITH_API_KEY="$env:CLOUDSMITH_API_KEY" `
+    server-cli-msi-builder
+```
+
+Inside the container, synchronize the application dependencies. The Windows
+image provides Nuitka, WiX, Visual C++ Build Tools, and Cloudsmith CLI because
+these tools are required to build the Windows artifact:
+
+```powershell
+uv sync --group dev
+```
+
+### Create the Package
+
+Compile the Windows executable:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+    -File .\scripts\build-executable.ps1
+```
+
+Confirm that it starts:
+
+```powershell
+.\.build\server-cli.exe --help
+```
+
+Package the executable in an MSI:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+    -File .\msi\scripts\build-msi.ps1 `
+    -Version 1.0.0
+```
+
+The output is `.build\server-cli-1.0.0.msi`.
+
+### Inspect the Package
+
+Use WiX `dark.exe` to decompile the database and extract its cabinet:
+
+```powershell
+dark.exe `
+    -x .build\msi-inspect `
+    -out .build\msi-inspect\Product.wxs `
+    .build\server-cli-1.0.0.msi
+```
+
+Inspect the extracted files and decompiled tables:
+
+```powershell
+Get-ChildItem -Recurse .build\msi-inspect
+Get-Content .build\msi-inspect\Product.wxs
+```
+
+### Publish the Package
+
+WinGet separates installer storage from package discovery. Publish the MSI to a stable HTTPS endpoint first:
+
+```powershell
+cloudsmith push raw `
+    "$env:CLOUDSMITH_REPOSITORY" `
+    .\.build\server-cli-1.0.0.msi `
+    --name "server-cli" `
+    --version "1.0.0"
+```
+
+Generate a WinGet manifest from the published installer URL:
+
+```powershell
+wingetcreate new `
+    "https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/server-cli-1.0.0.msi"
+```
+
+Use these package values when prompted:
 
 ```text
-https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/server-cli
+Package identifier: ModernPythonEngineering.ServerCLI
+Package name: Server CLI
+Publisher: Modern Python Engineering
+Command: server-cli
+Installer type: wix
 ```
+
+Validate the generated manifest directory:
+
+```powershell
+winget validate --manifest `
+    .\manifests\m\ModernPythonEngineering\ServerCLI\1.0.0
+```
+
+The manifests can be submitted to `microsoft/winget-pkgs` or served by a private WinGet-compatible source such as Rewinged.
 
 ## Consumer Workflow
 
-### Install the Binary
+### Configure the Package Manager
 
-Users typically install the binary by downloading the appropriate release artifact and execute it:
+For the public WinGet community source, no additional source configuration is required. A private Rewinged deployment can be registered as follows after its HTTPS certificate is trusted:
 
-=== "Linux executable"
+```powershell
+winget source add `
+    --name modern-python-engineering `
+    --arg https://localhost:8443/api `
+    --type Microsoft.Rest
+winget source update
+```
 
-    ```bash
-    chmod +x server-cli && ./server-cli --help
-    ```
+### Install the OS Package
 
-=== "Windows executable"
+Install Server CLI from the public source:
 
-    ```powershell
-    .\server-cli.exe --help
-    ```
+```powershell
+winget install --id ModernPythonEngineering.ServerCLI --source winget
+```
+
+For the private source, select its configured name instead:
+
+```powershell
+winget install `
+    --id ModernPythonEngineering.ServerCLI `
+    --source modern-python-engineering
+```
+
+Open a new terminal so it receives the updated machine `PATH`, then run:
+
+```powershell
+server-cli --help
+```
+
+## Useful Links
+
+- [WiX Toolset documentation](https://wixtoolset.org/docs/)
+- [WinGet package repository](https://learn.microsoft.com/en-us/windows/package-manager/package/repository)
+- [Nuitka User Manual](https://nuitka.net/user-documentation/user-manual.html)

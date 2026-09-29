@@ -1,0 +1,28 @@
+{
+    "name": "Python Dev Containers",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "workspaceFolder": "/workspaces/modern-python-engineering/projects/proj4_servercli",
+    "runArgs": [
+        "--name",
+        "mpe-proj4_server_cli"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+                "python.terminal.activateEnvironment": true,
+                "ruff.nativeServer": "on"
+            }
+        }
+    },
+    "postCreateCommand": "uv venv --clear && uv sync --group dev",
+    "remoteUser": "bob"
+}

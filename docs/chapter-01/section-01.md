@@ -6,11 +6,11 @@ This page explains how Python is installed on common operating systems and where
 
 ### Project Setup
 
-See [notebooks/system_interpreter/system_interpreter.ipynb](../../notebooks/system_interpreter/system_interpreter.ipynb).
+See the [system interpreter notebook](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/system_interpreter/system_interpreter.ipynb).
 
 ### Run the Project
 
-Setup and usage details are documented in [notebooks/system_interpreter/README.md](../../notebooks/system_interpreter/README.md).
+Setup and usage details are documented in the [notebook README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/system_interpreter/README.md).
 
 ## Python System Setup
 
@@ -237,7 +237,7 @@ graph LR
 
 #### System Target
 
-On Debian-based Linux, the system target is owned and managed by APT, and importable Python packages typically land under `/usr/lib/python3/dist-packages/`. Unlike a Python-only package manager, APT resolves both Python and native system dependencies as part of the operating system, which makes it appropriate for distribution-managed tools, system services, and Python bindings to OS libraries. For a precise explanation of how OS packages integrate native components into the dependency graph, see [Chapter 02, Section 02](../chapter-02/section-02/index.md).
+On Debian-based Linux, the system target is owned and managed by APT, and importable Python packages typically land under `/usr/lib/python3/dist-packages/`. Unlike a Python-only package manager, APT resolves both Python and native system dependencies as part of the operating system, which makes it appropriate for distribution-managed tools, system services, and Python bindings to OS libraries. For a precise explanation of how OS packages integrate native components into the dependency graph, see [Chapter 02, Section 02](../chapter-02/section-02.md).
 
 For example, `python3-psutil` provides Python bindings for OS-level process and system metrics, and installing it with APT also pulls in the required native `libc6` library; those dependencies on system packages are illustrated in the Mermaid chart above.
 

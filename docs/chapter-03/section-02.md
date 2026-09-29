@@ -8,7 +8,7 @@ The section continues with [Bob's Webserver](https://github.com/ValentinTwin1206
 
 ### Run the Project
 
-Handling third-party tools is also addressed inside the [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+Handling third-party tools is also addressed inside the [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
 
 ### The Tool Interface
 
@@ -60,11 +60,11 @@ uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
 
 ### Applied project
 
-This section builds on the previously introduced [License Service](./../../projects/proj3_license_service/README.md) and integrates the security middleware [PyGuard](./../../projects/proj1_pyguard/README.md) as a workspace member. This workspace setup streamlines development by allowing both projects to be managed and tested together.
+This section builds on the previously introduced [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md) and integrates the security middleware [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) as a workspace member. This workspace setup streamlines development by allowing both projects to be managed and tested together.
 
 ### Run the project
 
-The concept of `uv` workspaces is also addressed inside the [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+The concept of `uv` workspaces is also addressed inside the [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
 
 ### Introduction into uv workspaces
 
@@ -74,7 +74,7 @@ When multiple related projects must be developed and tested together, a consiste
 
 A workspace consists of a *root project* that defines the workspace itself and one or more *workspace members*. There is no single correct layout: members may live side by side in a dedicated `packages/` directory underneath a standalone root, or a library can simply be nested inside the application that consumes it. What actually turns a set of folders into a workspace is not the directory layout but the referencing inside the `pyproject.toml` files.
 
-Take the [license service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) and the [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware. The license service is the application that depends on `PyGuard`, so it becomes the workspace root and `PyGuard` is nested underneath it as a member:
+Take the [license service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md) and the [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware. The license service is the application that depends on `PyGuard`, so it becomes the workspace root and `PyGuard` is nested underneath it as a member:
 
 ```text
 license-service/

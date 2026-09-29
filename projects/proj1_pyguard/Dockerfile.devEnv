@@ -48,11 +48,9 @@ RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
     && chmod 0440 /etc/sudoers.d/bob
 
 #
-# Install uv and the Cloudsmith publishing CLI.
+# Install uv.
 #
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-RUN uv pip install --system --break-system-packages cloudsmith-cli
 
 #
 # Copy the files needed for the image's build-time project setup.

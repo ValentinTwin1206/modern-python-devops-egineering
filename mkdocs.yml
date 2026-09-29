@@ -70,10 +70,7 @@ nav:
       - Overview: chapter-02/index.md
       - Sections:
         - Section 01: chapter-02/section-01.md
-        - Section 02:
-          - Overview: chapter-02/section-02/index.md
-          - Debian Packages: chapter-02/section-02/debian.md
-          - Windows Packages: chapter-02/section-02/windows.md
+        - Section 02: chapter-02/section-02.md
         - Section 03: chapter-02/section-03.md
         - Section 04: chapter-02/section-04.md
       - Bonus:
@@ -85,8 +82,6 @@ nav:
         - Section 02: chapter-03/section-02.md
         - Section 03: chapter-03/section-03.md
         - Section 04: chapter-03/section-04.md
-      - Bonus:
-        - Bonus 01: chapter-03/bonus-01.md
   - Chapter 04:
       - Overview: chapter-04/index.md
       - Sections:
@@ -94,6 +89,7 @@ nav:
         - Section 02: chapter-04/section-02.md
         - Section 03: chapter-04/section-03.md
         - Section 04: chapter-04/section-04.md
+        - Section 05: chapter-04/section-05.md
   - Bonus:
       - Overview: chapter-bonus/index.md
       - Sections:

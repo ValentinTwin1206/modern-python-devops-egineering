@@ -1,0 +1,33 @@
+# escape=`
+# WINDOWS NUITKA AND MSI BUILD IMAGE
+# Must be built with the Windows container engine on a Windows host.
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+ENV CLOUDSMITH_REPOSITORY=""
+
+SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
+    [System.Net.ServicePointManager]::SecurityProtocol = 3072; `
+    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+RUN choco install -y python --version=3.12.6 --no-progress; `
+    choco install -y wixtoolset --no-progress; `
+    choco install -y git --no-progress; `
+    choco install -y visualstudio2022buildtools --no-progress `
+        --package-parameters '--add Microsoft.VisualStudio.Workload.VCTools --quiet --norestart'
+
+RUN Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+
+RUN $wixBin = (Get-ChildItem 'C:\Program Files (x86)\WiX Toolset*' -Directory | Select-Object -First 1).FullName + '\bin'; `
+    $uvBin = Join-Path $env:USERPROFILE '.local\bin'; `
+    $oldPath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); `
+    $newPath = '{0};C:\Python312;C:\Python312\Scripts;{1};{2}' -f $oldPath, $wixBin, $uvBin; `
+    [Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+
+RUN $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine'); `
+    uv tool install nuitka; `
+    python -m pip install --no-cache-dir cloudsmith-cli
+
+WORKDIR C:\workspace
+ENTRYPOINT ["powershell.exe", "-NoLogo", "-NoProfile"]

@@ -10,7 +10,7 @@ The applied project is `IrisLab`, a small image-based iris color analysis applic
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md).
 
 ## Conda Environment Model
 
@@ -163,7 +163,7 @@ A user installation typically lives under `~/miniconda3` on Linux and macOS.
 
 #### Environment Definition
 
-The dedicated `projects/proj4_irislab/environment.yml` file defines the `irislab` Conda environment. It records the channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native libraries, and development tools. A Conda environment can be created via `conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
+The dedicated `projects/proj3_irislab/environment.yml` file defines the `irislab` Conda environment. It records the channels and dependencies needed by the project, including Python, scientific and machine-learning packages, native libraries, and development tools. A Conda environment can be created via `conda env create --file environment.yml`; Conda uses this file to create the environment consistently on a new machine.
 
 ```yaml
 name: irislab
@@ -273,7 +273,7 @@ After creating the environment described in [Environment Definition](#environmen
 
 The `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge` as its only system 
 package channel, and includes the compiler toolchain, MediaPipe model, and project files. 
-Choose the workflow that matches the state of the local `mpe/proj4_irislab` image:
+Choose the workflow that matches the state of the local `mpe/proj3_irislab` image:
 
 === "Image does not exist"
 
@@ -283,7 +283,7 @@ Choose the workflow that matches the state of the local `mpe/proj4_irislab` imag
 
     ```bash
     ./build.sh build \
-        --path proj4_irislab/Dockerfile.devEnv \
+        --path proj3_irislab/Dockerfile.devEnv \
         --gpus all \
         --cloudsmith-workspace "<cloudsmith-repo>" \
         --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
@@ -296,9 +296,9 @@ Choose the workflow that matches the state of the local `mpe/proj4_irislab` imag
 
     ```bash
     docker run -it \
-        -v "$PWD/proj4_irislab:/app" \
-        -v "$PWD/proj4_irislab/.build:/build" \
-        mpe/proj4_irislab \
+        -v "$PWD/proj3_irislab:/app" \
+        -v "$PWD/proj3_irislab/.build:/build" \
+        mpe/proj3_irislab \
         /bin/bash
     ```
 

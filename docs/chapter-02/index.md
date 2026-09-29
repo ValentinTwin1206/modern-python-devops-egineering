@@ -11,7 +11,7 @@ Use the navigation on the left to move through the chapter's sections:
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
 | [Section 01](./section-01.md) | Python wheels           | [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) | |
-| [Section 02](./section-02/index.md) | OS packages       | [Simply Journal Admin](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_journal_admin/README.md) | |
-| [Section 03](./section-03.md) | Python containers       | [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_license_service/README.md) | |
-| [Section 04](./section-04.md) | Conda packages          | [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislabs/README.md)  | |
-| [Bonus 01](./bonus-01.md) | Python binaries             | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_servercli/README.md) | |
+| [Section 02](./section-02.md) | Debian packages       | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md) | |
+| [Section 03](./section-03.md) | Python containers       | [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md) | |
+| [Section 04](./section-04.md) | Conda packages          | [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md)  | |
+| [Bonus 01](./bonus-01.md) | Windows MSI and WinGet packages | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md) | |

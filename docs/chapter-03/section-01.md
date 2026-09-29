@@ -63,7 +63,7 @@ The service can then be started through `uv`:
 uv run main.py
 ```
 
-The pip interface is also demonstrated in the accompanying [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+The pip interface is also demonstrated in the accompanying [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
 
 !!! warning
     `uv pip install` installs packages **into the environment only** — it does not touch `pyproject.toml` or `uv.lock`. uv therefore keeps no record of what was installed and cannot resolve, lock, or verify these dependencies. 
@@ -76,11 +76,11 @@ The following commands cover usual tasks during the lifecycle of a Python projec
 
 ### Applied Project
 
-The [License Service](/home/fixcfhu/repos/ValentinTwin1206/modern-python-devops-egineering/projects/proj3_license_service/README.md), introduced earlier, demonstrates how `uv` can simplify the management of a modern Python project. It provides a practical example of a smooth and efficient `uv`-based workflow.
+The [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md), introduced earlier, demonstrates how `uv` can simplify the management of a modern Python project. It provides a practical example of a smooth and efficient `uv`-based workflow.
 
 ### Run the Project
 
-The project setup and management steps are demonstrated in the accompanying [Modern Python with uv](./../../notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+The project setup and management steps are demonstrated in the accompanying [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
 
 ### Commands
 
