@@ -37,7 +37,8 @@ RUN apt-get update \
 # Keep the base image's host-mapped UID/GID while using the project's bob name.
 USER root
 RUN usermod --login bob --home /home/bob --move-home vscode \
-    && groupmod --new-name bob vscode
+    && groupmod --new-name bob vscode \
+    && echo 'bob:c3po' | chpasswd
 
 # Install user-level tools as the same account the container uses.
 USER bob

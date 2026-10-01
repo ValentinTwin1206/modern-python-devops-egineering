@@ -44,6 +44,7 @@ RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
     fi \
     && useradd --uid "${HOST_UID}" --gid "${group_name}" \
         --create-home --shell /bin/bash --groups sudo bob \
+    && echo 'bob:c3po' | chpasswd \
     && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
     && chmod 0440 /etc/sudoers.d/bob
 

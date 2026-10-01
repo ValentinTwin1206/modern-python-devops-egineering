@@ -1,245 +1,266 @@
-# Python project management with uv
+# Project Scaffolding with uv
 
 ## Introduction
 
-`uv` is a single self-contained binary written in **Rust**, developed by Astral — the same team behind the `ruff` linter. It was designed to unify Python packaging, dependency management, virtual environments, and tool execution under a single command-line interface. Instead of combining multiple tools such as `pip`, `venv`, `pip-tools`, and `pipx`, developers can use `uv` for the entire workflow.
+`uv` manages a Python project from its first files to a published package. Its central configuration file is `pyproject.toml`: it describes the project, its dependencies, and, when needed, how to build it. This section follows one project through that workflow. For dependency versions and lockfiles, see [Dependency Management with uv](./section-02.md).
 
-Because it compiles down to native machine code, it carries no Python runtime dependency of its own and starts in milliseconds. Its rapid adoption is driven by exceptional performance and a streamlined developer experience. Written in Rust, uv executes common packaging operations dramatically faster than traditional Python tooling while remaining fully compatible with the Python packaging ecosystem.
+## Install uv
+
+Choose the installer for your operating system. You only need to install `uv` once.
 
 === "macOS and Linux"
 
-    Download the standalone installer and execute the shell script
+    Run the standalone installer in a terminal:
 
-    ```bash
+    ```shell
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    ```
-
-    It ships as two statically-linked binaries — **`uv`** (main CLI) and **`uvx`** (ephemeral tool runner, equivalent to `pipx run`) — with a total on-disk footprint of ~36 MB. There are no shared libraries, no interpreter bundles, and no background daemons. The global package cache (`~/.cache/uv`) is shared across all projects to avoid redundant downloads (see more about caching in [Section 04](./section-04.md)).
-
-    ```
-    /usr/local/bin/
-    ├── uv       36 MB   ← main CLI binary (statically linked Rust)
-    └── uvx     343 KB   ← tool runner (thin wrapper)
     ```
 
 === "Windows"
 
-    Download the standalone installer and execute the powershell script
+    Run the standalone installer in PowerShell:
 
     ```powershell
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
----
-
-Alternatively, `uv` can also be installed from PyPi using `pip`.
+Check that the command is available:
 
 ```shell
-pip install uv
+uv --version
 ```
 
-This might be more convenient for many developers, however, when installed via `pip`, the wheel format requires a `site-packages` entry. In addition to the two binaries, pip therefore creates `site-packages/uv/` (a Python shim) and `site-packages/uv-<version>.dist-info/` (package metadata). The curl installer produces only the two binaries with no Python packaging overhead.
+## Initialize a Project
 
-## Managing legacy Python Projects with the pip interface
+### Choose a Project Type
 
-Not every code base is a modern, `pyproject.toml`-based project. Legacy projects often still rely on a `requirements.txt` together with `pip` and `venv`. For these cases `uv` exposes a **pip-compatible interface** that mirrors the familiar commands while keeping uv's speed.
+`uv init` creates the initial files. Choose a template according to what you want to make. The examples below show complete, *illustrative* `pyproject.toml` files; the exact generated fields and backend version depend on your uv version.
 
-### Project Setup
+=== "Simple application"
 
-The applied project is the already introduced [Webserver of Bob](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) who's dependencies aer pinned in a `requirements.txt` file. This project shows how well `uv` is capable to handle legacy projects trough its pip interface. 
+    Create an application that you run locally without building it as a package:
 
-### Run the Project
+    ```shell
+    uv init --app --no-package hello-app
+    ```
 
-Setting it up with `uv` only takes two commands:
+    The initial files include a script at the project root:
 
-```shell
-uv venv                            # create a virtual environment (.venv)
-uv pip install -r requirements.txt # install the pinned dependencies
-```
-
-The service can then be started through `uv`:
-
-```shell
-uv run main.py
-```
-
-The pip interface is also demonstrated in the accompanying [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
-
-!!! warning
-    `uv pip install` installs packages **into the environment only** — it does not touch `pyproject.toml` or `uv.lock`. uv therefore keeps no record of what was installed and cannot resolve, lock, or verify these dependencies. 
-    
-    Installing another package later (for example `uv pip install requests==2.0.0`) can silently downgrade or break an already-installed dependency, and uv has no way to detect the drift. The pip interface is meant for *interacting* with legacy projects, not for *managing* them.
-
-## Managing a modern Python Project
-
-The following commands cover usual tasks during the lifecycle of a Python project.
-
-### Applied Project
-
-The [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md), introduced earlier, demonstrates how `uv` can simplify the management of a modern Python project. It provides a practical example of a smooth and efficient `uv`-based workflow.
-
-### Run the Project
-
-The project setup and management steps are demonstrated in the accompanying [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
-
-### Commands
-
-#### Initialize a Project
-
-Create a new project with a default `pyproject.toml`.
-
-```shell
-cd ~ && uv init my-project
-cd my-project
-```
-
-This creates the project structure and initializes Python package metadata.
-
-
-```shell
-/project-folder
-└── app
+    ```text
+    hello-app/
+    ├── .python-version
     ├── README.md
     ├── main.py
     └── pyproject.toml
-```
+    ```
 
-The command also sets up an initial cache structure under `/home/user/.cache/uv`. 
+    Its complete `pyproject.toml` can look like this:
 
-#### Add Dependencies
+    ```toml
+    [project]
+    name = "hello-app"
+    version = "0.1.0"
+    description = "A small Python application"
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = []
+    ```
 
-`uv` simplifies the integration of dependencies to your project.
+=== "Packaged application"
 
-```shell
-uv add click==1.0.0
-```
+    Create an application with an installable package and a command-line entry point:
 
-After the first dependency is added, the project structure looks similar to:
+    ```shell
+    uv init --app --package hello-app
+    ```
 
-```shell
-/project-folder
-└── app
-    ├── .venv
+    Its source code lives in a package under `src/`:
+
+    ```text
+    hello-app/
+    ├── .python-version
     ├── README.md
-    ├── main.py
     ├── pyproject.toml
-    └── uv.lock
-```
+    └── src/
+        └── hello_app/
+            └── __init__.py
+    ```
 
-In a single step, the command resolves dependencies, creates a virtual environment if necessary, installs the packages, adds an entry of the dependency in the `pyproject.toml`, and generates/refreshes the `uv.lock` file (details about `uv.lock` are covered in [Locking](./section-03.md/#locking)).
+    Its complete `pyproject.toml` can look like this (with a `main` function in `hello_app`):
 
+    ```toml
+    [project]
+    name = "hello-app"
+    version = "0.1.0"
+    description = "A packaged Python application"
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = []
 
-Dependencies can be added to specific groups, such as development dependencies or to a custom group
+    [project.scripts]
+    hello-app = "hello_app:main"
+
+    [build-system]
+    requires = ["uv_build>=0.11,<0.12"]
+    build-backend = "uv_build"
+    ```
+
+=== "Library"
+
+    Create a reusable package for other projects to import:
+
+    ```shell
+    uv init --lib hello-library
+    ```
+
+    The library has a package under `src/`:
+
+    ```text
+    hello-library/
+    ├── .python-version
+    ├── README.md
+    ├── pyproject.toml
+    └── src/
+        └── hello_library/
+            ├── __init__.py
+            └── py.typed
+    ```
+
+    Its complete `pyproject.toml` can look like this:
+
+    ```toml
+    [project]
+    name = "hello-library"
+    version = "0.1.0"
+    description = "A reusable Python library"
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = []
+
+    [build-system]
+    requires = ["uv_build>=0.11,<0.12"]
+    build-backend = "uv_build"
+    ```
+
+For a file-only starting point, `--bare` creates just `pyproject.toml` and leaves the project layout to you:
 
 ```shell
-uv add --dev pytest && uv add --group docs mkdocs
+uv init --bare hello-project
 ```
 
-This adds the dependency to the corresponding section in the `pyproject.toml`:
+### Understand `pyproject.toml`
 
-```toml
-[dependency-groups]
-dev = [
-    "pytest>=7.0.0",
-]
+`[project]` holds metadata and runtime requirements. `[project.scripts]` names commands users can run, while `[build-system]` says how to package the code. This one standard file can grow with the project; there is no need to scatter these settings across several setup files. See [Declaring Dependencies](./section-02.md#declaring-dependencies) for how to change requirements safely.
 
-docs = [
-    "mkdocs>=1.6.0",
-]
-```
+The rest of this section follows the **packaged application**. Run its commands from inside `hello-app/`.
 
-Dependencies can also be installed directly from Git repositories:
+## Choose a Python Version
+
+### Install and Pin Python
+
+Install the interpreter you want to use without replacing your system Python:
 
 ```shell
-uv add "httpx @ git+https://github.com/encode/httpx"
+uv python install 3.12
 ```
 
-The dependency is added to project.dependencies, while the source information is stored separately:
-
-```toml
-[project]
-dependencies = [
-    "httpx",
-]
-
-[tool.uv.sources]
-httpx = { git = "https://github.com/encode/httpx" }
-```
-
-This allows `uv` to install packages directly from version control systems instead of package registries.
-
-#### Remove Dependencies
-
-Remove a dependency from the project.
+Pin it for this project:
 
 ```shell
-uv remove requests
+uv python pin 3.12
 ```
 
-This command removes the package from the `pyproject.toml` and updates `uv.lock` to reflect the change. It does not modify the virtual environment — run `uv sync` afterward to clean up the `.venv`.
+The pin lives in `.python-version` and selects the interpreter for local development. The `requires-python` value in `pyproject.toml` instead tells installers which Python versions the project supports; keep it consistent with the code you write.
 
-#### Synchronize the Environment
+## Work in the Project Environment
 
-When setting up a project the first time or after pulling dependencies, the `uv sync` command can be used to synchronize the project's virtual environment.
+### Create and Use `.venv`
+
+Prepare the project's virtual environment:
 
 ```shell
 uv sync
 ```
 
-This command installs all locked dependencies and ensures that the local environment exactly matches the state described in `uv.lock`. If a virtual environment does not exist, `uv` creates it automatically. It ensures full reproducibility of the project environment and generates the exact same project structure as above.
+`uv` creates `.venv` if needed. You do not have to activate it: `uv run` uses it automatically. To create an environment manually outside a managed project, see [Standalone Environments and Tools](./section-04.md#create-a-standalone-environment).
+
+### Add Dependencies and Run the Project
+
+Add a library your application needs:
 
 ```shell
-/project-folder
-└── app
-    ├── .venv
-    ├── README.md
-    ├── main.py
-    ├── pyproject.toml
-    └── uv.lock
+uv add rich
 ```
 
+This updates `pyproject.toml`, `uv.lock`, and `.venv`. [Section 02](./section-02.md) explains dependency groups, removing packages, and synchronizing a team environment.
 
-#### Update the Lock File
-
-Generate or refresh the project's lock file.
+Run the packaged app's entry point (the `main` function shown in its configuration):
 
 ```shell
-uv lock
+uv run hello-app
 ```
 
-The command resolves all dependencies defined in `pyproject.toml` and writes the result to `uv.lock` without installing packages into the virtual environment.
+## Configure Project Tools
 
-During resolution, `uv` may download metadata/wheels into `~/.cache/uv` and create temporary lock files, but it does not install packages into `.venv` or `site-packages`.
+### Use `[tool.*]` Tables
 
-This is useful when dependencies have changed and you want to refresh the lock file separately from installation.
+Many tools can read settings from `pyproject.toml`, reducing the need for separate configuration files. For example, add this table to the packaged app's existing `pyproject.toml` to configure Ruff:
 
-#### Change the Python version
-
-`uv` can manage Python interpreters directly and integrates it smoothly with the current project context. At first the needed Python version is going to be installed
-
-```bash
-uv python install 3.10
+```toml
+[tool.ruff]
+line-length = 88
 ```
 
-This downloads a standalone CPython 3.10 build into uv's shared install directory `~/.local/share/uv/python` without replacing the system Python. Afterwards the Python interpreter can be pinned to the project context
+Each tool defines its own supported settings; `[tool.uv]` is for uv settings, while `[tool.ruff]` is for Ruff. This configures Ruff but does not install it. Running standalone tools is covered in [Section 04](./section-04.md#run-command-line-tools).
 
-```bash
-uv python pin 3.10
-```
+## Build a Package
 
-This writes the selected version to a `.python-version` file in the project root. From this point on, every `uv` command run inside the project (`uv sync`, `uv run`, `uv add`, …) will use Python 3.10. The next `uv sync` recreates `.venv` against the pinned interpreter.
+### Understand the `uv_build` Backend
 
+The packaged templates include `[build-system]`. Here, `uv_build` is the **build backend**: it turns source files into installable distributions. `uv` is the command-line tool that invokes the backend. The simple `--no-package` app has no build system; choose a packaged template when you intend to distribute your code.
 
-#### Run commands
+### Create Distributions
 
-`uv` can execute Python scripts and tools directly, without manually activating a virtual environment.
+Build the package from the project root:
 
 ```shell
-uv run main.py
+uv build
 ```
 
-Before running the command, `uv` ensures the project is ready: it creates the `.venv` if it does not exist, installs or updates dependencies to match `uv.lock`, and uses the pinned Python interpreter. The script is then executed inside that environment.
+The `dist/` directory contains a wheel (`.whl`) for installation and a source archive (`.tar.gz`) that can be built elsewhere. Both use the version declared in `pyproject.toml`.
 
+## Publish a Package
 
-!!! note "Command invocation"
-    The same principle applies to any command, whether it's an installed CLI entry point or a `python -m` invocation
+### Upload to a Package Index
+
+Before uploading, check the project name, version, and package contents. Set a PyPI token in `UV_PUBLISH_TOKEN`, then publish the files in `dist/`:
+
+```shell
+uv publish
+```
+
+By default, this publishes to PyPI. For a first trial, use [TestPyPI](https://test.pypi.org/) with a TestPyPI token and its upload URL:
+
+```shell
+uv publish --publish-url https://test.pypi.org/legacy/
+```
+
+## Manage Related Projects
+
+### Introduce Workspaces
+
+When several related packages live in one repository, a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) lets each keep its own `pyproject.toml` while sharing one `uv.lock`. For example, a root project can include packages under `packages/`:
+
+```toml
+[tool.uv.workspace]
+members = ["packages/*"]
+```
+
+When the root depends on a member called `hello-library`, add it to the existing `[project]` dependencies and point uv to the local source:
+
+```toml
+[tool.uv.sources]
+hello-library = { workspace = true }
+```
+
+The resulting `[project]` table includes `dependencies = ["hello-library"]`. Start with one project; introduce a workspace when you need to develop related packages together.

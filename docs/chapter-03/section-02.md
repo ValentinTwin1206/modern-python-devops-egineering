@@ -1,104 +1,260 @@
-# Project Scaffolding
+# Dependency Management with uv
 
-## Execute third party tools
+## Introduction
 
-### Applied Project
+Modern Python applications are built on top of dependencies. Managing those dependencies becomes increasingly challenging when developers work on different operating systems, use different Python versions, or require platform-specific tooling.
 
-The section continues with [Bob's Webserver](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) and showcases how easily even legacy projects can be scaffolded with `uv`.
+`uv` splits dependency management into three concerns: **declaring** what a project needs (`pyproject.toml`), **locking** the resolved versions (`uv.lock`), and **synchronizing** the environment (`.venv`) to match the lockfile. Each concern has its own commands, and each file has exactly one responsibility.
 
-### Run the Project
+!!! note "Scope"
+    For project setup, Python versions, and project environments, see [Project Scaffolding with uv](./section-01.md). Standalone environments and tools are covered in [Section 04](./section-04.md).
 
-Handling third-party tools is also addressed inside the [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
+## Declaring Dependencies
 
-### The Tool Interface
+### The `pyproject.toml`
 
-During development you frequently reach for command-line tools such as `ruff`, `black`, or `httpie`. Installing them into the project environment would mix tool dependencies with the project's own dependencies and lead to exactly the conflicts described above. To keep them isolated, `uv` provides a dedicated **tool interface**.
+The `pyproject.toml` declares the *intent* of a project: which packages it needs and which version ranges are acceptable. It does not record exact versions of transitive dependencies — that is the lockfile's job.
 
-To test Bob's server endpoints with `httpie`, install it once as a globally available tool:
-
-```shell
-uv tool install httpie
-```
-
-uv installs the tool into its own isolated environment under `~/.local/share/uv/tools` and exposes the executable on the `PATH`, completely separate from any project `.venv`.
-
-If a tool is only needed once, `uvx` (an alias for `uv tool run`) runs it ephemerally without a permanent installation:
-
-```shell
-uvx --from httpie http GET http://127.0.0.1:8000/health
-```
-
-!!! note "`uv tool` vs. `uvx`"
-    Use `uv tool install` for tools you rely on regularly and `uvx` for one-off invocations that should leave no trace on the system.
-
-
-## Build and Publishing Packages
-
-### Build distributions
-
-The `uv build` command compiles the project into a source distribution (`sdist`) and a wheel, placing both in the `dist/` directory:
-
-```shell
-uv build
-```
-
-```
-dist/
-├── my_project-0.1.0.tar.gz              ← source distribution
-└── my_project-0.1.0-py3-none-any.whl   ← wheel
-```
-
-### Publish packages
-
-The `uv publish` command uploads the distribution files from `dist/` to PyPI using the `--token` for authentication and the `--publish-url` to override the target registry:
-
-```shell
-uv publish --token pypi-<your-token> --publish-url https://test.pypi.org/legacy/
-```
-
-## Handling multiple projects with uv
-
-### Applied project
-
-This section builds on the previously introduced [License Service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md) and integrates the security middleware [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) as a workspace member. This workspace setup streamlines development by allowing both projects to be managed and tested together.
-
-### Run the project
-
-The concept of `uv` workspaces is also addressed inside the [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) notebook.
-
-### Introduction into uv workspaces
-
-When multiple related projects must be developed and tested together, a consistent shared environment becomes essential. For scenarios like this, `uv` provides the concept of **[workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/)**. A workspace allows multiple related Python projects to coexist within a single repository while remaining independent packages. All workspace members share a common `uv.lock` file, ensuring a consistent dependency set across the entire workspace. At the same time, each member maintains its own `pyproject.toml`, allowing project-specific configuration and metadata.
-
-### Structure and Members
-
-A workspace consists of a *root project* that defines the workspace itself and one or more *workspace members*. There is no single correct layout: members may live side by side in a dedicated `packages/` directory underneath a standalone root, or a library can simply be nested inside the application that consumes it. What actually turns a set of folders into a workspace is not the directory layout but the referencing inside the `pyproject.toml` files.
-
-Take the [license service](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md) and the [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware. The license service is the application that depends on `PyGuard`, so it becomes the workspace root and `PyGuard` is nested underneath it as a member:
-
-```text
-license-service/
-├── pyproject.toml          ← workspace root
-├── uv.lock                 ← shared lock file
-├── main.py
-└── packages/
-    └── pyguard/
-        └── pyproject.toml  ← member, keeps its own metadata
-```
-
-The root `pyproject.toml` does two things: it declares which folders are members via `[tool.uv.workspace]`, and it pins `pyguard` as a workspace source so that `uv` resolves it from the workspace instead of PyPI:
+A minimal, complete project file looks like this:
 
 ```toml
-[tool.uv.workspace]
-members = ["packages/*"]
-
-[tool.uv.sources]
-pyguard = { workspace = true }
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "httpx==0.27.2",
+    "rich>=13.7,<14",
+]
 ```
 
-The member (`packages/pyguard/pyproject.toml`) needs no workspace-specific configuration at all — it stays a normal package with its own dependencies and metadata.
+### Add and Remove
 
-!!! note "The layout is flexible, the referencing is not"
-    You are free to organise members however you like — nested under the root as shown above, or side by side in a dedicated `packages/` directory with a standalone root. Regardless of the chosen layout, a workspace only comes to life through the `[tool.uv.workspace]` members and the `{ workspace = true }` sources declared in the `pyproject.toml` files.
+Instead of editing the file by hand, `uv` can modify the `dependencies` entry for you and immediately re-resolve.
 
-To invoke a dedicated workspace member such as the `pyguard` package you can simply use the `uv run --package pyguard` command. 
+Add a runtime dependency:
+
+```shell
+uv add requests
+```
+
+Without an explicit constraint, `uv` writes a lower bound at the current version into `pyproject.toml`:
+
+```toml
+dependencies = [
+    "requests>=2.32.3",
+]
+```
+
+Add a dependency with an explicit constraint:
+
+```shell
+uv add "httpx==0.27.2"
+```
+
+Remove a dependency:
+
+```shell
+uv remove requests
+```
+
+Every `uv add` / `uv remove` updates `pyproject.toml`, re-resolves the graph into `uv.lock`, and syncs the `.venv` in one step.
+
+### Alternative Sources
+
+`uv add` can also install from a Git repository. For example, add `httpx` from its source repository:
+
+```shell
+uv add "httpx @ git+https://github.com/encode/httpx"
+```
+
+`uv` records `httpx` as a dependency in `[project]` and its Git location under `[tool.uv.sources]`. Prefer a released package from an index unless you need code from a repository.
+
+### Version Constraints
+
+The constraint style controls how much freedom the resolver has:
+
+| Constraint | Meaning | Typical use |
+| --- | --- | --- |
+| `httpx==0.27.2` | exactly this version | maximum reproducibility at declaration level |
+| `fastapi>=0.115,<0.116` | any patch release within a minor version | applications |
+| `rich>=13.7` | this version or anything newer | libraries with wide compatibility |
+
+Prefer ranges for applications and libraries; the lockfile already guarantees exact versions at install time. Exact pins in `pyproject.toml` are only needed when a specific version is a hard requirement.
+
+### Dependency Groups
+
+Development tools, test frameworks, and documentation generators are not needed in production. Dependency groups separate them from runtime requirements:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+```
+
+Add a package directly into a group:
+
+```shell
+uv add --group dev pytest
+```
+
+The `dev` group is special-cased and can also be targeted with a shortcut:
+
+```shell
+uv add --dev ruff
+```
+
+Remove a package from a group:
+
+```shell
+uv remove --group dev pytest
+```
+
+### Dependency Markers
+
+Some dependencies are only valid on specific platforms or Python versions. Without additional information, the resolver assumes that every dependency must be installed in every environment.
+
+Consider a project that uses Windows Authentication through `pywin32`. Declared unconditionally, `uv sync` fails on Linux because `pywin32` publishes no Linux wheels. A marker restricts the dependency to the platforms where it exists:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "pywin32>=310; sys_platform == 'win32'",
+]
+```
+
+The resolver now includes `pywin32` only on Windows systems, producing a valid dependency graph across all environments.
+
+!!! note
+    Dependency markers are defined by the `PEP 508` standard; see the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. Operating system and Python version markers are by far the most common use cases, especially in mixed environments such as Windows, Linux, WSL, CI runners, and production containers.
+
+## Locking
+
+### The Lockfile
+
+Dependency locking ensures that every installation uses the exact same dependency versions, making builds reproducible and preventing unexpected breakages caused by newly released package versions.
+
+Resolve the declared dependencies and write the result to `uv.lock`:
+
+```shell
+uv lock
+```
+
+!!! note "uv.lock file"
+    The `uv.lock` file is the single source of truth for a project's installed versions. It contains the fully resolved dependency graph — all direct and transitive dependencies with exact versions. Because `uv` uses a universal resolution strategy, the lockfile is portable across operating systems and Python versions.
+
+`uv add`, `uv remove`, and `uv lock` update the lockfile. `uv sync` and `uv run` can also update it when `pyproject.toml` has changed. Review lockfile changes together with the requirements that caused them.
+
+!!! note "Commit the lockfile"
+    Commit `uv.lock` to version control. Only then do development, CI, and production install the same versions.
+
+### Validate and Upgrade
+
+Verify that the lockfile is still in sync with `pyproject.toml` — use this in CI or before committing:
+
+```shell
+uv lock --check
+```
+
+Upgrade a single dependency to the latest version its constraint allows, leaving everything else untouched:
+
+```shell
+uv lock --upgrade-package fastapi
+```
+
+Upgrade all dependencies to the latest versions allowed by their declared ranges:
+
+```shell
+uv lock --upgrade
+```
+
+## Synchronizing
+
+### Install from the Lockfile
+
+Make the `.venv` match `uv.lock` exactly — packages are installed, upgraded, downgraded, or removed as needed:
+
+```shell
+uv sync
+```
+
+Include a dependency group:
+
+```shell
+uv sync --group dev
+```
+
+Include all groups:
+
+```shell
+uv sync --all-groups
+```
+
+If the lockfile is outdated relative to `pyproject.toml`, `uv sync` re-locks automatically before installing.
+
+### Frozen Installs
+
+In CI and production, an automatic re-lock is unwanted: the build must install *exactly* what was reviewed. The `--locked` flag checks that `uv.lock` matches `pyproject.toml` and fails if it is stale:
+
+```shell
+uv sync --locked
+```
+
+A failing locked sync signals that someone changed `pyproject.toml` without re-locking. `--frozen` instead uses the existing lockfile *without checking* whether it is current.
+
+## Resolution
+
+Before a lockfile can be written, the package manager must find a set of versions that satisfies every declared constraint, including all transitive constraints — this process is called **resolution**. `uv` resolves automatically whenever dependencies are added, updated, or synchronized.
+
+### Strategies
+
+By default, `uv` prefers the latest compatible version of each dependency. For libraries, testing only against the latest versions is insufficient: a declaration such as `fastapi>=0.100.0` claims compatibility with *every* version from `0.100.0` upward, not just the newest release.
+
+Install the lowest compatible version for all direct and transitive dependencies:
+
+```shell
+uv sync --resolution lowest
+```
+
+Install the lowest compatible versions for direct dependencies only, keeping transitive dependencies at their latest:
+
+```shell
+uv sync --resolution lowest-direct
+```
+
+These strategies are particularly useful in CI pipelines to verify that declared version bounds are accurate.
+
+### Inspect the Graph
+
+Display the resolved dependency tree, showing which package pulled in which transitive dependency:
+
+```shell
+uv tree
+```
+
+## Export Dependencies
+
+### Share a Requirements File
+
+When another tool expects a `requirements.txt`, export one from the project's lockfile:
+
+```shell
+uv export --format requirements.txt -o requirements.txt
+```
+
+Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](./section-04.md#work-with-legacy-projects).

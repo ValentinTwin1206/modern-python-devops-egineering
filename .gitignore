@@ -50,6 +50,7 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+*lab/
 
 # IDE settings
 .idea/

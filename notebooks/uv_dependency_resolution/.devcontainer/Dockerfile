@@ -39,7 +39,7 @@ RUN if id ubuntu > /dev/null 2>&1; then userdel --remove ubuntu; fi \
         --shell /bin/bash \
         --groups sudo \
         bob \
-    && echo 'bob:bar' | chpasswd \
+    && echo 'bob:c3po' | chpasswd \
     && echo 'bob ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-bob \
     && chmod 0440 /etc/sudoers.d/90-bob
 

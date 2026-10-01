@@ -1,18 +1,11 @@
-# The Ubuntu 24.04 server that Bob hands over to Alice.
-#
-# This image is deliberately "boring": it is the plain, freshly installed
-# machine an administrator would provision, and nothing more.
-#
-#   * one shared system Python interpreter (python3, dev headers, pip, venv)
-#   * Jupyter, so the story can be told from inside a notebook
-#   * two real Linux users: bob (sudo) and alice (unprivileged)
-#
-# No application dependency is baked in. Every package that Bob or Alice
-# needs for their projects is installed live in the notebook, because
-# watching those installations collide is the whole point of the lesson.
+# A small, reproducible Ubuntu environment for the uv project-scaffolding lab.
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+
+# Copy uv from its published image so the lesson uses the real uv executable,
+# without installing it into the notebook's project environment.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
@@ -28,29 +21,14 @@ RUN apt-get update \
         curl \
         git \
         passwd \
-        procps \
         python3 \
-        python3-dev \
         python3-pip \
         python3-venv \
         sudo \
-        util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------------------------------------------------
-# Create users
-#
-# Ubuntu 24.04 ships a placeholder "ubuntu" account on UID 1000.
-# Remove it so bob and alice get the first human UIDs.
-#
-# Bob:
-#   - administrator
-#   - password: c3po
-#   - passwordless sudo for the demonstration
-#
-# Alice:
-#   - unprivileged
-#   - password: foo
+# The notebook runs as "bob"
 # ----------------------------------------------------------------------
 RUN if id ubuntu > /dev/null 2>&1; then userdel --remove ubuntu; fi \
     && useradd \
@@ -60,20 +38,11 @@ RUN if id ubuntu > /dev/null 2>&1; then userdel --remove ubuntu; fi \
         bob \
     && echo 'bob:c3po' | chpasswd \
     && echo 'bob ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-bob \
-    && chmod 0440 /etc/sudoers.d/90-bob \
-    && useradd \
-        --create-home \
-        --shell /bin/bash \
-        alice \
-    && echo 'alice:foo' | chpasswd
+    && chmod 0440 /etc/sudoers.d/90-bob
 
 # ----------------------------------------------------------------------
-# Jupyter on the shared system interpreter
-#
-# Ubuntu 24.04 marks its system Python as "externally managed" (PEP 668),
-# so pip refuses to touch it unless --break-system-packages is given.
-# The notebook keeps that flag visible on purpose; here it is needed once
-# to make the machine able to run the notebook at all.
+# Jupyter on the system Python. The project dependencies are intentionally
+# installed later by uv in the notebook, not baked into this image.
 # ----------------------------------------------------------------------
 RUN python3 -m pip install \
         --break-system-packages \
@@ -82,11 +51,10 @@ RUN python3 -m pip install \
         notebook \
         ipykernel
 
-# Register the system Python as a clearly named Jupyter kernel.
 RUN python3 -m ipykernel install \
         --sys-prefix \
-        --name system-python3 \
-        --display-name "Python 3 — Ubuntu System"
+        --name uv-scaffolding-python3 \
+        --display-name "Python 3 - uv Project Scaffolding"
 
 # ----------------------------------------------------------------------
 # Workspace

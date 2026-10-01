@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This chapter introduces one of the hottest takeaways in modern Python development: `uv`, a lightweight, high-performance python project manager developed by Astral.
+This chapter introduces `uv`, a fast Python project and package manager developed by Astral.
 
-Section 01 starts with the setup of `uv` and then shows how it can be used throughout the whole development lifecycle. Section 02 adds the broader view of `uv` as part of the modern Python standard. The next section goes deeper into dependency management, including lock files, virtual environments, and dependency resolution. After that, the chapter explains `uv`'s caching concept in more detail and why it matters for faster, more reproducible workflows. It concludes with a comparison of `uv` and other tools in the Python ecosystem.
+Start with [project scaffolding](./section-01.md): install uv, create a project, configure it, and build or publish a package. Then explore [dependency management](./section-02.md), [caching](./section-03.md), and [standalone environments and tools](./section-04.md).
 
 ## Overview
 
@@ -12,7 +12,7 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
-| [Section 01](./section-01.md) | Python Project management | - | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) |
-| [Section 02](./section-02.md) | Project Scaffolding | [Bob's Server](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/projXY_bobs_webserver/README.md) | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) |
-| [Section 03](./section-03.md) | Dependency Management | - | [uv_dependency_lab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/notebooks/uv_dependency_resolution/uv_dependency_lab.ipynb) |
-| [Section 04](./section-04.md) | Dependency Caching with uv | |
+| [Section 01](./section-01.md) | Project scaffolding with uv | - | [A New Hope for Bob](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_proj_scaffolding/uv_proj_scaffolding_lab.ipynb) |
+| [Section 02](./section-02.md) | Dependency management with uv | - | [Bob Discovers the Force of uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_dependency_resolution/uv_dependency_lab.ipynb) |
+| [Section 03](./section-03.md) | Dependency caching with uv | - | - |
+| [Section 04](./section-04.md) | Standalone environments and tools with uv | - | [Modern Python with uv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_fundamentals/modern_python_with_uv.ipynb) |
