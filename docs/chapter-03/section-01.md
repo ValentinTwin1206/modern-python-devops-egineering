@@ -2,11 +2,11 @@
 
 ## Introduction
 
-`uv` manages a Python project from its first files to a published package. Its central configuration file is `pyproject.toml`: it describes the project, its dependencies, and, when needed, how to build it. This section follows one project through that workflow. For dependency versions and lockfiles, see [Dependency Management with uv](./section-02.md).
+Written in Rust, `uv` is a Python project and package manager maintained by [Astral](https://astral.sh/) since its first [release in 2024](https://astral.sh/blog/uv). `uv` manages a project from its first files to a published package. Its central configuration file is `pyproject.toml`, which describes the project, its dependencies, and, when needed, how to build it. This section follows one project through that workflow.
 
 ## Install uv
 
-Choose the installer for your operating system. You only need to install `uv` once.
+`uv` is distributed as a single, self-contained static binary and can be installed without Python already present.
 
 === "macOS and Linux"
 
@@ -30,24 +30,58 @@ Check that the command is available:
 uv --version
 ```
 
+## Manage Python with uv
+
+### Installing Python with uv
+Like [`nvm`](https://github.com/nvm-sh/nvm) for Node.js and [`rustup`](https://rust-lang.github.io/rustup/) for Rust, `uv` can install and select interpreter versions without replacing the system interpreter. Use the `uv python` commands to manage interpreters. Install version 3.13 alongside the system interpreter:
+
+```shell
+uv python install 3.13
+```
+
+On Linux, `uv` stores managed interpreter files in `~/.local/share/uv/python` by default. Run `uv python dir` to see the configured installation directory. For example, the output looks like this; the home-directory path varies by user:
+
+```bash
+$ uv python dir
+/home/{user}/.local/share/uv/python
+```
+
+### Change the Project's Python Pin
+
+Installing an interpreter does not select it for every project. A `.python-version` pin selects the local interpreter; `requires-python` in `pyproject.toml` declares which versions the project supports. From the directory that will contain the examples, create the pin. `--no-project` skips compatibility checks against an existing project:
+
+```shell
+uv python pin --no-project 3.13
+```
+
+The command writes `3.13` to `.python-version` in the current directory. Projects initialized here or in its subdirectories inherit this as their default Python version. To use another Python version the `--python <version>` must be passed alongside the `uv init` command when [Initializing a Project](#initialize-a-project).
+
+```mermaid
+flowchart LR
+    parent["Parent directory<br/>.python-version: 3.13"] -->|"uv init"| inherited["Project A<br/>Python 3.13"]
+    parent -->|"uv init --python 3.12"| overridden["Project B<br/>Python 3.12"]
+```
+
 ## Initialize a Project
 
 ### Choose a Project Type
 
-`uv init` creates the initial files. Choose a template according to what you want to make. The examples below show complete, *illustrative* `pyproject.toml` files; the exact generated fields and backend version depend on your uv version.
+At the start of a project, `uv init` can scaffold a simple application, a packaged application, a library, or a bare `pyproject.toml` for a custom layout. Run these examples from the directory pinned to Python 3.13 in [Manage Python with uv](#manage-python-with-uv); no `--python` flag is needed. The inherited pin sets `requires-python` to `>=3.13`; standard templates also create their own `.python-version`, while the bare template relies on the parent pin.
 
 === "Simple application"
 
-    Create an application that you run locally without building it as a package:
+    An **application** is a program you run, such as a script or web server. This simple template has no `[build-system]` table in `pyproject.toml` and is not installed as a package in `.venv`.
 
     ```shell
     uv init --app --no-package hello-app
     ```
 
-    The initial files include a script at the project root:
+    The initial files include a script (`main.py`) at the project root:
 
     ```text
     hello-app/
+    ├── .git/
+    ├── .gitignore
     ├── .python-version
     ├── README.md
     ├── main.py
@@ -62,22 +96,30 @@ uv --version
     version = "0.1.0"
     description = "A small Python application"
     readme = "README.md"
-    requires-python = ">=3.12"
+    requires-python = ">=3.13"
     dependencies = []
+    ```
+
+    To run it, pass the Python filename to `uv run` such as the generated `main.py`:
+
+    ```shell
+    uv run main.py
     ```
 
 === "Packaged application"
 
-    Create an application with an installable package and a command-line entry point:
+    A **packaged application** is a runnable program with a `[build-system]` table in `pyproject.toml`, allowing it to be installed and distributed. Packaging describes how code is delivered, not what it does; both applications and libraries can be packaged. Create one with an installable Python package and a command-line entry point:
 
     ```shell
-    uv init --app --package hello-app
+    uv init --app --package --build-backend uv hello-app
     ```
 
-    Its source code lives in a package under `src/`:
+    Its source code lives in a **Python package**, an importable directory containing `__init__.py`, under `src/`:
 
     ```text
     hello-app/
+    ├── .git/
+    ├── .gitignore
     ├── .python-version
     ├── README.md
     ├── pyproject.toml
@@ -94,7 +136,7 @@ uv --version
     version = "0.1.0"
     description = "A packaged Python application"
     readme = "README.md"
-    requires-python = ">=3.12"
+    requires-python = ">=3.13"
     dependencies = []
 
     [project.scripts]
@@ -105,18 +147,26 @@ uv --version
     build-backend = "uv_build"
     ```
 
-=== "Library"
-
-    Create a reusable package for other projects to import:
+    In development, `uv run` syncs `.venv` and installs the project in editable mode, keeping imports pointed at your working tree. After changing code in `src/hello_app/`, run the entry point declared in `[project.scripts]` such as `hello-app` again:
 
     ```shell
-    uv init --lib hello-library
+    uv run hello-app
     ```
 
-    The library has a package under `src/`:
+=== "Library"
+
+    A **library** provides reusable functions and classes that other projects import, rather than a program users run directly. The `--lib` option creates a packaged project with a `[build-system]` table in `pyproject.toml` for building and distributing it. Create one with an importable Python package:
+
+    ```shell
+    uv init --lib --build-backend uv hello-library
+    ```
+
+    The library has an importable Python package under `src/`. The `py.typed` marker tells type checkers that the library provides type information:
 
     ```text
     hello-library/
+    ├── .git/
+    ├── .gitignore
     ├── .python-version
     ├── README.md
     ├── pyproject.toml
@@ -134,7 +184,7 @@ uv --version
     version = "0.1.0"
     description = "A reusable Python library"
     readme = "README.md"
-    requires-python = ">=3.12"
+    requires-python = ">=3.13"
     dependencies = []
 
     [build-system]
@@ -142,35 +192,36 @@ uv --version
     build-backend = "uv_build"
     ```
 
-For a file-only starting point, `--bare` creates just `pyproject.toml` and leaves the project layout to you:
+=== "Bare project"
 
-```shell
-uv init --bare hello-project
-```
+    `--bare` creates just `pyproject.toml`; unlike the other templates, it skips source files, `README.md`, `.python-version`, `.gitignore`, and the `.git/` repository. Use it when you want to define the source layout yourself. It controls scaffolding, not project type; combine it with `--lib` or `--package` to add a build system without generating source files.
 
-### Understand `pyproject.toml`
+    Create a minimal starting point for an existing codebase or a custom layout:
 
-`[project]` holds metadata and runtime requirements. `[project.scripts]` names commands users can run, while `[build-system]` says how to package the code. This one standard file can grow with the project; there is no need to scatter these settings across several setup files. See [Declaring Dependencies](./section-02.md#declaring-dependencies) for how to change requirements safely.
+    ```shell
+    uv init --bare hello-project
+    ```
 
-The rest of this section follows the **packaged application**. Run its commands from inside `hello-app/`.
+    Only the configuration file is created:
 
-## Choose a Python Version
+    ```text
+    hello-project/
+    └── pyproject.toml
+    ```
 
-### Install and Pin Python
+    Its complete `pyproject.toml` can look like this:
 
-Install the interpreter you want to use without replacing your system Python:
+    ```toml
+    [project]
+    name = "hello-project"
+    version = "0.1.0"
+    requires-python = ">=3.13"
+    dependencies = []
+    ```
 
-```shell
-uv python install 3.12
-```
+!!! info "uv init defaults"
 
-Pin it for this project:
-
-```shell
-uv python pin 3.12
-```
-
-The pin lives in `.python-version` and selects the interpreter for local development. The `requires-python` value in `pyproject.toml` instead tells installers which Python versions the project supports; keep it consistent with the code you write.
+    In `uv v0.11.1`, standard templates initialize a Git repository and create `.gitignore` by default; `--bare` skips Git initialization, and `--vcs none` disables it. Packaged templates default to Astral's `uv_build` backend, not setuptools. To use setuptools, pass `--build-backend setuptools`; the packaged examples above explicitly select uv's backend with `--build-backend uv`.
 
 ## Work in the Project Environment
 
