@@ -9,7 +9,7 @@ to the backend.
 
 ## Introduction
 
-### Streamlit components
+### Components
 
 A Streamlit works as ordinary Python scripts. It executes the
 script from top to bottom and reruns it whenever the user interacts with a
@@ -34,7 +34,7 @@ if st.button("Verify") and license_key:
 	* `st.button()` triggers an action during a script rerun
 	* `st.success()`, `st.error()`, and `st.code()` act as result helpers and provide visual feedback.
 
-### Run a Streamlit application
+### Run the Application
 
 Start the application from the directory containing `app.py`:
 
@@ -135,7 +135,7 @@ interfaces. Build it from the frontend directory:
 docker build -t license-service-frontend .
 ```
 
-## Bootstrap the license-service
+## Bootstrap the Service
 
 Before using Docker Compose, both services can be started with independent
 `docker run` commands. Create a shared Docker network first so the frontend

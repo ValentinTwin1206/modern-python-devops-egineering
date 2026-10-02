@@ -1,118 +1,148 @@
-# Python Service Orchestration
+# Monitoring
+## Connecting Grafana to InfluxDB
 
-In the previous [section](./section-01.md), we introduced the frontend and started the frontend
-and backend separately with two `docker run` commands. 
+The license service records API requests in InfluxDB. Each request is stored
+in the `api_requests` measurement with the HTTP method, endpoint, and response
+status code.
 
-In this section, we replace that manual setup with [Docker Compose](https://docs.docker.com/compose/). Compose starts the components together and configures the shared network they use to communicate. This provides a simple way to showcase multi-component application startup, networking, and service discovery in one repeatable configuration.
+### Open Grafana
 
-## Introduction
+Start the monitoring stack with Docker Compose and open Grafana:
 
-Docker Compose is a tool for defining and running applications made up of multiple containers. A Compose file describes each service, its image or build configuration, ports, environment variables, dependencies, and networks. The [docker-compose.yaml](#applied-project) used in this section serves as the basis for the following explanations, which refer to its core components: 
+<http://localhost:3001>
 
-  * services
-  * networking
-  * service discovery
+Log in with the Grafana administrator credentials configured in the `.env`
+file:
 
-### Services
+- **Username:** `admin`
+- **Password:** `admin1234`
 
-Each entry under `services` describes one container role. Compose also gives each service a network identity that other services can use.
+### Add InfluxDB as a data source
 
-In the Compose file, the `depends_on` setting in the `frontend` service expresses startup order, but it does not prove that the `backend` dependency is ready to accept requests. Applications that need readiness guarantees should use health checks, retries, or an explicit readiness check.
+In Grafana, open **Connections** → **Data sources** → **Add new data source**
+and select **InfluxDB**.
 
-The `backend` service exposes port `8080`, and the `frontend` service exposes port `8501`. The frontend declares a dependency on the backend so Compose starts the backend first.
+Use these settings:
 
-### Networking
+- **Query language:** `Flux`
+- **URL:** `http://influxdb:8086`
+- **Organization:** `oidc_license_service`
+- **Default bucket:** `api_metrics`
+- **Token:** the value of `INFLUXDB_TOKEN` from `.env`
 
-In the Compose file, both services join the `license_service_network` network. The network uses the `172.20.0.0/24` subnet and assigns predictable addresses through the `BACKEND_IP` and `FRONTEND_IP` environment variables.
+Use `http://influxdb:8086` rather than `http://localhost:8086`. Grafana runs
+inside Docker, so `localhost` refers to the Grafana container. The name
+`influxdb` resolves to the InfluxDB service on the Docker network.
 
-The Compose file configures services to communicate by service name rather than by `localhost`. Therefore, the frontend uses `http://backend:8080` as its backend URL.
+Click **Save & test**. Grafana should confirm that the data source is working.
 
-The published ports are different from the internal service address: port `8501` makes the frontend available to the host, while port `8080` makes the backend available to the host. Container-to-container traffic uses the internal Compose network.
+### Query API metrics
 
-### Service Discovery
+Create a dashboard and add a panel using the InfluxDB data source. A basic
+Flux query for recent API calls is:
 
-The Compose configuration provides internal DNS-based service discovery. A container can resolve another service using the service name from the Compose file, for example:
-
-`http://backend:8080`
-
-The name is resolved to the backend container's current private IP address. This is more stable than hard-coding an IP address because containers may be recreated and receive different addresses.
-
-## Applied Project
-
-**docker-compose.yaml**
-
-The `docker-compose.yml` file describes the complete application as a group of services. Docker Compose reads this file and uses it to create the containers, network, port mappings, and environment configuration.
-
-```yaml
-services:
-  
-  backend:
-    container_name: backend
-    image: license-service-backend:latest
-    ports:
-      - "8080:8080"
-    networks:
-      license_service_network:
-        ipv4_address: ${BACKEND_IP:-172.20.0.2}
-
-  frontend:
-    build: .
-    container_name: frontend
-    depends_on:
-      - backend
-    ports:
-      - "8501:8501"
-    networks:
-      license_service_network:
-        ipv4_address: ${FRONTEND_IP:-172.20.0.3}
-    environment:
-      BACKEND_URL: http://backend:8080
-
-
-networks:
-  license_service_network:
-    ipam:
-      config:
-        - subnet: 172.20.0.0/24
-
+```flux
+from(bucket: "api_metrics")
+	|> range(start: -1h)
+	|> filter(fn: (r) => r._measurement == "api_requests")
 ```
 
-The most important configuration keys are:
+The stored data contains:
 
-- `services` — Defines the containers that make up the application.
-- `image` — Selects an existing container image for a service.
-- `build` — Builds a service image from a local Dockerfile.
-- `container_name` — Assigns a readable name to the container.
-- `depends_on` — Defines service startup order.
-- `ports` — Maps host ports to container ports.
-- `networks` — Connects services to a shared Docker network.
-- `ipv4_address` — Assigns a fixed address within a configured network.
-- `environment` — Passes configuration values into the container.
-- `ipam` and `subnet` — Configure the address range of a Docker network.
+- `method` — the HTTP method, such as `GET` or `POST`.
+- `endpoint` — the requested API path.
+- `_field` — normally `status_code`.
+- `_value` — the HTTP response status code.
 
-## Bootstrap the license-service
+The middleware writes the metric after the request completes. Successful
+writes return no value; InfluxDB raises an exception when a synchronous write
+fails. Monitoring errors are logged and do not cause an otherwise healthy API
+request to fail.
 
-The complete application can be started from the `projects/proj10_license_service_frontend` directory. The Compose file expects the backend image to be available locally, so build that image first from the backend project. The additional PyGuard build context is required by the backend Dockerfile:
+### Count API calls over time
 
-```shell
-cd projects/proj10_license_service_frontend
+To create a dashboard panel that displays the number of API calls over time:
 
-docker build \
-  --build-context pyguard=../proj1_pyguard \
-  -t license-service-backend:latest \
-  ../proj2_license_service
+1. Open **Dashboards** → **New** → **New dashboard**.
+2. Click **Add visualization**.
+3. Select the InfluxDB data source.
+4. Switch to **Code** mode and enter this Flux query:
+
+```flux
+from(bucket: "api_metrics")
+	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+	|> filter(fn: (r) => r._measurement == "api_requests")
+	|> filter(fn: (r) => r._field == "status_code")
+	|> aggregateWindow(every: 1m, fn: count, createEmpty: true)
+	|> yield(name: "api_calls")
 ```
 
-Then start the frontend and backend together with Docker Compose. The `--build` option builds the frontend image from its Dockerfile before starting both services:
+5. Select the **Time series** visualization.
+6. Set the panel title to **API Calls Over Time**.
+7. Click **Apply** and save the dashboard.
 
-```shell
-docker compose up --build
+The query counts the `status_code` field once for every recorded request and
+groups the results into one-minute intervals. The dashboard time-range
+selector controls which requests are included.
+
+For a single total count, create a **Stat** visualization with this query:
+
+```flux
+from(bucket: "api_metrics")
+	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+	|> filter(fn: (r) => r._measurement == "api_requests")
+	|> filter(fn: (r) => r._field == "status_code")
+	|> count()
 ```
 
-After the containers have started, open the frontend at `http://localhost:8501`. The frontend reaches the backend through the Compose network at `http://backend:8080`, while the backend is also available from the host at `http://localhost:8080`.
+### Show requester IPs and endpoints in a table
 
-Stop and remove the containers and network with:
+To list one row for each API request with its timestamp, requester IP,
+endpoint, and response status code:
 
-```shell
-docker compose down
+1. Add a new Grafana panel.
+2. Select the InfluxDB data source.
+3. Switch to **Code** mode.
+4. Use this Flux query:
+
+```flux
+from(bucket: "api_metrics")
+	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+	|> filter(fn: (r) => r._measurement == "api_requests")
+	|> filter(fn: (r) => r._field == "status_code")
+	|> group()
+	|> keep(columns: ["_time", "client_ip", "endpoint", "_value"])
+	|> rename(columns: {
+		_time: "Time",
+		client_ip: "Requester",
+		endpoint: "Endpoint",
+		_value: "StatusCode",
+	})
+	|> sort(columns: ["Time"], desc: true)
 ```
+
+5. Set the query result format to **Table** in the query editor. Do not use
+	**Time series** format, because Grafana displays tags as series labels in
+	that mode.
+6. Select the **Table** visualization.
+7. In the table options, disable **Column filter** to remove the filter row at
+	the bottom of the table.
+8. Set the panel title to **API Calls by Requester**.
+9. Apply and save the panel.
+
+The resulting table contains one line per recorded request with these columns:
+
+- `Time` — when the request was recorded.
+- `Requester` — the requester IP address.
+- `Endpoint` — the requested API path.
+- `StatusCode` — the HTTP response status code.
+
+The `group()` call combines the individual InfluxDB series into one table so
+the tags remain normal columns instead of being rendered as a series label.
+This query does not use `count()` or `pivot()`, so requests are not grouped
+or aggregated. Each InfluxDB point remains a separate table row.
+
+If the table does not update after adding the `client_ip` tag, restart the
+backend container and generate new requests. Existing InfluxDB points do not
+contain tags that were added later.
+

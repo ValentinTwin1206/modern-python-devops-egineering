@@ -1,5 +1,6 @@
 """HTTP middleware used by the license service."""
 
+import os
 import logging
 
 from fastapi import Request as FastAPIRequest, responses
@@ -19,7 +20,15 @@ def is_jwt_protected(request: FastAPIRequest) -> bool:
 
 
 def create_guard() -> PyGuardMiddleware:
-    return PyGuardMiddleware(protected_paths=PROTECTED_PATHS)
+    """Creates the PyGuardMiddleware instance with the specified configuration."""
+    return PyGuardMiddleware(
+        protected_paths=PROTECTED_PATHS, 
+        brute_force_config={
+            "max_attempts": int(os.getenv("PYGUARD_MAX_ATTEMPTS", 5)),
+            "window_seconds": int(os.getenv("PYGUARD_WINDOW_SECONDS", 60)),
+            "block_seconds": int(os.getenv("PYGUARD_BLOCK_SECONDS", 300)),
+        },
+    )
 
 
 def configure_middleware(app, guard: PyGuardMiddleware) -> None:
@@ -49,6 +58,7 @@ def configure_middleware(app, guard: PyGuardMiddleware) -> None:
         response = await call_next(request)
         logger.info("Response: %s %s -> %s", request.method, request.url.path, response.status_code)
         return response
+
 
     @app.middleware("http")
     async def jwt_auth_middleware(request: FastAPIRequest, call_next):

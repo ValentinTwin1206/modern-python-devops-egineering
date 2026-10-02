@@ -9,7 +9,6 @@ from fastapi  import Depends, FastAPI, HTTPException, Query, Request as FastAPIR
 from pydantic import BaseModel
 
 from license_service.cloudsmith import (
-    CloudsmithClient,
     CloudsmithConfig,
     CloudsmithConfigurationError,
     verify_cloudsmith_on_startup,

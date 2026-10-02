@@ -25,10 +25,10 @@ orchestration work together to form a complete, testable system.
 
 Use the navigation on the left to move through the chapter's sections:
 
-| Section | Summary | Project |
+| Section | Summary | Tags |
 |---------|---------|---------|
-| [Section 01](./section-01.md) | Frontend | OIDC License Service |
-| [Section 02](./section-02.md) | Project Orchestration | OIDC License Service |
-| [Section 03](./section-03.md) | OIDC | OIDC License Service |
-| [Section 04](./section-04.md) | Dev Container | OIDC License Service |
-| [Section 05](./section-05.md) | End-to-End Testing | OIDC License Service |
+| [Section 01](./section-01.md) | Compose | Frontend, Backend, OIDC |
+| [Section 02](./section-02.md) | Backend | OIDC License Service |
+| [Section 03](./section-03.md) | Testing | DevContainer, Playwright, Artillery |
+| [Section 04](./section-04.md) | Monitoring | Grafana, InfluxDB |
+| [Section 04](./section-05.md) | CICD | GitHub Workflow, Dependabot |

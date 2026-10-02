@@ -1,4 +1,18 @@
 services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    networks:
+      license_service_network:
+
   backend:
     build:
       context: ./backend
