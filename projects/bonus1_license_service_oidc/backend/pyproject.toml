@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "fastapi>=0.116.0",
+    "influxdb-client>=1.45.0",
     "pyguard==0.1.0",
     "pyjwt[crypto]>=2.9.0",
     "requests>=2.32.0",

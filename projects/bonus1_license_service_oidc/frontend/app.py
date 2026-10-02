@@ -29,6 +29,7 @@ authenticated_user = st.user
 user_name = authenticated_user.get("preferred_username", authenticated_user.name)
 access_token = authenticated_user.tokens["access"]
 
+
 st.write(f"Signed in as: {user_name}")
 st.write(f"Email: {authenticated_user.get('email', 'N/A')}")
 

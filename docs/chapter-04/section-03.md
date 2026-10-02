@@ -1,118 +1,164 @@
-# Python Service Orchestration
+# Testing
 
-In the previous [section](./section-01.mds), we introduced the frontend and started the frontend
-and backend separately with two `docker run` commands. 
-
-In this section, we replace that manual setup with [Docker Compose](https://docs.docker.com/compose/). Compose starts the components together and configures the shared network they use to communicate. This provides a simple way to showcase multi-component application startup, networking, and service discovery in one repeatable configuration.
+This section builds on the previous [section](./section-03.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. Although Playwright and Artillery are used in the project, the focus is not to introduce these tools in detail; it is to explain the infrastructure and setup required to integrate them into the complete development and testing workflow.
 
 ## Introduction
 
-Docker Compose is a tool for defining and running applications made up of multiple containers. A Compose file describes each service, its image or build configuration, ports, environment variables, dependencies, and networks. The [docker-compose.yaml](#applied-project) used in this section serves as the basis for the following explanations, which refer to its core components: 
+### Playwright
 
-  * services
-  * networking
-  * service discovery
+[Playwright](https://playwright.dev/) is an end-to-end testing framework for automating browsers and verifying web applications from a user's perspective. It supports Chromium, Firefox, and WebKit through one consistent API.
 
-### Services
+Playwright tests usually create a browser context, open a page, perform user actions, and assert the expected result. A simple test can verify that the application displays the expected heading after navigation:
 
-Each entry under `services` describes one container role. Compose also gives each service a network identity that other services can use.
+```javascript
+import { test, expect } from "@playwright/test";
 
-In the Compose file, the `depends_on` setting in the `frontend` service expresses startup order, but it does not prove that the `backend` dependency is ready to accept requests. Applications that need readiness guarantees should use health checks, retries, or an explicit readiness check.
+test("the home page displays its heading", async ({ page }) => {
+	await page.goto("http://localhost:8501");
+	await expect(page.locator("h1")).toContainText("License Service");
+});
+```
 
-The `backend` service exposes port `8080`, and the `frontend` service exposes port `8501`. The frontend declares a dependency on the backend so Compose starts the backend first.
+The `page` fixture provides an isolated browser page for the test. `page.goto()` opens the application, while the assertion confirms that the rendered UI behaves as expected.
 
-### Networking
+### Artillery
 
-In the Compose file, both services join the `license_service_network` network. The network uses the `172.20.0.0/24` subnet and assigns predictable addresses through the `BACKEND_IP` and `FRONTEND_IP` environment variables.
+[Artillery](https://www.artillery.io/) is a load-testing tool for measuring how an application behaves when it receives requests from many concurrent users. It helps identify performance bottlenecks, high error rates, and slow response times before they affect users in production.
 
-The Compose file configures services to communicate by service name rather than by `localhost`. Therefore, the frontend uses `http://backend:8080` as its backend URL.
+An Artillery test is usually described in a YAML file. The `config` section defines the target and load phases, while `scenarios` describe the requests performed by each virtual user. A simple test can send repeated `GET` requests to the license service:
 
-The published ports are different from the internal service address: port `8501` makes the frontend available to the host, while port `8080` makes the backend available to the host. Container-to-container traffic uses the internal Compose network.
+```yaml
+config:
+	target: "http://localhost:8080"
+	phases:
+		- duration: 10
+			arrivalRate: 1
 
-### Service Discovery
+scenarios:
+	- flow:
+		- get:
+			url: "/"
+```
 
-The Compose configuration provides internal DNS-based service discovery. A container can resolve another service using the service name from the Compose file, for example:
-
-`http://backend:8080`
-
-The name is resolved to the backend container's current private IP address. This is more stable than hard-coding an IP address because containers may be recreated and receive different addresses.
+This test starts one virtual user per second for ten seconds. Each virtual user requests the service's root endpoint, allowing Artillery to record response times, throughput, and errors.
 
 ## Applied Project
 
-**docker-compose.yaml**
+### Dockerfile
 
-The `docker-compose.yml` file describes the complete application as a group of services. Docker Compose reads this file and uses it to create the containers, network, port mappings, and environment configuration.
+The Dev Container image is based on Microsoft's JavaScript and Node.js development image. It installs the command-line tools required by the project, including Bats, Bun, Playwright, and Artillery, and stores Playwright's browser binaries in a shared directory. The final sanity checks confirm that the tools are available before the container is used.
 
-```yaml
-services:
-  
-  backend:
-    container_name: backend
-    image: license-service-backend:latest
-    ports:
-      - "8080:8080"
-    networks:
-      license_service_network:
-        ipv4_address: ${BACKEND_IP:-172.20.0.2}
+```dockerfile
+FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
 
-  frontend:
-    build: .
-    container_name: frontend
-    depends_on:
-      - backend
-    ports:
-      - "8501:8501"
-    networks:
-      license_service_network:
-        ipv4_address: ${FRONTEND_IP:-172.20.0.3}
-    environment:
-      BACKEND_URL: http://backend:8080
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-networks:
-  license_service_network:
-    ipam:
-      config:
-        - subnet: 172.20.0.0/24
+USER root
+RUN apt-get update && apt-get upgrade -y \
+	&& apt-get install -y \
+		bats \
+		bats-support \
+		bats-assert \
+		bats-file \
+		dnsutils \
+	&& rm -rf /var/lib/apt/lists/*
 
+RUN curl -kfsSL https://bun.com/install \
+	| sed 's/curl --fail/curl --insecure --fail/' \
+	| bash \
+	&& cp /root/.bun/bin/bun /usr/local/bin/bun \
+	&& cp /root/.bun/bin/bunx /usr/local/bin/bunx
+
+RUN mkdir -p /ms-playwright \
+	&& npm install -g @playwright/test@1.58.0 artillery \
+	&& apt-get update \
+	&& npx playwright install --with-deps \
+	&& chown -R node:node /ms-playwright
+
+USER node
+WORKDIR /workspace
+ENV PATH=/workspace/node_modules/.bin:$PATH
+
+RUN bats --version \
+	&& bun --version \
+	&& bunx playwright --version \
+	&& artillery --version
+
+EXPOSE 9323
+CMD ["sleep", "infinity"]
 ```
 
-The most important configuration keys are:
+### devcontainer.json
 
-- `services` — Defines the containers that make up the application.
-- `image` — Selects an existing container image for a service.
-- `build` — Builds a service image from a local Dockerfile.
-- `container_name` — Assigns a readable name to the container.
-- `depends_on` — Defines service startup order.
-- `ports` — Maps host ports to container ports.
-- `networks` — Connects services to a shared Docker network.
-- `ipv4_address` — Assigns a fixed address within a configured network.
-- `environment` — Passes configuration values into the container.
-- `ipam` and `subnet` — Configure the address range of a Docker network.
+The `devcontainer.json` file connects the development container to the existing Docker Compose application. It selects the `devcontainer` service, starts the backend and frontend alongside it, installs the relevant VS Code extensions, and forwards the application ports to the host.
+
+```json
+{
+	"name": "License Service DevContainer",
+	"dockerComposeFile": ["../docker-compose.yml"],
+	"service": "devcontainer",
+	"workspaceFolder": "/workspace",
+	"runServices": [
+		"backend",
+		"frontend",
+		"devcontainer"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"ms-playwright.playwright"
+			]
+		}
+	},
+	"forwardPorts": [8080, 8501],
+	"portsAttributes": {
+		"8080": {
+			"label": "Backend",
+			"onAutoForward": "silent"
+		},
+		"8501": {
+			"label": "Frontend",
+			"onAutoForward": "silent"
+		}
+	},
+	"remoteUser": "node",
+	"overrideCommand": false
+}
+```
+
+### spike.yml
 
 ## Bootstrap the Service
 
-The complete application can be started from the `projects/proj10_license_service_frontend` directory. The Compose file expects the backend image to be available locally, so build that image first from the backend project. The additional PyGuard build context is required by the backend Dockerfile:
+The project can be started from VS Code using the `devcontainer.json` configuration. It builds the development container and starts it together with the backend and frontend services defined in Docker Compose.
 
-```shell
-cd projects/proj10_license_service_frontend
+1. **Install the prerequisites.** Install Docker and the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for VS Code. Make sure Docker is running.
 
-docker build \
-  --build-context pyguard=../proj1_pyguard \
-  -t license-service-backend:latest \
-  ../proj3_license_service
-```
+2. **Open the project.** In VS Code, select **File > Open Folder** and open:
 
-Then start the frontend and backend together with Docker Compose. The `--build` option builds the frontend image from its Dockerfile before starting both services:
+	```text
+	projects/proj11_license_service_devcontainer
+	```
 
-```shell
-docker compose up --build
-```
+	The folder contains `.devcontainer/devcontainer.json` and the referenced `docker-compose.yml` file.
 
-After the containers have started, open the frontend at `http://localhost:8501`. The frontend reaches the backend through the Compose network at `http://backend:8080`, while the backend is also available from the host at `http://localhost:8080`.
+3. **Start the container.** Open the Command Palette with **Ctrl+Shift+P** or **Cmd+Shift+P**, then run **Dev Containers: Reopen in Container**. VS Code builds the image and starts the `backend`, `frontend`, and `devcontainer` services. The first build may take several minutes because Playwright browsers are installed.
 
-Stop and remove the containers and network with:
+4. **Use the application.** Open `http://localhost:8501` for the frontend or `http://localhost:8080` for the backend. To verify the tools, open a VS Code terminal and run:
 
-```shell
-docker compose down
-```
+	```bash
+	bunx playwright --version
+	artillery --version
+	```
+
+Use **Dev Containers: Reopen Folder Locally** to leave the container. After changing the Dockerfile or `devcontainer.json`, use **Dev Containers: Rebuild Container**.
+
