@@ -225,44 +225,134 @@ At the start of a project, `uv init` can scaffold a simple application, a packag
 
 ## Work in the Project Environment
 
-### Create and Use `.venv`
-
-Prepare the project's virtual environment:
-
-```shell
-uv sync
-```
-
-`uv` creates `.venv` if needed. You do not have to activate it: `uv run` uses it automatically. To create an environment manually outside a managed project, see [Standalone Environments and Tools](./section-04.md#create-a-standalone-environment).
-
 ### Add Dependencies and Run the Project
 
-Add a library your application needs:
+!!! info "Automatic Environment Updates"
+
+    By default, `uv add` updates `pyproject.toml` and `uv.lock`, creates an in-project virtual environment `.venv` if needed, and installs the dependencies and packaged project. No activation or separate synchronization step is needed here. See [Dependency Management with uv](./section-02.md#synchronizing) for synchronization workflows.
+
+Continue with the **Packaged application** example above, working from the `hello-app` project root. Add [Bottle](https://bottlepy.org/docs/dev/), a small web framework, with an exact version requirement:
 
 ```shell
-uv add rich
+uv add "bottle==0.13.4"
 ```
 
-This updates `pyproject.toml`, `uv.lock`, and `.venv`. [Section 02](./section-02.md) explains dependency groups, removing packages, and synchronizing a team environment.
+> Use `==` to specify a version
 
-Run the packaged app's entry point (the `main` function shown in its configuration):
+The complete configuration keeps the packaged application's entry point and build backend unchanged; only `dependencies` gains Bottle:
+
+```toml title="pyproject.toml"
+[project]
+name = "hello-app"
+version = "0.1.0"
+description = "A packaged Python application"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["bottle==0.13.4"]
+
+[project.scripts]
+hello-app = "hello_app:main"
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+```
+
+Add [Ruff](https://docs.astral.sh/ruff/) for linting and [pytest](https://docs.pytest.org/en/stable/) for testing to the `dev` dependency group, rather than the runtime requirements:
+
+```shell
+uv add --dev ruff pytest
+```
+
+This adds `[dependency-groups]` to `pyproject.toml` and installs both tools in `.venv`. The **complete updated `pyproject.toml`** now looks like this.
+
+```toml title="pyproject.toml"
+[project]
+name = "hello-app"
+version = "0.1.0"
+description = "A packaged Python application"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["bottle==0.13.4"]
+
+[project.scripts]
+hello-app = "hello_app:main"
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+```
+
+> **Version Note:** Your Ruff and pytest versions may differ. `>=` allows newer releases; use `==` to require an exact version, as with Bottle. `uv.lock` records the exact resolved versions either way.
+
+Replace the generated code in `src/hello_app/__init__.py` with this Bottle application. Its `main()` function starts the server, so the existing `[project.scripts]` entry is unchanged:
+
+```python title="src/hello_app/__init__.py"
+from bottle import Bottle
+
+app = Bottle()
+
+
+@app.get("/")
+def hello():
+    return "Hello from Bottle!"
+
+
+def main() -> None:
+    app.run(host="127.0.0.1", port=8080)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Run the existing console command using the project's environment, then open `http://127.0.0.1:8080/`. The editable installation uses your updated source code directly. Stop the server with Ctrl+C:
 
 ```shell
 uv run hello-app
 ```
 
-## Configure Project Tools
-
 ### Use `[tool.*]` Tables
 
-Many tools can read settings from `pyproject.toml`, reducing the need for separate configuration files. For example, add this table to the packaged app's existing `pyproject.toml` to configure Ruff:
+Tools that support `pyproject.toml` can keep their settings alongside the project metadata. For example, `[tool.pytest.ini_options]` replaces a separate `pytest.ini`, while `[tool.ruff]` avoids a separate `ruff.toml`. Each tool defines its own settings; these tables configure tools but do not install them.
 
-```toml
+Add Ruff's line-length setting and pytest's test directory and reporting options. The **complete updated `pyproject.toml`** combines runtime dependencies, development tools, packaging, and tool configuration:
+
+```toml title="pyproject.toml"
+[project]
+name = "hello-app"
+version = "0.1.0"
+description = "A packaged Python application"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["bottle==0.13.4"]
+
+[project.scripts]
+hello-app = "hello_app:main"
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
 [tool.ruff]
 line-length = 88
-```
 
-Each tool defines its own supported settings; `[tool.uv]` is for uv settings, while `[tool.ruff]` is for Ruff. This configures Ruff but does not install it. Running standalone tools is covered in [Section 04](./section-04.md#run-command-line-tools).
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+```
 
 ## Build a Package
 
