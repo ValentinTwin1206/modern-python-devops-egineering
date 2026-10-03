@@ -6,7 +6,10 @@
   "runServices": [
     "backend",
     "frontend",
-    "devcontainer"
+    "devcontainer",
+    "keycloak",
+    "influxdb",
+    "grafana"
   ],
   "customizations": {
     "vscode": {
@@ -18,7 +21,10 @@
   },
   "forwardPorts": [
     8080,
-    8501
+    8501,
+    8081,
+    8086,
+    3001
   ],
   "portsAttributes": {
     "8080": {
@@ -27,6 +33,18 @@
     },
     "8501": {
       "label": "Frontend",
+      "onAutoForward": "silent"
+    },
+    "8081": {
+      "label": "Keycloak",
+      "onAutoForward": "silent"
+    },
+    "8086": {
+      "label": "InfluxDB",
+      "onAutoForward": "silent"
+    },
+    "3001": {
+      "label": "Grafana",
       "onAutoForward": "silent"
     }
   },

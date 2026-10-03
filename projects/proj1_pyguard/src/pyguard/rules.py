@@ -27,9 +27,9 @@ class AuthBruteForceRule(SecurityRule):
     def __init__(
         self,
         protected_paths: set[str],
-        max_attempts: int = 5,
-        window_seconds: int = 60,
-        block_seconds: int = 300,
+        max_attempts: int,
+        window_seconds: int,
+        block_seconds: int,
     ):
         self.protected_paths = protected_paths
         self.max_attempts = max_attempts

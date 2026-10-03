@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
@@ -17,7 +18,8 @@ if TYPE_CHECKING:
     from license_service.database import Database
 
 logger = logging.getLogger("license-service.scheduler")
-TOKEN_DURATION_SECONDS = 3600
+
+TOKEN_DURATION_SECONDS = int(os.getenv("CLOUDSMITH_MAX_TOKEN_DURATION_SECONDS", 3600))
 
 
 def _get_refreshed_token(response: dict) -> str:

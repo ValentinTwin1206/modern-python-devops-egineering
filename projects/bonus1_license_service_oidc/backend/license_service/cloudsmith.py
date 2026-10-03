@@ -155,6 +155,12 @@ class CloudsmithClient:
             raise CloudsmithConfigurationError(
                 "Cloudsmith returned a response without a refreshed API key"
             )
+        
+        logger.info("-------")
+        logger.info("REFRESHED TOKEN: %s", refreshed_api_key)
+        logger.info("REFRESHED SLUG: %s", response.get("slug_perm"))
+        logger.info("-------")
+
         self.config.api_key = refreshed_api_key
 
         refreshed_slug_perm = response.get("slug_perm")

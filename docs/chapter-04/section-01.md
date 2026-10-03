@@ -1,182 +1,206 @@
-# Frontend
+# Python Service Orchestration
 
-This section introduces the frontend of the integrated license service. The
-frontend is implemented with [Streamlit](https://streamlit.io/), a Python
-framework for building small interactive web applications.
+## Applied Project
 
-The focus of the section is deliberately limited to the frontend itself and its connection
-to the backend. 
+The applied project is an integrated license service for issuing and validating Cloudsmith credentials. It consists of three main application components:
 
-## Introduction
+* A [Streamlit](https://streamlit.io/) frontend provides the browser-based user interface. Users sign in through the frontend and can retrieve or validate their license.
+* A [Keycloak](https://www.keycloak.org/) provides the OpenID Connect (OIDC) identity service. It authenticates users, manages the configured realm and client, and issues tokens for authenticated requests.
+* A [FastAPI](https://fastapi.tiangolo.com/) backend validates OIDC access tokens, authorizes protected operations, stores license data in SQLite, and integrates with Cloudsmith.
+* The [PyGuard](./../../projects/proj1_pyguard/README.md) library provides brute-force protection middleware for the backend. It tracks requests to protected endpoints and can temporarily block clients that exceed the configured attempt threshold.
 
-### Streamlit components
-
-A Streamlit works as ordinary Python scripts. It executes the
-script from top to bottom and reruns it whenever the user interacts with a
-widget. Following script can be an example `app.py` with the most common building blocks:
-
-```python
-import streamlit as st
-
-st.title("License Service")
-st.write("Create and verify licenses.")
-
-license_key = st.text_input("License key")
-
-if st.button("Verify") and license_key:
-	st.success(f"Verification requested for {license_key}")
+```mermaid
+flowchart LR
+    B["Browser"] --> F["Streamlit frontend"]
+    F --> K["Keycloak OIDC"]
+    K -->|access token| F
+    F -->|Bearer token| A["FastAPI backend"]
+    A -->|create or refresh license| C["Cloudsmith API"]
+    A --> D["SQLite license database"]
 ```
 
-!!! info
-	* `st.title()` and `st.header()` provide page structure
-	* `st.write()` displays text or Python values
-	* `st.text_input()` collects user input
-	* `st.button()` triggers an action during a script rerun
-	* `st.success()`, `st.error()`, and `st.code()` act as result helpers and provide visual feedback.
+!!! info "For more information"
+    The individual components are documented in their own README files:
 
-### Run a Streamlit application
+    * [Frontend README](./../../projects/bonus1_license_service_oidc/frontend/README.md)
+    * [Backend README](./../../projects/bonus1_license_service_oidc/backend/README.md)
+    * [Keycloak README](./../../projects/bonus1_license_service_oidc/keycloak/README.md)
 
-Start the application from the directory containing `app.py`:
+### Project Setup
+
+Docker Compose starts the frontend, backend, and Keycloak services and places them on a shared network. The project demonstrates how a user-facing application, an external identity provider, a protected API, local persistence, and a third-party license service work together as one deployable system.
+
+The Compose configuration is stored in `projects/bonus1_license_service_oidc/docker-compose.yml`. 
+
+```yaml
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    networks:
+      license_service_network:
+
+  backend:
+    build:
+      context: ./backend
+      additional_contexts:
+        pyguard: ../proj1_pyguard
+    ports:
+      - "8080:8080"
+    volumes:
+      - license_service_data:/app/data
+    env_file:
+      - .env
+    environment:
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+      OIDC_ISSUER_URL: http://keycloak.localhost:8081/realms/license-service
+      OIDC_JWKS_URL: http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
+      DATABASE_PATH: /app/data/licenses.db
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.30.0.2}
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    extra_hosts:
+      - "keycloak.localhost:172.30.0.1"
+    volumes:
+      - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.30.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: http://keycloak.localhost:8081
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    networks:
+      license_service_network:
+        ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
+
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  license_service_data:
+```
+
+The most important Compose configuration keys are:
+
+| Key | Purpose |
+| --- | --- |
+| `services` | Defines the containers that make up the application. |
+| `build` | Builds a service image from a local Dockerfile. |
+| `depends_on` | Defines service startup order. |
+| `ports` | Maps host ports to container ports. |
+| `environment` | Passes configuration values into a container. |
+| `volumes` | Mounts the Keycloak realm and Streamlit secrets. |
+| `networks` | Connects services to a shared Docker network. |
+| `ipam` and `subnet` | Configure the address range of that network. |
+
+The project-level `.env` file supplies variable values used by Docker Compose.
+Compose loads these values when it reads the file and substitutes them into
+`${...}` expressions in `docker-compose.yml`, while each service's `env_file`
+setting passes the selected variables into that container's environment.
+
+
+
+## Orchestration with Compose
+
+### Services
+
+Each entry under `services` describes one container role. Compose also gives each service a network identity that other services can use.
+
+The `backend` service exposes port `8080`, the `frontend` service exposes port `8501`, and Keycloak exposes port `8081` to the host. The frontend declares a dependency on the backend so Compose starts the backend first. The Keycloak service imports the realm definition from `keycloak/realm-export.json`.
+
+`depends_on` expresses startup order, but it does not prove that a dependency is ready to accept requests. Applications that need readiness guarantees should use health checks, retries, or an explicit readiness check.
+
+### Networking
+
+The frontend, backend, and Keycloak services join the
+`license_service_network` network. The network uses the `172.30.0.0/24`
+subnet, with configurable addresses for the services.
+
+Published ports are different from internal service addresses. Port `8501`
+makes the frontend available to the host, while port `8080` makes the backend
+available to the host. Container-to-container traffic uses service names on
+the internal Compose network.
+
+### Discovery
+
+Compose provides internal DNS-based service discovery. A container can resolve
+another service using the service name from the Compose file:
+
+```text
+http://backend:8080
+http://keycloak:8080
+```
+
+This is more stable than hard-coding an IP address because containers may be
+recreated and receive different private addresses.
+
+## Development Workflow
+### Create the Environment
+
+Start the complete application from the project directory:
 
 ```shell
-uv run streamlit run app.py
+cd projects/bonus1_license_service_oidc
+docker compose up --build
 ```
 
-By default, Streamlit listens on port `8501`. To make the application
-reachable from a container or another machine, bind it to all interfaces:
+The `--build` option rebuilds the backend and frontend images before starting
+the stack. Keycloak imports the realm export during startup, and the frontend
+uses the mounted Streamlit OIDC configuration.
+
+Run the services in the background with `-d`:
 
 ```shell
-uv run streamlit run app.py \
-	--server.address=0.0.0.0 \
-	--server.port=8501
+docker compose up --build -d
+docker compose ps
 ```
 
-The application is then available at `http://localhost:8501`.
-
-## Applied project
-
-The applied frontend contains the Streamlit interface, the small HTTP client used by that interface, and the Dockerfile
-used to package both files.
-
-The project metadata includes `streamlit` and `requests`.
-
-### app.py
-
-`app.py` defines the Streamlit user interface and provides buttons for creating and checking licenses.
-
-The application imports the API functions and handles the license-creation
-request as follows:
-
-```python
-from api import check_license, create_license
-
-if not st.user.is_logged_in:
-	if st.button("Log in with Keycloak"):
-		st.login("keycloak")
-	st.stop()
-
-user_name = st.user.get("preferred_username", st.user.name)
-access_token = st.user.tokens["access"]
-
-if st.button("License erzeugen"):
-	result = create_license(user_name, access_token)
-	st.code(result["license_key"])
-```
-
-### api.py
-
-`api.py` keeps HTTP communication out of the interface by reading the
-backend URL and temporary API key from environment variables and exposing
-small functions for creating and checking licenses.
-
-```python
-def create_license(user: str, access_token: str) -> dict:
-	response = requests.post(
-		f"{BACKEND_URL}/licenses",
-		params={"user": user},
-		headers={
-			"Authorization": f"Bearer {access_token}",
-			"X-API-Key": ADMIN_API_KEY,
-		},
-		timeout=10,
-	)
-	response.raise_for_status()
-	return response.json()
-```
-
-### Dockerfile
-
-The `Dockerfile` builds a small Python 3.12 image, installs the project with
-`uv`, copies `app.py` and `api.py`, exposes port `8501`, and starts Streamlit
-on all network interfaces.
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-COPY pyproject.toml .
-
-RUN uv sync --no-dev
-
-COPY app.py api.py ./
-
-EXPOSE 8501
-
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
-```
-
-The image installs only runtime dependencies, copies the two application
-modules, documents port `8501`, and starts Streamlit on all network
-interfaces. Build it from the frontend directory:
+Stop and remove the containers and network with:
 
 ```shell
-docker build -t license-service-frontend .
+docker compose down
 ```
 
-## Bootstrap the license-service
+The application is then available at `http://localhost:8501`. Keycloak is
+available at `http://localhost:8081`, and the backend API is available at
+`http://localhost:8080`.
 
-Before using Docker Compose, both services can be started with independent
-`docker run` commands. Create a shared Docker network first so the frontend
-can reach the backend by its container name:
+### Inspect the Environment
+
+Inspect service output with:
 
 ```shell
-docker network create license-service-network
+docker compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f keycloak
 ```
-
-Build the backend image from the project root and provide the local PyGuard
-project as the additional build context expected by the backend Dockerfile.
-Then start it on the shared network:
-
-```shell
-docker build \
-	--build-context pyguard=../proj1_pyguard \
-	-t license-service-backend \
-	./backend
-
-docker run --rm \
-	--name license-service-backend \
-	--network license-service-network \
-	-p 8080:8080 \
-	-e ADMIN_API_KEY=dev-secret \
-	license-service-backend
-```
-
-Start the frontend as a second container. Inside the Docker network, the
-backend is addressed by its container name, not by `localhost`:
-
-```shell
-docker run --rm \
-	--name license-service-frontend \
-	--network license-service-network \
-	-p 8501:8501 \
-	-e BACKEND_URL=http://license-service-backend:8080 \
-	-e ADMIN_API_KEY=dev-secret \
-	license-service-frontend
-```
-
-The frontend is available at `http://localhost:8501`, and its requests are
-forwarded to the backend through the shared Docker network. These commands
-demonstrate the individual containers and their network dependency. The next
-section replaces this manual setup with Docker Compose orchestration.
