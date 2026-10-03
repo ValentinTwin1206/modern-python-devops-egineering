@@ -1,148 +1,262 @@
 # Monitoring
-## Connecting Grafana to InfluxDB
 
-The license service records API requests in InfluxDB. Each request is stored
-in the `api_requests` measurement with the HTTP method, endpoint, and response
-status code.
+## Applied Project
 
-### Open Grafana
+Section 02 extends the project introduced in [section-01](section-01.md) with a monitoring stack for collecting and visualizing API metrics.
 
-Start the monitoring stack with Docker Compose and open Grafana:
+The monitoring stack consists of two main components:
 
-<http://localhost:3001>
+* [InfluxDB](https://www.influxdata.com/) stores the API metrics as time-series data.
+* [Grafana](https://grafana.com/) visualizes the metrics in dashboards.
 
-Log in with the Grafana administrator credentials configured in the `.env`
-file:
+```mermaid
+flowchart LR
+    B["Browser"] --> F["Streamlit frontend"]
+    F --> K["Keycloak OIDC"]
+    K --> F
+    F --> A["FastAPI backend"]
+    A --> GUARD["..."]
+    subgraph MIDDLEWARE["Middleware"]
+      GUARD --> METRICS["InfluxDB metrics"]
+    end
+    METRICS --> INFLUXDB["InfluxDB"]
+    INFLUXDB --> GRAFANA["Grafana"]
+    A --> C["Cloudsmith API"]
+    A --> D["SQLite license database"]
+```
 
-- **Username:** `admin`
-- **Password:** `admin1234`
+### Project Setup
 
-### Add InfluxDB as a data source
+The compose setup is extended with the two new members and looks like the following
 
-In Grafana, open **Connections** → **Data sources** → **Add new data source**
-and select **InfluxDB**.
+```yaml
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    networks:
+      license_service_network:
 
-Use these settings:
+  backend:
+    build:
+      context: ./backend
+      additional_contexts:
+        pyguard: ../proj1_pyguard
+    ports:
+      - "8080:8080"
+    volumes:
+      - license_service_data:/app/data
+    env_file:
+      - .env
+    environment:
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+      OIDC_ISSUER_URL: http://keycloak.localhost:8081/realms/license-service
+      OIDC_JWKS_URL: http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
+      DATABASE_PATH: /app/data/licenses.db
+    networks:
+      license_service_network:
+        ipv4_address: ${BACKEND_IP:-172.30.0.2}
 
-- **Query language:** `Flux`
-- **URL:** `http://influxdb:8086`
-- **Organization:** `oidc_license_service`
-- **Default bucket:** `api_metrics`
-- **Token:** the value of `INFLUXDB_TOKEN` from `.env`
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    extra_hosts:
+      - "keycloak.localhost:172.30.0.1"
+    volumes:
+      - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
+    networks:
+      license_service_network:
+        ipv4_address: ${FRONTEND_IP:-172.30.0.3}
+    environment:
+      BACKEND_URL: http://backend:8080
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
 
-Use `http://influxdb:8086` rather than `http://localhost:8086`. Grafana runs
-inside Docker, so `localhost` refers to the Grafana container. The name
-`influxdb` resolves to the InfluxDB service on the Docker network.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: http://keycloak.localhost:8081
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    networks:
+      license_service_network:
+        ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
 
-Click **Save & test**. Grafana should confirm that the data source is working.
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      license_service_network:
+        ipv4_address: ${INFLUXDB_IP:-172.30.0.40}
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
 
-### Query API metrics
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    env_file:
+      - .env
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      license_service_network:
+        ipv4_address: ${GRAFANA_IP:-172.30.0.50}
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
 
-Create a dashboard and add a panel using the InfluxDB data source. A basic
-Flux query for recent API calls is:
+networks:
+  license_service_network:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  license_service_data:
+  influxdb_data:
+  grafana_data:
+```
+
+Compared to the previous section, the most important monitoring-related
+differences are:
+
+| Key | Purpose |
+| --- | --- |
+| `influxdb` service | Runs InfluxDB 2.7 as the time-series database for API metrics. |
+| `grafana` service | Runs Grafana and provides dashboards for the metrics stored in InfluxDB. |
+| `healthcheck` | Checks the InfluxDB `/ping` endpoint so Grafana starts only after InfluxDB is ready. |
+| `influxdb_data` | Persists InfluxDB data when the container is recreated. |
+| `grafana_data` | Persists Grafana dashboards, users, and data-source configuration. |
+
+## Monitoring
+### InfluxDB
+
+This example uses one measurement, `api_requests`, for all HTTP request points. The measurement identifies the kind of event being recorded; it is not a separate table for each request. The request method and path are tags, while the response status is the measured field.
+
+Writing to an influx datasource in Python can easily be done with the `influxdb-client` as shown in the following excerpt of the ``middleware.py`` of the license-service:
+
+```python
+import os
+
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+client = InfluxDBClient(
+    url=os.getenv("INFLUXDB_URL"),
+    token=os.environ["INFLUXDB_TOKEN"],
+    org=os.getenv("INFLUXDB_ORG"),
+)
+write_api = client.write_api(write_options=SYNCHRONOUS)
+
+point = (
+  Point("api_requests")
+    .tag("method", method)
+    .tag("path", path)
+    .field("status_code", status_code)
+)
+
+write_api.write( bucket=os.environ["INFLUXDB_BUCKET"], org=os.environ["INFLUXDB_ORG"], record=point, )
+```
+
+!!! info "Connect with InfluxDB"
+	Open <http://localhost:8086>, sign in with the InfluxDB credentials from
+	`.env`, and open **Explore**. Select the `oidc_license_service` organization
+	and `api_metrics` bucket. Choose the `api_requests` measurement and a recent
+	time range to verify that request points have been stored.
+
+### Grafana
+
+Grafana must first have a valid InfluxDB data source. In Grafana, open
+**Connections** → **Data sources** → **Add new data source**, select
+**InfluxDB**, and use these settings:
+
+* URL: `http://influxdb:8086`
+* Organization: `oidc_license_service`
+* Bucket: `api_metrics`
+* Token: `INFLUXDB_TOKEN` from `.env`
+
+Click **Save & test**. Use `influxdb` rather than `localhost` because Grafana
+runs in its own container and reaches InfluxDB through the Compose network.
+
+Flux is InfluxDB's query language, sent through its HTTP API. `from` selects a
+bucket, `range` selects the time period, and `filter` selects data. For
+example, this query counts requests in one-minute windows:
 
 ```flux
 from(bucket: "api_metrics")
-	|> range(start: -1h)
-	|> filter(fn: (r) => r._measurement == "api_requests")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "api_requests")
+  |> filter(fn: (r) => r._field == "status_code")
+  |> aggregateWindow(every: 1m, fn: count, createEmpty: true)
+  |> yield(name: "api_calls")
 ```
 
-The stored data contains:
+Grafana provides `v.timeRangeStart` and `v.timeRangeStop` when it runs the
+query in a dashboard. The `aggregateWindow` function groups the points and
+`count` counts the `status_code` field.
 
-- `method` — the HTTP method, such as `GET` or `POST`.
-- `endpoint` — the requested API path.
-- `_field` — normally `status_code`.
-- `_value` — the HTTP response status code.
+## Development Workflow
 
-The middleware writes the metric after the request completes. Successful
-writes return no value; InfluxDB raises an exception when a synchronous write
-fails. Monitoring errors are logged and do not cause an otherwise healthy API
-request to fail.
+### Create the Environment
 
-### Count API calls over time
+Start the complete application and monitoring stack from the project
+directory:
 
-To create a dashboard panel that displays the number of API calls over time:
-
-1. Open **Dashboards** → **New** → **New dashboard**.
-2. Click **Add visualization**.
-3. Select the InfluxDB data source.
-4. Switch to **Code** mode and enter this Flux query:
-
-```flux
-from(bucket: "api_metrics")
-	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-	|> filter(fn: (r) => r._measurement == "api_requests")
-	|> filter(fn: (r) => r._field == "status_code")
-	|> aggregateWindow(every: 1m, fn: count, createEmpty: true)
-	|> yield(name: "api_calls")
+```shell
+cd projects/bonus1_license_service_oidc
+docker compose up --build -d
+docker compose ps
 ```
 
-5. Select the **Time series** visualization.
-6. Set the panel title to **API Calls Over Time**.
-7. Click **Apply** and save the dashboard.
+The `--build` option rebuilds the backend and frontend images. The `-d`
+option starts the services in the background. Compose waits for the InfluxDB
+health check before starting Grafana.
 
-The query counts the `status_code` field once for every recorded request and
-groups the results into one-minute intervals. The dashboard time-range
-selector controls which requests are included.
+### Inspect the Environment
 
-For a single total count, create a **Stat** visualization with this query:
+Inspect the monitoring service status and logs with:
 
-```flux
-from(bucket: "api_metrics")
-	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-	|> filter(fn: (r) => r._measurement == "api_requests")
-	|> filter(fn: (r) => r._field == "status_code")
-	|> count()
+```shell
+docker compose ps influxdb grafana
+docker compose logs -f influxdb
+docker compose logs -f grafana
 ```
 
-### Show requester IPs and endpoints in a table
+Stop the complete stack while preserving the named volumes with:
 
-To list one row for each API request with its timestamp, requester IP,
-endpoint, and response status code:
-
-1. Add a new Grafana panel.
-2. Select the InfluxDB data source.
-3. Switch to **Code** mode.
-4. Use this Flux query:
-
-```flux
-from(bucket: "api_metrics")
-	|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-	|> filter(fn: (r) => r._measurement == "api_requests")
-	|> filter(fn: (r) => r._field == "status_code")
-	|> group()
-	|> keep(columns: ["_time", "client_ip", "endpoint", "_value"])
-	|> rename(columns: {
-		_time: "Time",
-		client_ip: "Requester",
-		endpoint: "Endpoint",
-		_value: "StatusCode",
-	})
-	|> sort(columns: ["Time"], desc: true)
+```shell
+docker compose down
 ```
 
-5. Set the query result format to **Table** in the query editor. Do not use
-	**Time series** format, because Grafana displays tags as series labels in
-	that mode.
-6. Select the **Table** visualization.
-7. In the table options, disable **Column filter** to remove the filter row at
-	the bottom of the table.
-8. Set the panel title to **API Calls by Requester**.
-9. Apply and save the panel.
+To remove the persisted InfluxDB and Grafana data as well, use:
 
-The resulting table contains one line per recorded request with these columns:
-
-- `Time` — when the request was recorded.
-- `Requester` — the requester IP address.
-- `Endpoint` — the requested API path.
-- `StatusCode` — the HTTP response status code.
-
-The `group()` call combines the individual InfluxDB series into one table so
-the tags remain normal columns instead of being rendered as a series label.
-This query does not use `count()` or `pivot()`, so requests are not grouped
-or aggregated. Each InfluxDB point remains a separate table row.
-
-If the table does not update after adding the `client_ip` tag, restart the
-backend container and generate new requests. Existing InfluxDB points do not
-contain tags that were added later.
+```shell
+docker compose down -v
+```
 
