@@ -320,9 +320,12 @@ uv run hello-app
 
 ### Use `[tool.*]` Tables
 
-Tools that support `pyproject.toml` can keep their settings alongside the project metadata. For example, `[tool.pytest.ini_options]` replaces a separate `pytest.ini`, while `[tool.ruff]` avoids a separate `ruff.toml`. Each tool defines its own settings; these tables configure tools but do not install them.
+Tools that support `pyproject.toml` can keep their settings alongside the project metadata, instead of using separate tool-specific configuration files. These tables configure the tools but do not install them:
 
-Add Ruff's line-length setting and pytest's test directory and reporting options. The **complete updated `pyproject.toml`** combines runtime dependencies, development tools, packaging, and tool configuration:
+- `ruff`: Set `line-length = 88` to limit line width. `[tool.ruff]` keeps this and other Ruff settings in `pyproject.toml` instead of a separate `ruff.toml`.
+- `pytest`: Set `testpaths = ["tests"]` to locate tests and `addopts = "-ra"` to show a summary of non-passing tests. `[tool.pytest.ini_options]` keeps these settings in `pyproject.toml` instead of a separate `pytest.ini`.
+
+The **complete updated `pyproject.toml`** combines runtime dependencies, development tools, packaging, and tool configuration:
 
 ```toml title="pyproject.toml"
 [project]
