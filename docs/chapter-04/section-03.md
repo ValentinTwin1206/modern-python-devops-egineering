@@ -1,52 +1,34 @@
 # Testing
 
-This section builds on the previous [section](./section-03.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. Although Playwright and Artillery are used in the project, the focus is not to introduce these tools in detail; it is to explain the infrastructure and setup required to integrate them into the complete development and testing workflow.
-
-## Introduction
-
-### Playwright
-
-[Playwright](https://playwright.dev/) is an end-to-end testing framework for automating browsers and verifying web applications from a user's perspective. It supports Chromium, Firefox, and WebKit through one consistent API.
-
-Playwright tests usually create a browser context, open a page, perform user actions, and assert the expected result. A simple test can verify that the application displays the expected heading after navigation:
-
-```javascript
-import { test, expect } from "@playwright/test";
-
-test("the home page displays its heading", async ({ page }) => {
-	await page.goto("http://localhost:8501");
-	await expect(page.locator("h1")).toContainText("License Service");
-});
-```
-
-The `page` fixture provides an isolated browser page for the test. `page.goto()` opens the application, while the assertion confirms that the rendered UI behaves as expected.
-
-### Artillery
-
-[Artillery](https://www.artillery.io/) is a load-testing tool for measuring how an application behaves when it receives requests from many concurrent users. It helps identify performance bottlenecks, high error rates, and slow response times before they affect users in production.
-
-An Artillery test is usually described in a YAML file. The `config` section defines the target and load phases, while `scenarios` describe the requests performed by each virtual user. A simple test can send repeated `GET` requests to the license service:
-
-```yaml
-config:
-	target: "http://localhost:8080"
-	phases:
-		- duration: 10
-			arrivalRate: 1
-
-scenarios:
-	- flow:
-		- get:
-			url: "/"
-```
-
-This test starts one virtual user per second for ten seconds. Each virtual user requests the service's root endpoint, allowing Artillery to record response times, throughput, and errors.
-
 ## Applied Project
 
-### Dockerfile
+This section builds on the previous [section](./section-03.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. Although Playwright and Artillery are used in the project, the focus is not to introduce these tools in detail; it is to explain the infrastructure and setup required to integrate them into the complete development and testing workflow.
 
-The Dev Container image is based on Microsoft's JavaScript and Node.js development image. It installs the command-line tools required by the project, including Bats, Bun, Playwright, and Artillery, and stores Playwright's browser binaries in a shared directory. The final sanity checks confirm that the tools are available before the container is used.
+### Project Setup
+
+The compose setup is extended with the new service `devcontainer` which provides the needed tools for our end-to-end testing chain. 
+
+```yaml
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    networks:
+      license_service_network:
+
+	...
+
+```
+
+The Dev Container image is based on Microsoft's JavaScript and Node.js development image. It installs the command-line tools required by the project, including Bun, Playwright, and Artillery, and stores Playwright's browser binaries in a shared directory. The final sanity checks confirm that the tools are available before the container is used.
 
 ```dockerfile
 FROM mcr.microsoft.com/devcontainers/javascript-node:24-bookworm
@@ -96,8 +78,6 @@ EXPOSE 9323
 CMD ["sleep", "infinity"]
 ```
 
-### devcontainer.json
-
 The `devcontainer.json` file connects the development container to the existing Docker Compose application. It selects the `devcontainer` service, starts the backend and frontend alongside it, installs the relevant VS Code extensions, and forwards the application ports to the host.
 
 ```json
@@ -135,9 +115,54 @@ The `devcontainer.json` file connects the development container to the existing 
 }
 ```
 
+!!! info "Bootstrapping"
+	Please check the below section about bootstrapping the license-service through a devcontainer.
+
+## End-To-End Testing 
+
+### Playwright
+
+[Playwright](https://playwright.dev/) is an end-to-end testing framework for automating browsers and verifying web applications from a user's perspective. It supports Chromium, Firefox, and WebKit through one consistent API.
+
+Playwright tests usually create a browser context, open a page, perform user actions, and assert the expected result. A simple test can verify that the application displays the expected heading after navigation:
+
+```javascript
+import { test, expect } from "@playwright/test";
+
+test("the home page displays its heading", async ({ page }) => {
+	await page.goto("http://localhost:8501");
+	await expect(page.locator("h1")).toContainText("License Service");
+});
+```
+
+The `page` fixture provides an isolated browser page for the test. `page.goto()` opens the application, while the assertion confirms that the rendered UI behaves as expected.
+
+### Artillery
+
+[Artillery](https://www.artillery.io/) is a load-testing tool for measuring how an application behaves when it receives requests from many concurrent users. It helps identify performance bottlenecks, high error rates, and slow response times before they affect users in production.
+
+An Artillery test is usually described in a YAML file. The `config` section defines the target and load phases, while `scenarios` describe the requests performed by each virtual user. A simple test can send repeated `GET` requests to the license service:
+
+```yaml
+config:
+	target: "http://localhost:8080"
+	phases:
+		- duration: 10
+			arrivalRate: 1
+
+scenarios:
+	- flow:
+		- get:
+			url: "/"
+```
+
+This test starts one virtual user per second for ten seconds. Each virtual user requests the service's root endpoint, allowing Artillery to record response times, throughput, and errors.
+
 ### spike.yml
 
-## Bootstrap the Service
+## Development Workflow
+
+### Create the Environment
 
 The project can be started from VS Code using the `devcontainer.json` configuration. It builds the development container and starts it together with the backend and frontend services defined in Docker Compose.
 
