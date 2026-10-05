@@ -194,7 +194,7 @@ At the start of a project, `uv init` can scaffold a simple application, a packag
 
 === "Bare project"
 
-    `--bare` creates just `pyproject.toml`; unlike the other templates, it skips source files, `README.md`, `.python-version`, `.gitignore`, and the `.git/` repository. Use it when you want to define the source layout yourself. It controls scaffolding, not project type; combine it with `--lib` or `--package` to add a build system without generating source files.
+    Unlike the other templates, `--bare` creates only a `pyproject.toml`; it does not scaffold source files. This template suits existing codebases and projects with a custom source layout. Because `--bare` controls scaffolding rather than project type, it can be combined with `--lib` or `--package` to add a build system without generating source files.
 
     Create a minimal starting point for an existing codebase or a custom layout:
 
@@ -318,7 +318,7 @@ Run the existing console command using the project's environment, then open `htt
 uv run hello-app
 ```
 
-### Use `[tool.*]` Tables
+### Use the Tool Table
 
 Tools that support `pyproject.toml` can keep their settings alongside the project metadata, instead of using separate tool-specific configuration files. These tables configure the tools but do not install them:
 
@@ -359,25 +359,30 @@ addopts = "-ra"
 
 ## Build a Package
 
-### Understand the `uv_build` Backend
+Python packaging separates building into a **frontend** and a **backend**, with their interface defined by [PEP 517](https://peps.python.org/pep-0517/). The frontend coordinates the build, while the backend creates installable distributions. [PEP 518](https://peps.python.org/pep-0518/) defines how a project declares its backend and build requirements in `[build-system]`.
 
-The packaged templates include `[build-system]`. Here, `uv_build` is the **build backend**: it turns source files into installable distributions. `uv` is the command-line tool that invokes the backend. The simple `--no-package` app has no build system; choose a packaged template when you intend to distribute your code.
-
-### Create Distributions
-
-Build the package from the project root:
+Common frontends include `build` (run as `python -m build`) and `pip`; common backends include `setuptools`, `hatchling`, `poetry-core`, `meson-python`, and `scikit-build-core`. `uv` provides both components, with `uv build` as the frontend and `uv_build` as the backend. As noted [above](#choose-a-project-type), the build backend is defined in the `[build-system]` table in `pyproject.toml`. Run `uv build` from the project root to build the package:
 
 ```shell
 uv build
 ```
 
-The `dist/` directory contains a wheel (`.whl`) for installation and a source archive (`.tar.gz`) that can be built elsewhere. Both use the version declared in `pyproject.toml`.
+Run `ls -lah dist/` to inspect the generated files. For this `hello-app` example, the output is:
+
+```text
+total 20K
+drwxr-xr-x 2 vprav vprav 4.0K Oct  5 06:15 .
+drwxr-xr-x 5 vprav vprav 4.0K Oct  5 06:15 ..
+-rw-r--r-- 1 vprav vprav    1 Oct  5 06:15 .gitignore
+-rw-r--r-- 1 vprav vprav 1.6K Oct  5 06:15 hello_app-0.1.0-py3-none-any.whl
+-rw-r--r-- 1 vprav vprav  608 Oct  5 06:15 hello_app-0.1.0.tar.gz
+```
 
 ## Publish a Package
 
-### Upload to a Package Index
-
 Before uploading, check the project name, version, and package contents. Set a PyPI token in `UV_PUBLISH_TOKEN`, then publish the files in `dist/`:
+
+For more detail on wheel packaging and uploading distributions, see [Chapter 02, Section 01](../chapter-02/section-01.md).
 
 ```shell
 uv publish
@@ -389,22 +394,56 @@ By default, this publishes to PyPI. For a first trial, use [TestPyPI](https://te
 uv publish --publish-url https://test.pypi.org/legacy/
 ```
 
-## Manage Related Projects
-
-### Introduce Workspaces
+## Manage Related Projects with uv Workspaces
 
 When several related packages live in one repository, a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) lets each keep its own `pyproject.toml` while sharing one `uv.lock`. For example, a root project can include packages under `packages/`:
 
-```toml
+```toml title="pyproject.toml (root)"
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["packages/server", "packages/client"]
 ```
 
-When the root depends on a member called `hello-library`, add it to the existing `[project]` dependencies and point uv to the local source:
+The `server` and `client` members each have their own project metadata. For example, `packages/server/pyproject.toml` can define the server package:
 
-```toml
+```toml title="pyproject.toml (server)"
+[project]
+name = "server"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+```
+
+The client can depend on the server by declaring it as a dependency and mapping it to the workspace member in `packages/client/pyproject.toml`:
+
+```toml title="pyproject.toml (client)"
+[project]
+name = "client"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["server"]
+
 [tool.uv.sources]
-hello-library = { workspace = true }
+server = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
 ```
 
-The resulting `[project]` table includes `dependencies = ["hello-library"]`. Start with one project; introduce a workspace when you need to develop related packages together.
+The workspace root includes both members, and the client uses the server from that same workspace:
+
+```mermaid
+flowchart TD
+    root["Workspace root<br/>pyproject.toml<br/>uv.lock"]
+    server["packages/server<br/>pyproject.toml"]
+    client["packages/client<br/>pyproject.toml"]
+    root -->|includes member| server
+    root -->|includes member| client
+    client -->|workspace dependency| server
+```
+
+Start with one project; introduce a workspace when related packages need to be developed together.

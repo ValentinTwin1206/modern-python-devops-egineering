@@ -1,0 +1,98 @@
+# Demonstrates uv cache reuse when installing the ML dependencies.
+# GitHub Actions persists the cache across eligible workflow runs when the key
+# matches. Entries not accessed for over 7 days expire; storage pressure may
+# evict them sooner.
+#
+# Workflow steps:
+# - Check out the repository and set up Python 3.12 and uv.
+# - Restore the uv package cache, keyed by pyproject.toml and uv.lock.
+# - Optionally clear the restored cache or prune wheels before saving.
+# - Sync into a fresh .venv and verify the ML packages.
+# - Report cache status, options, and uv sync duration.
+# `clean_cache` clears the restored cache before installation; `prune_cache`
+# removes downloaded wheels before the cache is saved.
+name: uv cache demo (ML dependencies)
+
+on:
+  workflow_dispatch:
+    inputs:
+      prune_cache:
+        description: "Prune downloaded wheels before saving the uv cache"
+        type: boolean
+        default: false
+      clean_cache:
+        description: "Run uv cache clean before installing (cold run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  install-ml-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Dependency files and the ml-demo suffix help form the cache key.
+      # Matching caches are reused across eligible runs; entries expire after
+      # 7 days without access. This inactivity period is not configurable per
+      # cache, and storage pressure can evict entries sooner. Pruning removes
+      # cached wheels before saving.
+      - name: Set up uv and restore its package cache
+        id: uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.1"
+          enable-cache: true
+          cache-dependency-glob: |
+            projects/proj5_uv_cache/pyproject.toml
+            projects/proj5_uv_cache/uv.lock
+          cache-suffix: ml-demo
+          prune-cache: ${{ inputs.prune_cache }}
+
+      - name: Clear uv cache for a cold install
+        if: ${{ inputs.clean_cache }}
+        run: uv cache clean
+
+      # .venv is recreated each run; only uv's package cache persists.
+      # `--locked` uses the committed uv.lock and fails if it needs updating,
+      # keeping each timed install reproducible without changing the lockfile.
+      - name: Install ML packages into a fresh virtual environment
+        id: install
+        shell: bash
+        run: |
+          start_ms=$(date +%s%3N)
+          uv sync --directory projects/proj5_uv_cache --locked --python 3.12
+          end_ms=$(date +%s%3N)
+          echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the ML dependencies
+        run: |
+          projects/proj5_uv_cache/.venv/bin/python -c \
+            "import tensorflow, transformers, sklearn; print('ML packages imported successfully')"
+
+      # This times only uv sync, not the GitHub cache download or upload.
+      - name: Show cache and installation time
+        env:
+          CACHE_HIT: ${{ steps.uv.outputs.cache-hit }}
+          CACHE_CLEARED: ${{ inputs.clean_cache }}
+          CACHE_PRUNED: ${{ inputs.prune_cache }}
+          INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
+        run: |
+          {
+            echo '## uv cache demo'
+            echo ''
+            echo '| Measurement | Result |'
+            echo '| --- | --- |'
+            echo "| Cache restored before optional clearing | $CACHE_HIT |"
+            echo "| Local cache cleared before install | $CACHE_CLEARED |"
+            echo "| Prune cache before saving | $CACHE_PRUNED |"
+            echo "| uv sync duration | ${INSTALL_MS} ms |"
+          } >> "$GITHUB_STEP_SUMMARY"

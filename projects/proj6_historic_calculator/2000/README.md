@@ -14,19 +14,19 @@ A small command-line utility that reduces a comma-separated vector to its `max`,
 `Dockerfile.devEnv` builds a containerized approximation of the Python 1.6 development environment. It compiles Python 1.6 on an old Debian base image and provides the tooling needed to explore the packaging workflow without changing the host machine. Build the development image through the projects helper:
 
 ```bash
-../../build.sh build --path proj5_historic_calculator/2000/Dockerfile.devEnv --build-only
+../../build.sh build --path proj6_historic_calculator/2000/Dockerfile.devEnv --build-only
 ```
 
 Open an interactive shell in the development image:
 
 ```bash
-../../build.sh build --path proj5_historic_calculator/2000/Dockerfile.devEnv
+../../build.sh build --path proj6_historic_calculator/2000/Dockerfile.devEnv
 ```
 
 Build and run the deployment image:
 
 ```bash
-../../build.sh build --path proj5_historic_calculator/2000/Dockerfile
+../../build.sh build --path proj6_historic_calculator/2000/Dockerfile
 ```
 
 ### On Host

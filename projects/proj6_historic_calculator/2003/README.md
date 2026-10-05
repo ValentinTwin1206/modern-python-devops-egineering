@@ -14,19 +14,19 @@ A small command-line utility that reduces a comma-separated vector to its `max`,
 Build the development image through the projects helper:
 
 ```sh
-../../build.sh build --path proj5_historic_calculator/2003/Dockerfile.devEnv --build-only
+../../build.sh build --path proj6_historic_calculator/2003/Dockerfile.devEnv --build-only
 ```
 
 Open an interactive shell in the development image:
 
 ```sh
-../../build.sh build --path proj5_historic_calculator/2003/Dockerfile.devEnv
+../../build.sh build --path proj6_historic_calculator/2003/Dockerfile.devEnv
 ```
 
 Build and run the deployment image:
 
 ```sh
-../../build.sh build --path proj5_historic_calculator/2003/Dockerfile
+../../build.sh build --path proj6_historic_calculator/2003/Dockerfile
 ```
 
 ### On Host

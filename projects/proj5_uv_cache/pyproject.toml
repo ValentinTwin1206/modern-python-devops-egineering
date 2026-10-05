@@ -1,0 +1,13 @@
+[project]
+name = "uv-cache-demo"
+version = "0.1.0"
+description = "A heavyweight ML dependency set for demonstrating uv's CI cache."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "tensorflow-cpu>=2.20,<2.21",
+    "transformers>=4.57,<5",
+    "scikit-learn>=1.7,<2",
+]
+
+[tool.uv]
+package = false
