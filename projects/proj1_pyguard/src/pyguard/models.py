@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class Request:
+class Request(BaseModel):
     method: str
     path: str
     query: str = ""
@@ -10,7 +9,6 @@ class Request:
     source: str = ""
 
 
-@dataclass
-class ScanResult:
+class ScanResult(BaseModel):
     blocked: bool
     reason: str = ""

@@ -1,0 +1,21 @@
+config:
+  target: "http://backend:8080"
+
+  phases:
+    # Send more than the 100-attempt limit within the 60-second window.
+    - duration: 60
+      arrivalCount: 120
+      name: "GET license brute-force limit"
+
+  # Log the 429 responses returned by the middleware.
+  processor: "./helpers/test-helpers.cjs"
+
+scenarios:
+  - name: "GET license"
+    flow:
+      - get:
+          url: "/licenses"
+          # Use the default admin key so authentication does not stop the test.
+          headers:
+            x-api-key: "dev-secret"
+          afterResponse: "checkResponse"
