@@ -1,4 +1,18 @@
 services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    networks:
+      license_service_network:
+
   backend:
     build:
       context: ./backend
@@ -61,6 +75,39 @@ services:
       license_service_network:
         ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
 
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      license_service_network:
+        ipv4_address: ${INFLUXDB_IP:-172.30.0.40}
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    env_file:
+      - .env
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      license_service_network:
+        ipv4_address: ${GRAFANA_IP:-172.30.0.50}
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 networks:
   license_service_network:
@@ -70,3 +117,5 @@ networks:
 
 volumes:
   license_service_data:
+  influxdb_data:
+  grafana_data:

@@ -14,7 +14,9 @@ authors = [
     { name = "Valentin Pravtchev" }
 ]
 
-dependencies = []
+dependencies = [
+    "pydantic>=2.0",
+]
 
 [dependency-groups]
 dev = [

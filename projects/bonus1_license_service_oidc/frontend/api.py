@@ -1,5 +1,7 @@
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 import requests
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")

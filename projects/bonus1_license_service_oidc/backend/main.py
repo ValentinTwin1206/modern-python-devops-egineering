@@ -9,14 +9,13 @@ from fastapi  import Depends, FastAPI, HTTPException, Query, Request as FastAPIR
 from pydantic import BaseModel
 
 from license_service.cloudsmith import (
-    CloudsmithClient,
     CloudsmithConfig,
     CloudsmithConfigurationError,
     verify_cloudsmith_on_startup,
 )
 from license_service.database import create_database
 from license_service.helpers import is_admin, require_admin, require_admin_or_user
-from license_service.middleware import configure_middleware, create_guard
+from license_service.middleware import configure_middleware
 from schedule import cloudsmith_refresh_loop, refresh_and_store_cloudsmith_token
 
 
@@ -93,8 +92,9 @@ app = FastAPI(
 # ==========================================
 # Middleware registration
 
-guard = create_guard()
-configure_middleware(app, guard)
+configure_middleware(app)
+# Keep a module-level reference for tests and local runtime overrides.
+guard = app.state.guard
 
 
 # ==========================================
