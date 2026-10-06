@@ -298,7 +298,6 @@ from bottle import Bottle
 
 app = Bottle()
 
-
 @app.get("/")
 def hello():
     return "Hello from Bottle!"
@@ -361,7 +360,26 @@ addopts = "-ra"
 
 Python packaging separates building into a **frontend** and a **backend**, with their interface defined by [PEP 517](https://peps.python.org/pep-0517/). The frontend coordinates the build, while the backend creates installable distributions. [PEP 518](https://peps.python.org/pep-0518/) defines how a project declares its backend and build requirements in `[build-system]`.
 
-Common frontends include `build` (run as `python -m build`) and `pip`; common backends include `setuptools`, `hatchling`, `poetry-core`, `meson-python`, and `scikit-build-core`. `uv` provides both components, with `uv build` as the frontend and `uv_build` as the backend. As noted [above](#choose-a-project-type), the build backend is defined in the `[build-system]` table in `pyproject.toml`. Run `uv build` from the project root to build the package:
+Build frontends coordinate the build and invoke the project's configured backend; common frontends include:
+
+| Frontend | Summary |
+| --- | --- |
+| `python -m build` | Builds a wheel and source archive by invoking the project's configured backend. |
+| `pip wheel` | Builds a wheel from source for installation or distribution. |
+| `uv build` | Builds project distributions through uv's project workflow. |
+
+Build backends implement the PEP 517 interface that creates distributions; common backends include:
+
+| Backend | Summary |
+| --- | --- |
+| `setuptools.build_meta` | Provides a mature, broadly compatible build implementation. |
+| `hatchling.build` | Provides a lightweight backend for modern Python projects. |
+| `poetry.core.masonry.api` | Builds distributions from Poetry project metadata without requiring the Poetry CLI. |
+| `mesonpy` | Builds Python packages with native extensions using Meson. |
+| `scikit_build_core.build` | Connects CMake-based native builds to Python packaging. |
+| `uv_build` | Provides a fast build backend designed for uv projects. |
+
+As noted [above](#choose-a-project-type), the build backend is defined in the `[build-system]` table in `pyproject.toml`. Run `uv build` from the project root to build the package:
 
 ```shell
 uv build

@@ -1,117 +1,200 @@
 # Dependency Caching with uv
 
-## Introduction
+## Understand the uv Cache
 
-`uv` caches downloads and built packages so later installs can reuse them. This speeds up repeated work across projects. For the dependency commands themselves, see [Dependency Management with uv](./section-02.md).
+`uv` keeps package metadata, downloads, and built packages so it can reuse them instead of fetching or building them again. This saves time when you install the same dependency in another project or recreate an environment. `uv.lock` records *which versions* to install; the cache makes obtaining them faster; each project's `.venv` contains the packages it can actually import. See [Dependency Management with uv](./section-02.md) for locking and syncing.
 
-## Compare Installation Methods
+## Explore the Cache with `click`
 
-### Install the Same Package
+### Compare Installation Commands
 
-Each tab installs `click` in a different way. The uv examples share the same cache, but only the project workflow tracks dependencies in `pyproject.toml` and `uv.lock`.
+These tabs show different ways to use a package. Work in a disposable project or virtual environment: `uv add` changes project files, while `uv sync` needs a project that already declares `click` and has a lockfile. The uv commands can all use uv's cache; `pip` uses its own.
 
-=== "pip"
+=== "pip install"
 
-    Install with the traditional package manager in an existing environment:
+    With an existing virtual environment active, install `click` using pip:
 
     ```shell
     pip install click
     ```
 
-    `pip` maintains its own download cache, separate from uv's cache.
-
 === "uv pip install"
 
-    Install directly into an existing virtual environment:
+    With an existing virtual environment active, install `click` without editing project files:
 
     ```shell
     uv pip install click
     ```
 
-    `uv` caches downloaded packages, but this command does not update project metadata.
+=== "uv add"
+
+    In a uv project, declare `click`, update the lockfile, and install it:
+
+    ```shell
+    uv add click
+    ```
 
 === "uv sync"
 
-    In a project that declares `click` as a dependency, install what its lockfile specifies:
+    In that project, synchronize its environment from the existing lockfile, reusing cached packages where possible:
 
     ```shell
-    uv sync
+    uv sync --locked
     ```
 
-    `uv` can reuse cached packages while keeping the project environment in sync.
+=== "uv tool"
 
-### Summary
+    `click` is a library, not a command-line application. To see uv's shared cache used for an executable tool instead, install `black`:
 
-The cache stores reusable package files; `.venv` holds the packages available to a particular project. A cache is a speed-up, not a replacement for [the lockfile](./section-02.md#the-lockfile), which records the resolved versions.
+    ```shell
+    uv tool install black
+    ```
 
-## Try the Cache in GitHub Actions
+    Tools get their own environments; they can still draw packages from the same uv cache.
 
-The [uv cache demo project](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/README.md) declares
-heavy CPU-based ML dependencies (`tensorflow-cpu`, `transformers`, and
-`scikit-learn`) in its own `pyproject.toml` and commits a `uv.lock`. The
-[manual workflow](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) uses
-`astral-sh/setup-uv` to restore and save uv's cache between runs. Each run
-creates a **new** `.venv` and installs from the lockfile with `uv sync --locked`.
-No GPU or model download is needed.
+After using the `uv add` tab in a disposable project, remove its environment so the next sync must install `click` again:
 
-After the workflow has been pushed to the repository's default branch:
+```shell
+rm -rf .venv
+```
 
-1. Open **Actions → uv cache demo (ML dependencies) → Run workflow**, choose
-   the same branch for both runs, leave **Prune cache** and **Clean cache**
-   unchecked, and start the first run.
-2. Wait until it finishes successfully (the cache is saved at the end of the
-   job), then run it again without changing `pyproject.toml` or `uv.lock`.
-3. Compare **Cache restored before optional clearing** and **uv sync duration**
-   in each run's summary.
-   The first run normally reports `false`; the second should report `true`
-   and can install the already-downloaded packages more quickly.
+Recreate that environment from the lockfile; uv can reuse `click` from its cache:
 
-You can also start a run from the command line with
-`gh workflow run uv-cache.yml --ref main` (replace `main` if using another
-branch). The reported duration measures `uv sync`, **excluding** time spent
-transferring the GitHub Actions cache. Compare the whole job duration in the
-Actions UI as well: transferring large ML wheels can offset installation
-savings. Cache entries are scoped to the repository and branch according to
-GitHub Actions' cache rules, and changing the dependency files creates a new
-cache key.
+```shell
+uv sync --locked
+```
 
-The optional **Prune cache** checkbox removes downloaded wheels *before saving*
-a new cache, but does not affect installation on the current run. The separate
-**Clean cache** checkbox runs `uv cache clean` *after restoration but before
-installation*, giving that run a cold install. Neither checkbox deletes an
-existing GitHub Actions cache entry, which cannot be overwritten under the
-same key. Leave both unchecked when comparing cached installation times.
+### Find Packages on Disk
 
-## Explore the Cache
+The `uv cache dir` subcommand resolves uv's active cache path, using `UV_CACHE_DIR` or the configured `cache-dir` when set. On Linux, the default is usually `~/.cache/uv` or `$XDG_CACHE_HOME/uv`. Run `ls -lah` with that path to list the cache, including hidden files and directory sizes:
 
-### Cache Organization
+```shell
+ls -lah "$(uv cache dir)"
+```
 
-By default, uv's cache lives at `~/.cache/uv` on Linux. It separates package-index data, downloaded wheels, built packages, and unpacked files into directories. Their names and versions are implementation details that may change as uv evolves.
+The cache layout is versioned and can change. For example, inspect the top level of the wheel cache:
 
-### Different Package Sources
+```shell
+ls -1 "$(uv cache dir)/wheels-v6"
+```
 
-`uv` can cache packages from an index such as PyPI, a Git repository, or a direct URL. These sources have different cache entries, but you can work with them through the same project commands. See [Declaring Dependencies](./section-02.md#declaring-dependencies) for the project workflow.
+```text
+index
+pypi
+```
 
-## Handle uv Upgrades
+Packages do not necessarily appear in directories named after the package. The project's `.venv` is separate and lives outside the shared cache.
 
-### Cache Versioning
+### Cache Files and Configuration
 
-An upgrade may change the cache format. In that case uv downloads or builds the needed files again; your project requirements and lockfile remain the source of truth. You do not need to manage cache directory names yourself.
+The cache root may contain `CACHEDIR.TAG`, which marks it as disposable, and `.gitignore`, which keeps cache contents out of Git. Inspect these housekeeping files with `cat`:
+
+```shell
+cat "$(uv cache dir)/CACHEDIR.TAG"
+```
+
+```text
+Signature: 8a477f597d28d172789f06886806bc55
+```
+
+```shell
+cat "$(uv cache dir)/.gitignore"
+```
+
+```text
+*
+```
+
+These files are not dependency declarations or settings to edit. To change the cache location, set `UV_CACHE_DIR` or configure `cache-dir` in `uv.toml` or `[tool.uv]` in `pyproject.toml`; most projects need no cache configuration. See [uv's cache directory documentation](https://docs.astral.sh/uv/concepts/cache/#cache-directory).
 
 ## Maintain the Cache
 
-### Clean and Prune
-
-If you need to free space, remove unused cache entries:
+uv normally manages entries for you. To reclaim space from unused entries, prune the cache:
 
 ```shell
 uv cache prune
 ```
 
-To clear the entire uv cache instead, use:
+To clear all cached entries and make the next installation fetch or build them again, clean the cache:
 
 ```shell
 uv cache clean
 ```
 
-After cleaning, the next installation may need to download or build packages again.
+Use these commands rather than deleting individual files in the cache. Neither command removes the project's lockfile.
+
+## Using uv Cache in CI(/CD) Environments
+
+CI jobs often start with a fresh environment. Reuse **package artifacts**, then create a new `.venv` from the committed lockfile on each run. For a realistic example, [`projects/proj5_uv_cache`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) locks `tensorflow-cpu`, `transformers`, and `scikit-learn` for Python 3.12; its first install can be large.
+
+### GitHub Actions
+
+Use this action step in a GitHub Actions job to install uv and restore or save its package cache across runs. The dependency files contribute to the cache key, so changing either file selects a new entry:
+
+```yaml
+- name: Set up uv and restore its package cache
+  uses: astral-sh/setup-uv@v5
+  with:
+    version: "0.11.1"
+    enable-cache: true
+    cache-dependency-glob: |
+      projects/proj5_uv_cache/pyproject.toml
+      projects/proj5_uv_cache/uv.lock
+```
+
+- `uses` selects the `setup-uv` action.
+- `with` configures the action:
+  - `version` pins uv to `0.11.1`.
+  - `enable-cache` enables uv package-cache restoration and saving.
+  - `cache-dependency-glob` lists files used to derive the cache key:
+    - `pyproject.toml` declares the project's dependencies.
+    - `uv.lock` records the resolved dependency versions.
+
+Run this command from the repository root to create the project's `.venv` from the committed lockfile. `--locked` makes uv fail rather than update an out-of-date lockfile; the virtual environment is separate from the uv package cache.
+
+```yaml
+- name: Install ML packages into a fresh virtual environment
+  shell: bash
+  run: |
+    uv sync --directory projects/proj5_uv_cache --locked --python 3.12
+```
+
+- `shell` selects Bash to run the step.
+- `run` invokes `uv sync` with these options:
+  - `--directory` points uv to the demo project.
+  - `--locked` fails if the lockfile needs an update instead of changing it.
+  - `--python` selects Python 3.12 for the environment.
+
+Run the workflow twice on the same branch without changing those files. The first run populates the cache; the next can reuse it. Compare **whole job times**, since downloading and uploading the CI cache also takes time.
+
+### Jenkins
+
+Jenkins can keep uv's cache between builds by running on the same agent with `UV_CACHE_DIR` inside persistent storage. The [demo Dockerfile](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/Dockerfile) runs Jenkins and keeps `/var/jenkins_home` in a Docker volume; the cache lives at `/var/jenkins_home/.cache/uv`. It includes Python 3.12, uv, and the demo's locked dependency files. See the [demo setup](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/README.md) for build and startup instructions. This single-node teaching example enables one executor on the controller.
+
+Paste this pipeline into a Jenkins **Pipeline script** job (it is also available as [`Jenkinsfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/Jenkinsfile)):
+
+```groovy
+pipeline {
+    agent any
+    options { disableConcurrentBuilds() }
+    stages {
+        stage('Install from lockfile') {
+            steps {
+                dir('/opt/uv-cache-demo') {
+                    sh 'rm -rf .venv'
+                    sh 'uv sync --locked --python 3.12'
+                }
+            }
+        }
+        stage('Verify dependencies') {
+            steps {
+                dir('/opt/uv-cache-demo') {
+                    sh '.venv/bin/python -c "import tensorflow, transformers, sklearn; print(\'ML packages imported successfully\')"'
+                }
+            }
+        }
+    }
+}
+```
+
+The pipeline removes only the project's `.venv` before each build, then installs the locked dependencies and checks imports. The uv cache remains in the persistent Jenkins volume, so running **Build Now** twice demonstrates reuse. Keeping the volume also preserves the cache if you recreate the Jenkins container; removing the volume starts over. Unlike GitHub Actions, this example reuses a local directory rather than downloading a cache artifact on every run.
