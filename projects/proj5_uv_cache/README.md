@@ -9,10 +9,10 @@ downloads models or needs a GPU.
 ## Run Locally
 
 With Python 3.12 and uv installed, run this from the project directory to
-install exactly the locked dependencies:
+install the project's dependencies and update `uv.lock` when needed:
 
 ```shell
-uv sync --locked --python 3.12
+uv sync
 ```
 
 Check that the ML packages can be imported:
@@ -50,8 +50,11 @@ installed packages. Changes under `/app`, including `.venv`, affect the
 host project; the package cache is separate from your host's uv cache.
 
 Follow [The Cache Workflow](../../docs/chapter-03/section-03.md#the-cache-workflow)
-to inspect the cache, reinstall offline, and clear cached packages. The
-development container does not use the persistent named Jenkins volume below.
+to inspect the cache, reinstall offline, and compare pruning with full cleanup.
+The pruning showcase uses `uvx` to run an older uv release once and cache
+SciPy in its old cache format. The temporary installation stays outside the
+project, and neither the dependency files nor the Dockerfile needs changing.
+The development container does not use the persistent named Jenkins volume below.
 
 ## Run the Jenkins Demo in Docker
 
@@ -104,5 +107,31 @@ To restart it with the same named volume, run:
 docker start uv-cache-jenkins
 ```
 
-For the GitHub Actions cache comparison and an explanation of both CI examples,
+## Compare GitHub Actions Cache Strategies
+
+Run the [uv cache workflow](../../.github/workflows/uv-cache.yml) manually from
+GitHub's Actions tab. Its inputs control two independent choices:
+
+| Input | Default | Effect |
+| --- | --- | --- |
+| `prune_cache` | `true` | Runs `uv cache prune --ci` after installation. Removes downloaded wheels while retaining wheels built from source. |
+| `clean_cache` | `false` | Clears the restored local cache before installation to demonstrate a cold run. |
+
+The workflow uses separate cache-key suffixes for full and CI-pruned caches.
+Run each strategy twice without changing the dependency files and compare
+the job summaries: they report cache restoration, installation duration,
+cache sizes before and after optional pruning, and reclaimed space in KiB.
+Also compare whole job durations, since cache transfers take time.
+
+Pruning runs explicitly before the summary, rather than in `setup-uv`'s
+post-job hook, so its effect is measurable even on cache hits. Exact cache-key
+hits are not overwritten; the reported sizes describe the local cache, not
+the compressed archive stored by GitHub.
+
+The ML demo uses downloaded wheels, so CI pruning leaves little package data
+to reuse and subsequent runs download those wheels again. Keeping the full
+cache (`prune_cache=false`) can be preferable for large downloads; measure
+both strategies rather than assuming pruning always makes jobs faster.
+
+For a measured local comparison and an explanation of both CI examples,
 see [Dependency Caching with uv](../../docs/chapter-03/section-03.md#using-uv-cache-in-cicd-environments).

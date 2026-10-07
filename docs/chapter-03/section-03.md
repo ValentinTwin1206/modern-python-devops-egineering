@@ -1,62 +1,52 @@
 # Dependency Caching with uv
 
-`uv` keeps package metadata, downloads, and built packages so it can reuse them instead of fetching or building them again. This saves time when you install the same dependency in another project or recreate an environment. `uv.lock` records *which versions* to install; the cache makes obtaining them faster; each project's `.venv` contains the packages it can actually import. See [Dependency Management with uv](./section-02.md) for locking and syncing.
+The cache is one of `uv`'s key features and a major contributor to its speed: it reuses package metadata, downloads, and built packages instead of fetching or building them again. This chapter explores how the cache is organized and how to create, reuse, and clean it during local development and in continuous integration (CI) environments.
 
-## Used Project
+## Applied Project
 
-The [uv cache demo](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) provides the same Python 3.12 environment for local exploration and Jenkins builds
+The [uv cache demo](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) project hosts a `Dockerfile.devEnv` to provide a Jenkins environment with `uv` and Python 3.12 for local exploration and Continuous Integration (CI) builds. The Groovy script in `Jenkinsfile` defines a simple pipeline that recreates `.venv` from `uv.lock`, reuses cached dependencies, and checks package imports. Running it twice demonstrates cache reuse between builds.
 
 ## The Cache Workflow
 
-Follow this pattern with the demo's ML dependencies: **create the cache, reuse it, then clear it**. The container keeps its cache separate from your host's uv cache; the first download is several hundred megabytes.
-
-### Start the Development Container
-
-From the repository's `projects/` directory, use [build.sh](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/build.sh) to build the image and open the dedicated `uv` cache development container:
+From the repository's `projects/` directory, the following command builds the image from `Dockerfile.devEnv` and launches a `bash` session inside the container:
 
 ```bash
-./build.sh build --path proj5_uv_cache/Dockerfile.devEnv --rm-container
+./build.sh build \
+    --path proj5_uv_cache/Dockerfile.devEnv \
+    --rm-container
 ```
-
-The command opens Bash as `bob` in `/app`. The Jenkins image already includes Bash; its entrypoint forwards `/bin/bash` instead of starting Jenkins. The image sets `UV_CACHE_DIR` to `/var/jenkins_home/.cache/uv`, so no export or project initialization is needed.
 
 !!! warning "The project is bind-mounted"
     Changes to `/app` also change `projects/proj5_uv_cache` on your host. The following steps recreate `.venv`; do not use that environment in another session while following them. The container's package cache is disposable and is not the named volume used by the Jenkins example.
 
 ### uv Commands That Use the Cache
 
-The table shows which commands update uv's cache. `uv add` changes project files; `uv sync` installs the project's declared dependencies.
+The table shows which commands update `uv`'s cache. `uv add` changes project files. See [*Dependency Management with uv*](./section-02.md) for details on locking and syncing dependencies.
 
 | Command | Update Cache | Summary |
 | --- | --- | --- |
 | `uv pip install {pkg}` | ✅  | Installs a `{pkg}` uses uv's cache without changing project files. |
 | `uv add {pkg}` | ✅ | Adds a `{pkg}` to a project, updates `uv.lock` as well as `pyproject.toml`, and synchronizes the environment. |
-| `uv sync` | ✅ | Creates the environment from `uv.lock`. |
+| `uv sync` | ✅ | Synchronizes the project's environment and updates `uv.lock` when needed. |
 | `uv tool install {tool}` | ✅ | Installs a `{tool}` in its own tool environment while sharing uv's package cache. |
 
 ### Install Project Dependencies
 
-Install the demo's locked dependencies into `.venv`. uv downloads missing packages into its cache without changing the dependency files:
+Install the project's dependencies into `.venv`. `uv` caches downloaded packages and updates `uv.lock` when needed:
 
 ```bash
-uv sync --locked --python 3.12
+uv sync
 ```
 
 ### Inspect the Cache
 
-Run `uv cache dir` the active cache path. You should see:
-
-```text
-/var/jenkins_home/.cache/uv
-```
-
-Inspect the populated cache, including its hidden housekeeping files:
+Inspect the populated cache, including hidden housekeeping files; `uv cache dir` supplies the active cache path:
 
 ```bash
-tree -a -L 1 --noreport "$(uv cache dir)"
+tree -a -L 1 "$(uv cache dir)"
 ```
 
-The following layout was observed with uv 0.11.1. Cache directory versions and package versions can change:
+You should see an output similiar to the following:
 
 ```text
 /var/jenkins_home/.cache/uv
@@ -69,31 +59,33 @@ The following layout was observed with uv 0.11.1. Cache directory versions and p
 `-- wheels-v6
 ```
 
-Each entry stores reusable package data or helps uv manage the cache safely:
+> The layout was observed with `uv` 0.11.1
+
+Each entry stores reusable package data or helps `uv` manage the cache safely:
 
 | Entry | Purpose |
 | --- | --- |
-| `archive-v0` | Stores unpacked package files that uv copies or links into an environment. Reusing these files avoids downloading and unpacking the same package again. |
-| `wheels-v6` | Stores records for wheels (ready-to-install packages), including download metadata and links to unpacked files. These records help uv locate cached packages for installation. |
-| `interpreter-v4` | Stores information about Python interpreters, such as their versions and supported platforms. uv can reuse this information instead of inspecting the same interpreter repeatedly. |
+| `archive-v0` | Stores unpacked package files that `uv` copies or links into an environment. Reusing these files avoids downloading and unpacking the same package again. |
+| `wheels-v6` | Stores records for `.whl`s (ready-to-install packages), including download metadata and links to unpacked files. These records help `uv` locate cached packages for installation. |
+| `interpreter-v4` | Stores information about Python interpreters, such as their versions and supported platforms. `uv` can reuse this information instead of inspecting the same interpreter repeatedly. |
 | `sdists-v9` | Stores cached source distributions and build results for packages that need to be built into wheels. The directory can exist even when all installed packages came from ready-made wheels. |
-| `.gitignore`, `.lock`, `CACHEDIR.TAG` | `.gitignore` keeps cache contents out of Git, `.lock` coordinates cache access, and `CACHEDIR.TAG` marks the directory as disposable cache data. uv manages these files; they are not dependency declarations or settings to edit. |
+| `.gitignore`, `.lock`, `CACHEDIR.TAG` | `.gitignore` keeps cache contents out of Git, `.lock` coordinates cache access, and `CACHEDIR.TAG` marks the directory as disposable cache data. `uv` manages these files; they are not dependency declarations or settings to edit. |
 
-Inspect the wheel record of `scikit-learn` package:
+Further inspect the wheel record of `scikit-learn` package:
 
 ```bash
 tree -L 1 --noreport "$(uv cache dir)/wheels-v6/pypi/scikit-learn"
 ```
 
-In this shortened example, `<wheel-tag>` represents its Python/platform tags and `<archive-id>` is a randomly generated directory name:
+This output was observed in the container with Python 3.12 on x86-64 Linux. The `->` marks a symbolic link to `scikit-learn`'s unpacked files in `archive-v0`. The `.http` file stores download-cache metadata managed by `uv`, not project settings. Other workflows may also create package-index metadata in `simple-v20`.
 
 ```text
 /var/jenkins_home/.cache/uv/wheels-v6/pypi/scikit-learn
-|-- 1.9.1-<wheel-tag> -> /var/jenkins_home/.cache/uv/archive-v0/<archive-id>
-`-- 1.9.1-<wheel-tag>.http
+|-- 1.9.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64 -> /var/jenkins_home/.cache/uv/archive-v0/x784IyACviPb2rHI6P3OB
+`-- 1.9.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.http
 ```
 
-The arrow points to `scikit-learn`'s unpacked files in `archive-v0`. The `.http` file holds cache metadata, not project settings. Other workflows may also create package-index metadata in `simple-v20`.
+> Wheel tags vary with Python and platform; randomly generated archive IDs can differ between downloads.
 
 Check the cache's disk usage with `du -sh "$(uv cache dir)"`; this run used about 1.6 GiB:
 
@@ -103,74 +95,159 @@ Check the cache's disk usage with `du -sh "$(uv cache dir)"`; this run used abou
 
 ### Reuse the Cache
 
-Remove only the project's `venv` from `/app`:
+To demonstrate cache reuse, remove the project's virtual environment and recreate it using the previously created `uv.lock` file and local cache:
 
 ```bash
-rm -r .venv
+rm -r .venv && uv sync --offline
 ```
 
-Recreate `.venv` from the unchanged `uv.lock`:
+> `--offline` disables downloads.
 
-```bash
-uv sync --locked --offline --python 3.12
-```
-
-> `--offline` disables downloads, confirming cache reuse.
-
-A successful run installs the ML dependencies without downloads or a `Prepared` step. If a required package is missing from the cache, offline installation fails instead.
-
-Verify the ML imports and show where `scikit-learn` is installed. The path points into `.venv`, not the cache:
+A successful run installs the ML dependencies from the local cache without downloading them. Verify that `scikit-learn` imports from `.venv`, not the cache:
 
 ```bash
 .venv/bin/python -c "import sklearn; print(sklearn.__file__)"
 ```
 
-### Destroy the Cache
+### Compare Cache Cleanup
 
-Use uv's cleanup commands rather than deleting cache files directly. Neither command removes the project's `.venv` or dependency files:
-
-=== "Prune"
-
-    Remove **unused** cache entries to reclaim space without clearing the entire cache. Here, unused means obsolete cache data, such as entries from older uv versions, not simply packages absent from the current project:
-
-    ```bash
-    uv cache prune
-    ```
-
-=== "Clean"
-
-    Remove **all** cached entries so future installations must download or build packages again:
-
-    ```bash
-    uv cache clean
-    ```
-
-Inspect the surviving environment and dependency files after cleanup by running `ls -lah`:
-
-```text
-.venv
-pyproject.toml
-uv.lock
-```
-
-Verify that the installed `scikit-learn` still works after cache cleanup:
-
-```bash
-.venv/bin/python -c "import sklearn; print(sklearn.__file__)"
-```
-
-**Result:** deleting `.venv` preserves the cache for reuse; cache cleanup preserves `.venv`. After `uv cache clean`, deleting `.venv` and syncing again requires fresh downloads, so an offline sync cannot restore the dependencies.
+#### Create Obsolete Cache Entries
 
 !!! info
-    For persistent cache-location settings, see [uv's cache directory documentation](https://docs.astral.sh/uv/concepts/cache/#cache-directory).
+    To demonstrate `uv cache prune`, first create obsolete cache entries by running `uv` 0.4.12 with `uvx`, which runs tools in isolated environments. This older release uses a cache format that the current `uv` no longer uses, giving the prune command artifacts to remove. `scipy`'s large unpacked files make the resulting disk-space reduction easier to see than a small package such as Click.
+
+Create a temporary installation directory outside the project:
+
+```bash
+prune_demo=$(mktemp -d)
+```
+
+Install `scipy` with the older `uv` release, skipping dependencies with `--no-deps`:
+
+```bash
+uvx --from uv==0.4.12 uv pip install --python "$(uv python find 3.12)" --no-deps --target "$prune_demo" "scipy==1.15.3"
+```
+
+Inspect the cache entry for `scipy`:
+
+```bash
+tree -L 1 "$(uv cache dir)/wheels-v1/pypi/scipy"
+```
+
+The older `uv` release created `scipy`'s record in `wheels-v1` without changing the project dependencies. The arrow points to its unpacked files in `archive-v0`. This output was observed with Python 3.12 on x86-64 Linux; wheel tags depend on the interpreter and platform, while archive IDs can differ between fresh downloads.
+
+```text
+/var/jenkins_home/.cache/uv/wheels-v1/pypi/scipy
+|-- scipy-1.15.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64 -> /var/jenkins_home/.cache/uv/archive-v0/0jVNiH_qYTwttuRGvgwjZ
+`-- scipy-1.15.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.http
+
+2 directories, 1 file
+```
+
+Check the size with `du -sh "$(uv cache dir)"`; this run grew from about 1.6 GiB to 1.8 GiB:
+
+```text
+1.8G    /var/jenkins_home/.cache/uv
+```
+
+Remove the temporary installation; the old-format cache entries remain until they are pruned:
+
+```bash
+rm -r "$prune_demo"
+```
+
+#### Prune Cache
+
+Remove obsolete cache formats and unpacked files no longer referenced by cache records using the current `uv` release:
+
+```bash
+uv cache prune
+```
+
+In this run, `uv` reported:
+
+```text
+Removed 1460 files (144.3MiB)
+```
+
+Inspect the top level with `tree -a -L 1 "$(uv cache dir)"`; `wheels-v1` is gone, while the current `wheels-v6` remains. Check the size again with `du -sh "$(uv cache dir)"`:
+
+```text
+1.7G    /var/jenkins_home/.cache/uv
+```
+
+The cache remains larger than its original size because `uvx` downloaded `uv` 0.4.12 as a tool package and cached it in the current `wheels-v6` format. Pruning removed the obsolete entries created by the older executable, but kept the valid cached package containing that executable. The project's ML wheels also remain cached, so you can still recreate its environment offline. Because the cache is shared across projects, removing a dependency from this project's `pyproject.toml` does not make its cached wheel obsolete.
+
+#### Clean Cache
+
+Remove **all** cached entries so future installations must download or build packages again:
+
+```bash
+uv cache clean
+```
+
+Inspect the project files with `ls -lah`; `uv cache clean` leaves `.venv` and its installed packages untouched, along with `pyproject.toml` and `uv.lock`. It removes cached wheel data, not the package files already installed from those wheels. Verify that `scikit-learn` still works:
+
+```bash
+.venv/bin/python -c "import sklearn; print(sklearn.__file__)"
+```
+
+#### Cleanup Summary
+
+These commands affect the shared cache and the project's installed environment differently.
+
+| Command | Effect on the Cache | Effect on `.venv` |
+| --- | --- | --- |
+| `rm -r .venv` | Leaves cached packages available for reuse. | Removes the environment. |
+| `uv cache prune` | Removes obsolete and unreferenced data; keeps valid package entries. | Leaves the environment unchanged. |
+| `uv cache clean` | Removes all cached entries. | Leaves the environment unchanged. |
+
+**For a completely fresh project sync**, remove `.venv`, run `uv cache clean`, then run `uv sync` to download and install the dependencies again; `--offline` cannot restore them from an empty cache.
 
 ## Using uv Cache in CI(/CD) Environments
 
 CI jobs often start with a fresh environment. Reuse **package artifacts**, then create a new `.venv` from the committed lockfile on each run. For a realistic example, [`projects/proj5_uv_cache`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) locks `tensorflow-cpu`, `transformers`, and `scikit-learn` for Python 3.12; its first install can be large.
 
+### Prune for CI
+
+`uv cache prune --ci` removes downloaded prebuilt wheels and unpacked source distributions but retains wheels built from source. This reduces the cache transferred between jobs while keeping potentially expensive build results. Unlike normal pruning, it intentionally discards reusable downloaded wheels.
+
+To measure the difference in the development container, first reinstall the locked dependencies from `/app`. `--reinstall` repopulates the cache even if `.venv` survived an earlier cleanup:
+
+```bash
+uv sync --locked --reinstall --python 3.12
+```
+
+Record the size with `du -sh "$(uv cache dir)"`, then apply the CI strategy:
+
+```bash
+uv cache prune --ci
+```
+
+Check the size again with `du -sh "$(uv cache dir)"` and inspect the remaining entries with `tree -a -L 1 --noreport "$(uv cache dir)"`. The installed environment still works, but an offline reinstall now fails if it needs a removed wheel.
+
+The same locked ML packages produced this comparison with uv 0.11.1:
+
+| Stage | Cache Disk Usage |
+| --- | --- |
+| Before CI pruning | About 1.6 GiB |
+| After `uv cache prune --ci` | 36 KiB |
+
+Only a small amount of metadata remained; the downloaded package files were removed. Your result may differ by platform and package versions.
+
+!!! info "Measure the whole job"
+    A smaller cache is not automatically faster. This ML demo installs prebuilt wheels, so CI pruning leaves little package data to reuse and later jobs download the wheels again. Compare cache-transfer time and package-download time, not only installation time. See [uv's CI cache guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration).
+
 ### GitHub Actions
 
-Use this action step in a GitHub Actions job to install uv and restore or save its package cache across runs. The dependency files contribute to the cache key, so changing either file selects a new entry:
+The [demo workflow](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) lets you compare full and CI-pruned caches. Its manual-run inputs are:
+
+| Input | Default | Effect |
+| --- | --- | --- |
+| `prune_cache` | `true` | Runs `uv cache prune --ci` after installation and measures the change in disk usage. |
+| `clean_cache` | `false` | Clears the restored local cache before installation to demonstrate a cold run. |
+
+This setup step installs uv and restores its package cache. Dependency files and the selected strategy contribute to the cache key, so full and CI-pruned runs use separate cache entries:
 
 ```yaml
 - name: Set up uv and restore its package cache
@@ -181,6 +258,8 @@ Use this action step in a GitHub Actions job to install uv and restore or save i
     cache-dependency-glob: |
       projects/proj5_uv_cache/pyproject.toml
       projects/proj5_uv_cache/uv.lock
+    cache-suffix: ${{ inputs.prune_cache && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
+    prune-cache: false
 ```
 
 - `uses` selects the `setup-uv` action.
@@ -190,6 +269,8 @@ Use this action step in a GitHub Actions job to install uv and restore or save i
   - `cache-dependency-glob` lists files used to derive the cache key:
     - `pyproject.toml` declares the project's dependencies.
     - `uv.lock` records the resolved dependency versions.
+  - `cache-suffix` separates the two cache strategies so their results do not mix.
+  - `prune-cache: false` disables the action's automatic post-job pruning; the workflow runs and measures pruning explicitly instead.
 
 Run this command from the repository root to create the project's `.venv` from the committed lockfile. `--locked` makes uv fail rather than update an out-of-date lockfile; the virtual environment is separate from the uv package cache.
 
@@ -206,7 +287,12 @@ Run this command from the repository root to create the project's `.venv` from t
   - `--locked` fails if the lockfile needs an update instead of changing it.
   - `--python` selects Python 3.12 for the environment.
 
-Run the workflow twice on the same branch without changing those files. The first run populates the cache; the next can reuse it. Compare **whole job times**, since downloading and uploading the CI cache also takes time.
+After verifying the imports, the workflow records cache size, optionally runs `uv cache prune --ci`, and measures the remaining size. Its job summary reports those sizes in KiB, reclaimed space, the cache-restoration result, and the time spent in `uv sync`.
+
+Run each strategy twice on the same branch without changing the dependency files, leaving `clean_cache` disabled. Full-cache runs can reinstall from restored wheels; CI-pruned runs download prebuilt wheels again. Compare **whole job times**, since downloading and uploading the CI cache also takes time.
+
+!!! info "Cache hits and measurements"
+    `setup-uv@v5` normally skips its pruning hook on exact cache-key hits. This workflow's explicit pruning step still runs when requested, but GitHub does not overwrite an existing exact-key cache entry. Reported sizes describe the local cache, not GitHub's compressed archive.
 
 ### Jenkins
 

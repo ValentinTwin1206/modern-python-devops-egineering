@@ -6,20 +6,21 @@
 # Workflow steps:
 # - Check out the repository and set up Python 3.12 and uv.
 # - Restore the uv package cache, keyed by pyproject.toml and uv.lock.
-# - Optionally clear the restored cache or prune wheels before saving.
+# - Optionally clear the restored cache before installation.
 # - Sync into a fresh .venv and verify the ML packages.
-# - Report cache status, options, and uv sync duration.
+# - Measure the cache and optionally prune downloaded wheels for CI.
+# - Report cache status, sizes, and uv sync duration.
 # `clean_cache` clears the restored cache before installation; `prune_cache`
-# removes downloaded wheels before the cache is saved.
+# runs `uv cache prune --ci` after installation, even on an exact cache hit.
 name: uv cache demo (ML dependencies)
 
 on:
   workflow_dispatch:
     inputs:
       prune_cache:
-        description: "Prune downloaded wheels before saving the uv cache"
+        description: "Run uv cache prune --ci after installation"
         type: boolean
-        default: false
+        default: true
       clean_cache:
         description: "Run uv cache clean before installing (cold run)"
         type: boolean
@@ -42,9 +43,8 @@ jobs:
 
       # Dependency files and the ml-demo suffix help form the cache key.
       # Matching caches are reused across eligible runs; entries expire after
-      # 7 days without access. This inactivity period is not configurable per
-      # cache, and storage pressure can evict entries sooner. Pruning removes
-      # cached wheels before saving.
+      # 7 days without access, and storage pressure can evict them sooner.
+      # Separate keys keep full and CI-pruned cache experiments independent.
       - name: Set up uv and restore its package cache
         id: uv
         uses: astral-sh/setup-uv@v5
@@ -54,8 +54,9 @@ jobs:
           cache-dependency-glob: |
             projects/proj5_uv_cache/pyproject.toml
             projects/proj5_uv_cache/uv.lock
-          cache-suffix: ml-demo
-          prune-cache: ${{ inputs.prune_cache }}
+          cache-suffix: ${{ inputs.prune_cache && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
+          # Prune explicitly below so size changes are visible, including on hits.
+          prune-cache: false
 
       - name: Clear uv cache for a cold install
         if: ${{ inputs.clean_cache }}
@@ -78,6 +79,24 @@ jobs:
           projects/proj5_uv_cache/.venv/bin/python -c \
             "import tensorflow, transformers, sklearn; print('ML packages imported successfully')"
 
+      - name: Measure cache and optionally prune for CI
+        id: cache_size
+        shell: bash
+        env:
+          PRUNE_CACHE: ${{ inputs.prune_cache }}
+        run: |
+          cache_dir=$(uv cache dir)
+          before_kib=$(du -sk "$cache_dir" | cut -f1)
+          if [[ "$PRUNE_CACHE" == "true" ]]; then
+            uv cache prune --ci
+          fi
+          after_kib=$(du -sk "$cache_dir" | cut -f1)
+          {
+            echo "before_kib=$before_kib"
+            echo "after_kib=$after_kib"
+            echo "reclaimed_kib=$((before_kib - after_kib))"
+          } >> "$GITHUB_OUTPUT"
+
       # This times only uv sync, not the GitHub cache download or upload.
       - name: Show cache and installation time
         env:
@@ -85,6 +104,9 @@ jobs:
           CACHE_CLEARED: ${{ inputs.clean_cache }}
           CACHE_PRUNED: ${{ inputs.prune_cache }}
           INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
+          CACHE_BEFORE_KIB: ${{ steps.cache_size.outputs.before_kib }}
+          CACHE_AFTER_KIB: ${{ steps.cache_size.outputs.after_kib }}
+          CACHE_RECLAIMED_KIB: ${{ steps.cache_size.outputs.reclaimed_kib }}
         run: |
           {
             echo '## uv cache demo'
@@ -93,6 +115,11 @@ jobs:
             echo '| --- | --- |'
             echo "| Cache restored before optional clearing | $CACHE_HIT |"
             echo "| Local cache cleared before install | $CACHE_CLEARED |"
-            echo "| Prune cache before saving | $CACHE_PRUNED |"
+            echo "| CI pruning performed after install | $CACHE_PRUNED |"
+            echo "| Cache size before optional CI pruning | ${CACHE_BEFORE_KIB} KiB |"
+            echo "| Cache size after optional CI pruning | ${CACHE_AFTER_KIB} KiB |"
+            echo "| Cache space reclaimed | ${CACHE_RECLAIMED_KIB} KiB |"
             echo "| uv sync duration | ${INSTALL_MS} ms |"
+            echo ''
+            echo 'Exact cache-key hits are not overwritten; these sizes describe the local cache after installation.'
           } >> "$GITHUB_STEP_SUMMARY"
