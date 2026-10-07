@@ -1,127 +1,168 @@
 # Dependency Caching with uv
 
-## Understand the uv Cache
-
 `uv` keeps package metadata, downloads, and built packages so it can reuse them instead of fetching or building them again. This saves time when you install the same dependency in another project or recreate an environment. `uv.lock` records *which versions* to install; the cache makes obtaining them faster; each project's `.venv` contains the packages it can actually import. See [Dependency Management with uv](./section-02.md) for locking and syncing.
 
-## Explore the Cache with `click`
+## Used Project
 
-### Compare Installation Commands
+The [uv cache demo](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) provides the same Python 3.12 environment for local exploration and Jenkins builds
 
-These tabs show different ways to use a package. Work in a disposable project or virtual environment: `uv add` changes project files, while `uv sync` needs a project that already declares `click` and has a lockfile. The uv commands can all use uv's cache; `pip` uses its own.
+## The Cache Workflow
 
-=== "pip install"
+Follow this pattern with the demo's ML dependencies: **create the cache, reuse it, then clear it**. The container keeps its cache separate from your host's uv cache; the first download is several hundred megabytes.
 
-    With an existing virtual environment active, install `click` using pip:
+### Start the Development Container
 
-    ```shell
-    pip install click
-    ```
+From the repository's `projects/` directory, use [build.sh](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/build.sh) to build the image and open the dedicated `uv` cache development container:
 
-=== "uv pip install"
-
-    With an existing virtual environment active, install `click` without editing project files:
-
-    ```shell
-    uv pip install click
-    ```
-
-=== "uv add"
-
-    In a uv project, declare `click`, update the lockfile, and install it:
-
-    ```shell
-    uv add click
-    ```
-
-=== "uv sync"
-
-    In that project, synchronize its environment from the existing lockfile, reusing cached packages where possible:
-
-    ```shell
-    uv sync --locked
-    ```
-
-=== "uv tool"
-
-    `click` is a library, not a command-line application. To see uv's shared cache used for an executable tool instead, install `black`:
-
-    ```shell
-    uv tool install black
-    ```
-
-    Tools get their own environments; they can still draw packages from the same uv cache.
-
-After using the `uv add` tab in a disposable project, remove its environment so the next sync must install `click` again:
-
-```shell
-rm -rf .venv
+```bash
+./build.sh build --path proj5_uv_cache/Dockerfile.devEnv --rm-container
 ```
 
-Recreate that environment from the lockfile; uv can reuse `click` from its cache:
+The command opens Bash as `bob` in `/app`. The Jenkins image already includes Bash; its entrypoint forwards `/bin/bash` instead of starting Jenkins. The image sets `UV_CACHE_DIR` to `/var/jenkins_home/.cache/uv`, so no export or project initialization is needed.
 
-```shell
-uv sync --locked
+!!! warning "The project is bind-mounted"
+    Changes to `/app` also change `projects/proj5_uv_cache` on your host. The following steps recreate `.venv`; do not use that environment in another session while following them. The container's package cache is disposable and is not the named volume used by the Jenkins example.
+
+### uv Commands That Use the Cache
+
+The table shows which commands update uv's cache. `uv add` changes project files; `uv sync` installs the project's declared dependencies.
+
+| Command | Update Cache | Summary |
+| --- | --- | --- |
+| `uv pip install {pkg}` | ✅  | Installs a `{pkg}` uses uv's cache without changing project files. |
+| `uv add {pkg}` | ✅ | Adds a `{pkg}` to a project, updates `uv.lock` as well as `pyproject.toml`, and synchronizes the environment. |
+| `uv sync` | ✅ | Creates the environment from `uv.lock`. |
+| `uv tool install {tool}` | ✅ | Installs a `{tool}` in its own tool environment while sharing uv's package cache. |
+
+### Install Project Dependencies
+
+Install the demo's locked dependencies into `.venv`. uv downloads missing packages into its cache without changing the dependency files:
+
+```bash
+uv sync --locked --python 3.12
 ```
 
-### Find Packages on Disk
+### Inspect the Cache
 
-The `uv cache dir` subcommand resolves uv's active cache path, using `UV_CACHE_DIR` or the configured `cache-dir` when set. On Linux, the default is usually `~/.cache/uv` or `$XDG_CACHE_HOME/uv`. Run `ls -lah` with that path to list the cache, including hidden files and directory sizes:
-
-```shell
-ls -lah "$(uv cache dir)"
-```
-
-The cache layout is versioned and can change. For example, inspect the top level of the wheel cache:
-
-```shell
-ls -1 "$(uv cache dir)/wheels-v6"
-```
+Run `uv cache dir` the active cache path. You should see:
 
 ```text
-index
-pypi
+/var/jenkins_home/.cache/uv
 ```
 
-Packages do not necessarily appear in directories named after the package. The project's `.venv` is separate and lives outside the shared cache.
+Inspect the populated cache, including its hidden housekeeping files:
 
-### Cache Files and Configuration
-
-The cache root may contain `CACHEDIR.TAG`, which marks it as disposable, and `.gitignore`, which keeps cache contents out of Git. Inspect these housekeeping files with `cat`:
-
-```shell
-cat "$(uv cache dir)/CACHEDIR.TAG"
+```bash
+tree -a -L 1 --noreport "$(uv cache dir)"
 ```
+
+The following layout was observed with uv 0.11.1. Cache directory versions and package versions can change:
 
 ```text
-Signature: 8a477f597d28d172789f06886806bc55
+/var/jenkins_home/.cache/uv
+|-- .gitignore
+|-- .lock
+|-- CACHEDIR.TAG
+|-- archive-v0
+|-- interpreter-v4
+|-- sdists-v9
+`-- wheels-v6
 ```
 
-```shell
-cat "$(uv cache dir)/.gitignore"
+Each entry stores reusable package data or helps uv manage the cache safely:
+
+| Entry | Purpose |
+| --- | --- |
+| `archive-v0` | Stores unpacked package files that uv copies or links into an environment. Reusing these files avoids downloading and unpacking the same package again. |
+| `wheels-v6` | Stores records for wheels (ready-to-install packages), including download metadata and links to unpacked files. These records help uv locate cached packages for installation. |
+| `interpreter-v4` | Stores information about Python interpreters, such as their versions and supported platforms. uv can reuse this information instead of inspecting the same interpreter repeatedly. |
+| `sdists-v9` | Stores cached source distributions and build results for packages that need to be built into wheels. The directory can exist even when all installed packages came from ready-made wheels. |
+| `.gitignore`, `.lock`, `CACHEDIR.TAG` | `.gitignore` keeps cache contents out of Git, `.lock` coordinates cache access, and `CACHEDIR.TAG` marks the directory as disposable cache data. uv manages these files; they are not dependency declarations or settings to edit. |
+
+Inspect the wheel record of `scikit-learn` package:
+
+```bash
+tree -L 1 --noreport "$(uv cache dir)/wheels-v6/pypi/scikit-learn"
 ```
+
+In this shortened example, `<wheel-tag>` represents its Python/platform tags and `<archive-id>` is a randomly generated directory name:
 
 ```text
-*
+/var/jenkins_home/.cache/uv/wheels-v6/pypi/scikit-learn
+|-- 1.9.1-<wheel-tag> -> /var/jenkins_home/.cache/uv/archive-v0/<archive-id>
+`-- 1.9.1-<wheel-tag>.http
 ```
 
-These files are not dependency declarations or settings to edit. To change the cache location, set `UV_CACHE_DIR` or configure `cache-dir` in `uv.toml` or `[tool.uv]` in `pyproject.toml`; most projects need no cache configuration. See [uv's cache directory documentation](https://docs.astral.sh/uv/concepts/cache/#cache-directory).
+The arrow points to `scikit-learn`'s unpacked files in `archive-v0`. The `.http` file holds cache metadata, not project settings. Other workflows may also create package-index metadata in `simple-v20`.
 
-## Maintain the Cache
+Check the cache's disk usage with `du -sh "$(uv cache dir)"`; this run used about 1.6 GiB:
 
-uv normally manages entries for you. To reclaim space from unused entries, prune the cache:
-
-```shell
-uv cache prune
+```text
+1.6G    /var/jenkins_home/.cache/uv
 ```
 
-To clear all cached entries and make the next installation fetch or build them again, clean the cache:
+### Reuse the Cache
 
-```shell
-uv cache clean
+Remove only the project's `venv` from `/app`:
+
+```bash
+rm -r .venv
 ```
 
-Use these commands rather than deleting individual files in the cache. Neither command removes the project's lockfile.
+Recreate `.venv` from the unchanged `uv.lock`:
+
+```bash
+uv sync --locked --offline --python 3.12
+```
+
+> `--offline` disables downloads, confirming cache reuse.
+
+A successful run installs the ML dependencies without downloads or a `Prepared` step. If a required package is missing from the cache, offline installation fails instead.
+
+Verify the ML imports and show where `scikit-learn` is installed. The path points into `.venv`, not the cache:
+
+```bash
+.venv/bin/python -c "import sklearn; print(sklearn.__file__)"
+```
+
+### Destroy the Cache
+
+Use uv's cleanup commands rather than deleting cache files directly. Neither command removes the project's `.venv` or dependency files:
+
+=== "Prune"
+
+    Remove **unused** cache entries to reclaim space without clearing the entire cache. Here, unused means obsolete cache data, such as entries from older uv versions, not simply packages absent from the current project:
+
+    ```bash
+    uv cache prune
+    ```
+
+=== "Clean"
+
+    Remove **all** cached entries so future installations must download or build packages again:
+
+    ```bash
+    uv cache clean
+    ```
+
+Inspect the surviving environment and dependency files after cleanup by running `ls -lah`:
+
+```text
+.venv
+pyproject.toml
+uv.lock
+```
+
+Verify that the installed `scikit-learn` still works after cache cleanup:
+
+```bash
+.venv/bin/python -c "import sklearn; print(sklearn.__file__)"
+```
+
+**Result:** deleting `.venv` preserves the cache for reuse; cache cleanup preserves `.venv`. After `uv cache clean`, deleting `.venv` and syncing again requires fresh downloads, so an offline sync cannot restore the dependencies.
+
+!!! info
+    For persistent cache-location settings, see [uv's cache directory documentation](https://docs.astral.sh/uv/concepts/cache/#cache-directory).
 
 ## Using uv Cache in CI(/CD) Environments
 
@@ -169,7 +210,7 @@ Run the workflow twice on the same branch without changing those files. The firs
 
 ### Jenkins
 
-Jenkins can keep uv's cache between builds by running on the same agent with `UV_CACHE_DIR` inside persistent storage. The [demo Dockerfile](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/Dockerfile) runs Jenkins and keeps `/var/jenkins_home` in a Docker volume; the cache lives at `/var/jenkins_home/.cache/uv`. It includes Python 3.12, uv, and the demo's locked dependency files. See the [demo setup](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/README.md) for build and startup instructions. This single-node teaching example enables one executor on the controller.
+Jenkins can keep uv's cache between builds by running on the same agent with `UV_CACHE_DIR` inside persistent storage. The [demo Dockerfile.devEnv](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/Dockerfile.devEnv) includes Jenkins, Python 3.12, uv, and the locked dependency files. It opens Bash by default; the [Jenkins setup](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/README.md#run-the-jenkins-demo-in-docker) explicitly starts Jenkins instead and mounts `/var/jenkins_home` as a persistent volume. The cache lives at `/var/jenkins_home/.cache/uv`, and both Bash and Jenkins run as `bob`. This single-node teaching example enables one executor on the controller.
 
 Paste this pipeline into a Jenkins **Pipeline script** job (it is also available as [`Jenkinsfile`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/Jenkinsfile)):
 

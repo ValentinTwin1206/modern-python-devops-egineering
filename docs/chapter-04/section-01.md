@@ -7,7 +7,7 @@ The applied project is an integrated license service for issuing and validating 
 * A [Streamlit](https://streamlit.io/) frontend provides the browser-based user interface. Users sign in through the frontend and can retrieve or validate their license.
 * A [Keycloak](https://www.keycloak.org/) provides the OpenID Connect (OIDC) identity service. It authenticates users, manages the configured realm and client, and issues tokens for authenticated requests.
 * A [FastAPI](https://fastapi.tiangolo.com/) backend validates OIDC access tokens, authorizes protected operations, stores license data in SQLite, and integrates with Cloudsmith.
-* The [PyGuard](./../../projects/proj1_pyguard/README.md) library provides brute-force protection middleware for the backend. It tracks requests to protected endpoints and can temporarily block clients that exceed the configured attempt threshold.
+* The [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) library provides brute-force protection middleware for the backend. It tracks requests to protected endpoints and can temporarily block clients that exceed the configured attempt threshold.
 
 ```mermaid
 flowchart LR
@@ -22,9 +22,9 @@ flowchart LR
 !!! info "For more information"
     The individual components are documented in their own README files:
 
-    * [Frontend README](./../../projects/bonus1_license_service_oidc/frontend/README.md)
-    * [Backend README](./../../projects/bonus1_license_service_oidc/backend/README.md)
-    * [Keycloak README](./../../projects/bonus1_license_service_oidc/keycloak/README.md)
+    * [Frontend README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/frontend/README.md)
+    * [Backend README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/backend/README.md)
+    * [Keycloak README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/keycloak/README.md)
 
 ### Project Setup
 

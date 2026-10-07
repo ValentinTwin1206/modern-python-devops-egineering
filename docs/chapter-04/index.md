@@ -16,4 +16,4 @@ Use the navigation on the left to move through the chapter's sections:
 | [Section 01](./section-01.md) | Orchestration | Frontend, Backend, OIDC |
 | [Section 02](./section-02.md) | Monitoring | InfluxDB, Grafana |
 | [Section 03](./section-03.md) | Testing | DevContainer, Playwright, Artillery |
-| [Section 04](./section-05.md) | CICD | GitHub Workflow, Dependabot |
+| [Section 04](./section-04.md) | CICD | GitHub Workflow, Dependabot |

@@ -1,6 +1,6 @@
 # Testing
 
-This section builds on the previous [section](./section-03.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. Although Playwright and Artillery are used in the project, the focus is not to introduce these tools in detail; it is to explain the infrastructure and setup required to integrate them into the complete development and testing workflow.
+This section builds on the previous [section](./section-02.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. Although Playwright and Artillery are used in the project, the focus is not to introduce these tools in detail; it is to explain the infrastructure and setup required to integrate them into the complete development and testing workflow.
 
 ## Introduction
 
@@ -161,4 +161,3 @@ The project can be started from VS Code using the `devcontainer.json` configurat
 	```
 
 Use **Dev Containers: Reopen Folder Locally** to leave the container. After changing the Dockerfile or `devcontainer.json`, use **Dev Containers: Rebuild Container**.
-
