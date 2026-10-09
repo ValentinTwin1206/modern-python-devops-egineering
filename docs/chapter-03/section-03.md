@@ -31,7 +31,7 @@ The following table lists common `uv` commands and describes their effects on th
 | `uv add {pkg}` | Adds a dependency, resolves and synchronizes the project, and reuses or adds package data in the cache. |
 | `uv sync` | Synchronizes the project environment and reuses or adds cached package data. `--refresh` forces cached data to be revalidated and updates it for subsequent operations; `--refresh-package {pkg}` limits this to one package. |
 | `uv tool install {tool}` | Installs a tool in its own environment while sharing `uv`'s package cache. |
-| `uv cache prune` | Frees disk space by deleting cache data and centrally stored project environments that are no longer needed. Add `--ci` to also remove downloaded package files (wheels) and unpacked source files, but keep wheels that `uv` built from source. This makes the cache smaller for CI jobs to save and restore without repeating potentially slow builds. |
+| `uv cache prune` | Removes unused cache data and project environments to free disk space. Add `--ci` to also remove downloaded wheels and unpacked source files while preserving wheels built from source. This reduces CI cache size without requiring expensive rebuilds. |
 | `uv cache clean [package]` | Removes all cache entries, or only entries for the named package. |
 
 ## Using uv's Cache for Local Development
@@ -221,7 +221,7 @@ The diagram below visualizes a sample CI caching pattern. Start with *Cache stor
 - **Persistent runner:** Reuse a cache directory outside the job's temporary workspace so cleanup does not delete it.
 - **Temporary runner:** Restore a saved cache using a key based on the platform and dependency files; if no matching cache is available, uv populates a new one during installation. The [GitHub Actions example](#github-actions-example) uses this approach.
 
-Both caching approaches now converge at *Create a Fresh Environment from Locked Dependencies*, using the committed `uv.lock`. Missing packages are downloaded and cached; an outdated lockfile causes the sync to fail rather than changing it. *Build package, run tests, ...*, then *Keep cache or prune with `uv cache prune --ci`*. Pruning removes downloaded wheels but keeps any `*.whl` built from source, so compare both options before enabling it. Finally, *Save cache if needed or retain persistent directory* for the *Next build*. Preserve the package cache, not `.venv`, and include cache transfer time when comparing build durations.
+Both caching approaches now converge at *Create a Fresh Environment from Locked Dependencies*, using the committed `uv.lock`. Missing packages are downloaded and cached; an outdated lockfile causes the sync to fail rather than changing it.*Build the package, run tests, ...*, then *keep the cache or prune it with `uv cache prune --ci`*. This removes downloaded wheels but preserves wheels built from source, avoiding expensive rebuilds in future CI runs. Unlike regular `uv cache prune`, the CI option retains these built wheels. Compare both approaches before enabling pruning. Finally, *Save cache if needed or retain persistent directory* for the *Next build*. Preserve the package cache, not `.venv`, and include cache transfer time when comparing build durations.
 
 ```mermaid
 flowchart TD
