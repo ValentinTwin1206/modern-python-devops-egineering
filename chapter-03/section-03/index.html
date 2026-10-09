@@ -1,0 +1,2728 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Technical course notes for Python packaging and development environments.">
+      
+      
+      
+      
+        <link rel="prev" href="../section-02/">
+      
+      
+        <link rel="next" href="../section-04/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Section 03 - Modern Python DevOps Engineering</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/python-palette.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dependency-caching-with-uv" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Modern Python DevOps Engineering" class="md-header__button md-logo" aria-label="Modern Python DevOps Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Modern Python DevOps Engineering
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Section 03
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-01/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 01
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-02/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 02
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 03
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-04/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 04
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-bonus/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Bonus
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Modern Python DevOps Engineering" class="md-nav__button md-logo" aria-label="Modern Python DevOps Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Modern Python DevOps Engineering
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-01/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 01
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 01
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-02/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 02
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 02
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bonus
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/bonus-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 03
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 03
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#applied-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applied Project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building Blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables-that-influence-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables That Influence Cache Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands-that-influence-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands That Influence the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-uvs-cache-for-local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using uv's Cache for Local Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using uv&#39;s Cache for Local Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inspect-and-reuse-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect and Reuse the Cache
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspect and Reuse the Cache">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-and-inspect-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create and Inspect the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reuse-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manage-uv-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manage uv Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-uvs-cache-in-ci-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using uv's Cache in CI Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using uv&#39;s Cache in CI Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-ci-caching-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The CI Caching Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-actions-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Actions Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GitHub Actions Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-the-cache-key-and-restore-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure the Cache Key and Restore the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-a-fresh-environment-from-locked-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a Fresh Environment from Locked Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measure-and-optionally-prune-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measure and Optionally Prune the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#save-the-cache-and-compare-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save the Cache and Compare Builds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-04/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 04
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 04
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-bonus/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bonus
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-05/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 05
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-06/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 06
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#applied-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applied Project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building Blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables-that-influence-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables That Influence Cache Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands-that-influence-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands That Influence the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-uvs-cache-for-local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using uv's Cache for Local Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using uv&#39;s Cache for Local Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inspect-and-reuse-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect and Reuse the Cache
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspect and Reuse the Cache">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-and-inspect-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create and Inspect the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reuse-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manage-uv-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manage uv Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-uvs-cache-in-ci-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using uv's Cache in CI Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using uv&#39;s Cache in CI Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-ci-caching-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The CI Caching Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-actions-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Actions Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GitHub Actions Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-the-cache-key-and-restore-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure the Cache Key and Restore the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-a-fresh-environment-from-locked-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a Fresh Environment from Locked Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measure-and-optionally-prune-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measure and Optionally Prune the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#save-the-cache-and-compare-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save the Cache and Compare Builds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="dependency-caching-with-uv">Dependency Caching with uv<a class="headerlink" href="#dependency-caching-with-uv" title="Permanent link">&para;</a></h1>
+<p>The cache is one of <code>uv</code>'s key features and a major contributor to its speed. It reuses package metadata, downloads, and built packages instead of fetching or building them again. Understanding the <code>uv</code> cache is an essential skill, especially in continuous integration (CI), where effective caching can shorten builds, reduce network traffic, and lower compute costs. This chapter explores how the cache is organized and how to create, reuse, and clean it during local development and in CI environments.</p>
+<h2 id="applied-project">Applied Project<a class="headerlink" href="#applied-project" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache">uv cache demo</a> provides an Ubuntu 24.04 development container with uv and Python 3.12 for exploring cache reuse locally. Its <a href="https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml">GitHub Actions workflow</a> recreates <code>.venv</code> from <code>uv.lock</code> and compares full and CI-pruned caches across runs.</p>
+<h2 id="building-blocks">Building Blocks<a class="headerlink" href="#building-blocks" title="Permanent link">&para;</a></h2>
+<h3 id="environment-variables-that-influence-cache-behavior">Environment Variables That Influence Cache Behavior<a class="headerlink" href="#environment-variables-that-influence-cache-behavior" title="Permanent link">&para;</a></h3>
+<p>The following environment variables configure where <code>uv</code> stores cache data, how it uses that data, or how it installs cached files. See the <a href="https://docs.astral.sh/uv/reference/environment/">uv environment variable reference</a> for the full list.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Cache behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UV_CACHE_DIR</code></td>
+<td>Sets the cache directory, equivalent to <code>--cache-dir</code>. It takes precedence over the default location.</td>
+</tr>
+<tr>
+<td><code>UV_NO_CACHE</code></td>
+<td>Disables reading and writing the persistent cache, equivalent to <code>--no-cache</code>. <code>uv</code> uses a temporary cache for that invocation.</td>
+</tr>
+<tr>
+<td><code>UV_OFFLINE</code></td>
+<td>Disables network access, so <code>uv</code> must rely on cached data and locally available files, equivalent to <code>--offline</code>.</td>
+</tr>
+<tr>
+<td><code>UV_LINK_MODE</code></td>
+<td>Sets how cached files are installed: <code>clone</code> shares storage until files change; <code>hardlink</code> shares files on the same filesystem; <code>copy</code> duplicates files; <code>symlink</code> points to cached files. Cloning and linking usually install faster than copying. Avoid <code>symlink</code>: clearing the cache can break the environment. Current defaults: <code>clone</code> on macOS/Linux, <code>hardlink</code> on Windows.</td>
+</tr>
+<tr>
+<td><code>UV_LOCK_TIMEOUT</code></td>
+<td>Sets how long <code>uv</code> waits to acquire a file lock, including when cache operations are blocked by other <code>uv</code> processes.</td>
+</tr>
+<tr>
+<td><code>UV_CONCURRENT_CACHE_READS</code></td>
+<td>Sets the number of threads reading cached HTTP responses. Accepts a positive integer; the default is <code>4</code>. Higher values may speed up cache reads, but can slow them down if the storage is overloaded.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="commands-that-influence-the-cache">Commands That Influence the Cache<a class="headerlink" href="#commands-that-influence-the-cache" title="Permanent link">&para;</a></h3>
+<p>The following table lists common <code>uv</code> commands and describes their effects on the <code>uv</code> cache. For details on dependency locking and syncing, see <a href="../section-02/"><em>Dependency Management with uv</em></a>; for more on cache behavior, see the <a href="https://docs.astral.sh/uv/concepts/cache/">uv caching guide</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Effect on the cache</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv pip install {pkg}</code></td>
+<td>Installs a package, reusing cached metadata and artifacts and adding newly downloaded or built data to the cache. <code>--refresh</code> forces cached data to be revalidated and updates it for subsequent operations; <code>--refresh-package {pkg}</code> limits this to one package.</td>
+</tr>
+<tr>
+<td><code>uv add {pkg}</code></td>
+<td>Adds a dependency, resolves and synchronizes the project, and reuses or adds package data in the cache.</td>
+</tr>
+<tr>
+<td><code>uv sync</code></td>
+<td>Synchronizes the project environment and reuses or adds cached package data. <code>--refresh</code> forces cached data to be revalidated and updates it for subsequent operations; <code>--refresh-package {pkg}</code> limits this to one package.</td>
+</tr>
+<tr>
+<td><code>uv tool install {tool}</code></td>
+<td>Installs a tool in its own environment while sharing <code>uv</code>'s package cache.</td>
+</tr>
+<tr>
+<td><code>uv cache prune</code></td>
+<td>Removes unused cache data and project environments to free disk space. Add <code>--ci</code> to also remove downloaded wheels and unpacked source files while preserving wheels built from source. This reduces CI cache size without requiring expensive rebuilds.</td>
+</tr>
+<tr>
+<td><code>uv cache clean [package]</code></td>
+<td>Removes all cache entries, or only entries for the named package.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="using-uvs-cache-for-local-development">Using uv's Cache for Local Development<a class="headerlink" href="#using-uvs-cache-for-local-development" title="Permanent link">&para;</a></h2>
+<p>For day-to-day development, <code>uv</code> manages the cache automatically, and your project's <code>.venv</code> usually stays in place between sessions. Understanding the cache is useful when recreating environments, working offline, or freeing disk space, but managing it is less critical than in CI/CD, where environments are often rebuilt for every run. The following workflow lets you explore cache reuse and cleanup locally.</p>
+<p>From the repository's <code>projects/</code> directory, the following command builds the image from <code>Dockerfile.devEnv</code> and launches a <code>bash</code> session inside the container:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>./build.sh<span class="w"> </span>build<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--path<span class="w"> </span>proj5_uv_cache/Dockerfile.devEnv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--rm-container
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">The project is bind-mounted</p>
+<p>Changes to <code>/app</code> also change <code>projects/proj5_uv_cache</code> on your host. The following steps recreate <code>.venv</code>; do not use that environment in another session while following them. The container's package cache is disposable and separate from your host's uv cache.</p>
+</div>
+<h3 id="inspect-and-reuse-the-cache">Inspect and Reuse the Cache<a class="headerlink" href="#inspect-and-reuse-the-cache" title="Permanent link">&para;</a></h3>
+<h4 id="create-and-inspect-the-cache">Create and Inspect the Cache<a class="headerlink" href="#create-and-inspect-the-cache" title="Permanent link">&para;</a></h4>
+<p>The <code>uv sync</code> command creates <code>.venv</code> if it does not exist and installs the project's dependencies there. In the background, <code>uv</code> maintains its package cache and updates <code>uv.lock</code> when needed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>sync
+</code></pre></div>
+<p>Inspect the populated cache, including hidden housekeeping files; <code>uv cache dir</code> supplies the active cache path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>tree<span class="w"> </span>-aL<span class="w"> </span><span class="m">1</span><span class="w"> </span>--noreport<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>You should see an output similiar to the following:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>/home/bob/.cache/uv
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── .gitignore
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── .lock
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── CACHEDIR.TAG
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>├── archive-v0
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>├── interpreter-v4
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>├── sdists-v9
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>└── wheels-v6
+</code></pre></div>
+<p>Each entry stores reusable package data or helps <code>uv</code> manage the cache safely:</p>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>archive-v0</code></td>
+<td>Stores unpacked package files that <code>uv</code> copies or links into an environment. Reusing these files avoids downloading and unpacking the same package again.</td>
+</tr>
+<tr>
+<td><code>wheels-v6</code></td>
+<td>Stores records for <code>.whl</code>s (ready-to-install packages), including download metadata and links to unpacked files. These records help <code>uv</code> locate cached packages for installation.</td>
+</tr>
+<tr>
+<td><code>interpreter-v4</code></td>
+<td>Stores information about Python interpreters, such as their versions and supported platforms. <code>uv</code> can reuse this information instead of inspecting the same interpreter repeatedly.</td>
+</tr>
+<tr>
+<td><code>sdists-v9</code></td>
+<td>Stores cached source distributions and build results for packages that need to be built into wheels. The directory can exist even when all installed packages came from ready-made wheels.</td>
+</tr>
+<tr>
+<td><code>.gitignore</code>, <code>.lock</code>, <code>CACHEDIR.TAG</code></td>
+<td><code>.gitignore</code> keeps cache contents out of Git, <code>.lock</code> coordinates cache access, and <code>CACHEDIR.TAG</code> marks the directory as disposable cache data. <code>uv</code> manages these files; they are not dependency declarations or settings to edit.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Other workflows may also create package-index metadata in <code>simple-v20</code></p>
+</blockquote>
+<p>Further inspect the wheel record of <code>scikit-learn</code> package:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>tree<span class="w"> </span>-L<span class="w"> </span><span class="m">1</span><span class="w"> </span>--noreport<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">/wheels-v6/pypi/scikit-learn&quot;</span>
+</code></pre></div>
+<p>The dedicated cache folder for <code>scikit-learn</code> contains the structure shown below. The first entry marks a symbolic link (<code>-&gt;</code>) to the unpacked files in <code>archive-v0</code>. The second entry, is a binary file (<code>*.http</code>) that stores download-cache metadata managed by <code>uv</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>/home/bob/.cache/uv/wheels-v6/pypi/scikit-learn
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├── &lt;version&gt;-&lt;python-tag&gt;-&lt;abi-tag&gt;-&lt;platform-tag&gt; -&gt; /home/bob/.cache/uv/archive-v0/&lt;archive-id&gt;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>└── &lt;version&gt;-&lt;python-tag&gt;-&lt;abi-tag&gt;-&lt;platform-tag&gt;.http
+</code></pre></div>
+<blockquote>
+<p>See <a href="../../chapter-02/section-01/#package-layout">Package Layout in Chapter 2, Section 1</a> to undertand wheel filename tags.</p>
+</blockquote>
+<p>Check the cache size with <code>uv cache size --human</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>size<span class="w"> </span>--human
+</code></pre></div>
+<p>In this run, the cache size was about 1.6 GiB:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>1.6GiB
+</code></pre></div>
+<h4 id="reuse-the-cache">Reuse the Cache<a class="headerlink" href="#reuse-the-cache" title="Permanent link">&para;</a></h4>
+<p>To demonstrate cache reuse, remove the <code>.venv</code> first. Thus, <code>uv</code> must recreate the environment from <code>uv.lock</code> instead of using packages already installed there. Removing it deletes the environment's installed packages, scripts, and metadata; it does not delete the separate <code>uv</code> cache. In this demo, <code>UV_LINK_MODE=copy</code> makes <code>uv</code> copy package files from its cache into <code>.venv</code>, so reusable cache data and the active environment reside in two locations. The <code>--offline</code> flag prevents downloads, requiring the sync to use the local cache:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>rm<span class="w"> </span>-r<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>sync<span class="w"> </span>--offline
+</code></pre></div>
+<p>A successful run installs the ML dependencies from the local cache without downloading them. Verify that <code>scikit-learn</code> imports from <code>.venv</code>, not the cache:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sklearn; print(sklearn.__file__)&quot;</span>
+</code></pre></div>
+<h3 id="manage-uv-cache">Manage uv Cache<a class="headerlink" href="#manage-uv-cache" title="Permanent link">&para;</a></h3>
+<p>The project environment and the shared cache are separate. Choose the cleanup command based on what you want to remove and whether later installs should reuse cached packages.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Prune Cache</label><label for="__tabbed_1_2">Clean Cache</label><label for="__tabbed_1_3">Complete Cleanup</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><code>uv cache prune</code> frees cache space by removing obsolete and unreferenced data while keeping valid package entries and leaving <code>.venv</code> unchanged.</p>
+<p>To see pruning in action, first add cache entries that the current <code>uv</code> version can no longer use. Use <code>uvx</code> to run an older release, <code>uv</code> 0.4.12, in an isolated tool environment. This older release writes to the shared cache using an outdated format (<code>wheels-v1</code>), giving the current <code>uv</code> version something to remove. Start by creating a temporary installation directory outside the project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nv">prune_demo</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+</code></pre></div>
+<p>Install <code>scipy</code> with the older <code>uv</code> release, skipping dependencies with <code>--no-deps</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span><span class="nv">uv</span><span class="o">==</span><span class="m">0</span>.4.12<span class="w"> </span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--python<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>python<span class="w"> </span>find<span class="w"> </span><span class="m">3</span>.12<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>--no-deps<span class="w"> </span>--target<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$prune_demo</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;scipy==1.15.3&quot;</span>
+</code></pre></div>
+<p>The older <code>uv</code> release created a <code>scipy</code> cache record under <code>wheels-v1</code> without changing the project dependencies. Use <code>find</code> to locate the record and see which cache format contains it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/scipy&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+<p>Check the size again with <code>uv cache size --human</code>; in this run it grew from about 1.6 GiB to 1.8 GiB:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>1.8GiB
+</code></pre></div>
+<p>Remove the temporary installation; the old-format cache entries remain until they are pruned:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>rm<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$prune_demo</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Finally, remove the old-format <code>scipy</code> cache record by running the following command:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>prune
+</code></pre></div>
+<p>In this run, <code>uv</code> reported:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>Removed 1460 files (144.3MiB)
+</code></pre></div>
+<p>After pruning, <code>wheels-v1</code> was deleted, but the cache remained slightly larger than it was initially as <code>uvx</code> cached the <code>uv</code> 0.4.12 tool in the current <code>wheels-v6</code> format. <code>uv cache size --human</code> reported:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>1.7 GiB
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><code>uv cache clean</code> removes <strong>all</strong> entries from the shared cache, including valid wheels and unpacked package files, while keeping installed packages in project environments unchanged. Future installs that need those packages must download or build them again.</p>
+<p>Clear the shared cache:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>clean
+</code></pre></div>
+<p>Inspect the project files with <code>ls -lah</code>; <code>uv cache clean</code> leaves <code>.venv</code> and its installed packages untouched, along with <code>pyproject.toml</code> and <code>uv.lock</code>. It removes cached wheel data, not the package files already installed from those wheels. Verify that <code>scikit-learn</code> still works:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sklearn; print(sklearn.__file__)&quot;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Deleting <code>.venv</code> and running <code>uv cache clean</code> removes this project's installed packages and clears the shared cache for all projects, but leaves other projects' environments in place. A later <code>uv sync</code> must download or build dependencies again; <code>--offline</code> cannot restore them from an empty cache.</p>
+<p>Remove this project's environment:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>rm<span class="w"> </span>-r<span class="w"> </span>.venv
+</code></pre></div>
+<p>Clear the shared cache:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>clean
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="using-uvs-cache-in-ci-environments">Using uv's Cache in CI Environments<a class="headerlink" href="#using-uvs-cache-in-ci-environments" title="Permanent link">&para;</a></h2>
+<p>In CI workflows such as GitHub Actions, reusing uv's cache avoids repeated downloads and builds. This shortens jobs, reduces network use, and gives your team faster feedback. Keeping large downloaded packages, such as machine-learning libraries, in the cache avoids downloading them on every build. This can save time and network traffic, but also increases the cache size. Compare those savings with the time needed to restore and save the cache.</p>
+<h3 id="the-ci-caching-pattern">The CI Caching Pattern<a class="headerlink" href="#the-ci-caching-pattern" title="Permanent link">&para;</a></h3>
+<p>The diagram below visualizes a sample CI caching pattern. Start with <em>Cache storage</em> to determine how package data is kept between jobs:</p>
+<ul>
+<li><strong>Persistent runner:</strong> Reuse a cache directory outside the job's temporary workspace so cleanup does not delete it.</li>
+<li><strong>Temporary runner:</strong> Restore a saved cache using a key based on the platform and dependency files; if no matching cache is available, uv populates a new one during installation. The <a href="#github-actions-example">GitHub Actions example</a> uses this approach.</li>
+</ul>
+<p>Both caching approaches now converge at <em>Create a Fresh Environment from Locked Dependencies</em>, using the committed <code>uv.lock</code>. Missing packages are downloaded and cached; an outdated lockfile causes the sync to fail rather than changing it.<em>Build the package, run tests, ...</em>, then <em>keep the cache or prune it with <code>uv cache prune --ci</code></em>. This removes downloaded wheels but preserves wheels built from source, avoiding expensive rebuilds in future CI runs. Unlike regular <code>uv cache prune</code>, the CI option retains these built wheels. Compare both approaches before enabling pruning. Finally, <em>Save cache if needed or retain persistent directory</em> for the <em>Next build</em>. Preserve the package cache, not <code>.venv</code>, and include cache transfer time when comparing build durations.</p>
+<pre class="mermaid"><code>flowchart TD
+    start["Start CI build"] --&gt; storage{"Cache storage"}
+    storage --&gt;|"Persistent Runner or Volume"| persistent["Reuse the persistent cache directory"]
+    storage --&gt;|"Temporary Runner"| key["Cache (Hash-)Key"]
+    key --&gt; restore["Restore saved cache or start empty"]
+    persistent --&gt; sync["Create a Fresh Environment from Locked Dependencies"]
+    restore --&gt; sync
+    sync --&gt; verify["Build package, run tests, ..."]
+    verify --&gt; prune["Keep cache or prune with uv cache prune --ci"]
+    prune --&gt; retain["Save cache if needed or retain persistent directory"]
+    retain -. "Next build" .-&gt; start</code></pre>
+<h3 id="github-actions-example">GitHub Actions Example<a class="headerlink" href="#github-actions-example" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml">demo workflow</a> checks out the repository, sets up Python 3.12, and installs <code>uv</code> with package caching enabled. The following steps show how it restores the cache, creates a fresh environment, checks dependencies, and measures cache usage.</p>
+<h4 id="configure-the-cache-key-and-restore-the-cache">Configure the Cache Key and Restore the Cache<a class="headerlink" href="#configure-the-cache-key-and-restore-the-cache" title="Permanent link">&para;</a></h4>
+<p>For <code>uv</code>'s saved package cache, GitHub checks both the cache key and the branch allowed to access it:</p>
+<ul>
+<li><strong>Branch builds</strong> can restore caches from their own branch or the default branch (usually <code>main</code>), but not from unrelated feature branches.</li>
+<li><strong>Pull-request builds</strong> can also restore caches from the target branch. Caches saved by a pull-request run are limited to that pull request; <code>main</code> and other pull requests cannot reuse them.</li>
+</ul>
+<p>Keeping a matching cache on <code>main</code> therefore helps other branches reuse downloaded packages. If no accessible cache matches, <code>uv</code> downloads the missing packages as usual. These are GitHub's <a href="https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache">cache-sharing rules</a>, not restrictions imposed by <code>uv</code>.</p>
+<p>This step installs <code>uv</code>, configures the cache key, and restores any matching saved cache:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up uv and restore its package cache</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">astral-sh/setup-uv@v5</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.11.1&quot;</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="w">    </span><span class="nt">enable-cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="w">    </span><span class="nt">cache-dependency-glob</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="w">      </span><span class="no">projects/proj5_uv_cache/pyproject.toml</span>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a><span class="w">      </span><span class="no">projects/proj5_uv_cache/uv.lock</span>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a><span class="w">    </span><span class="nt">cache-suffix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ inputs.prune_cache &amp;&amp; &#39;ml-demo-ci-pruned&#39; || &#39;ml-demo-full&#39; }}</span>
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a><span class="w">    </span><span class="nt">prune-cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<ul>
+<li><code>uses</code> — <code>astral-sh/setup-uv@v5</code>: Installs uv and manages the saved cache.</li>
+<li><code>with</code> — Action settings:<ul>
+<li><code>version</code> — Pins the <code>uv 0.11.1</code> release.</li>
+<li><code>enable-cache</code> — Restores a matching cache and saves one after a successful run when needed.</li>
+<li><code>cache-dependency-glob</code> — Hashes the contents of <code>pyproject.toml</code> and <code>uv.lock</code>. Changing either file changes the cache key.</li>
+<li><code>cache-suffix</code> — Full or CI-pruned label: Keeps the two experiments separate.</li>
+<li><code>prune-cache</code> — Leaves pruning to the following workflow's measured step.</li>
+</ul>
+</li>
+</ul>
+<h4 id="create-a-fresh-environment-from-locked-dependencies">Create a Fresh Environment from Locked Dependencies<a class="headerlink" href="#create-a-fresh-environment-from-locked-dependencies" title="Permanent link">&para;</a></h4>
+<p>The workflow uses <code>uv sync --locked</code> to install the committed lockfile's dependencies into a fresh environment, reusing the restored package cache. Missing packages are downloaded and cached for later builds. If the lockfile is out of date, the command fails instead of changing it. The following step runs the installation and records its duration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install ML packages into a fresh virtual environment</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">install</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span><span class="nt">shell</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bash</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">    </span><span class="no">start_ms=$(date +%s%3N)</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">    </span><span class="no">uv sync --directory projects/proj5_uv_cache --locked --python 3.12</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">    </span><span class="no">end_ms=$(date +%s%3N)</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">    </span><span class="no">echo &quot;milliseconds=$((end_ms - start_ms))&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;</span>
+</code></pre></div>
+<h4 id="measure-and-optionally-prune-the-cache">Measure and Optionally Prune the Cache<a class="headerlink" href="#measure-and-optionally-prune-the-cache" title="Permanent link">&para;</a></h4>
+<p>After checking imports, the workflow can run <code>uv cache prune --ci</code> to remove downloaded prebuilt wheels and unpacked source distributions while keeping wheels built from source. This reduces the cache size without discarding potentially expensive builds, but later installs must download the removed packages again. The following step measures cache disk usage before and after optional pruning and reports the space freed. These measurements describe the local cache, not GitHub's saved archive:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Measure cache and optionally prune for CI</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cache_size</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">  </span><span class="nt">shell</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bash</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">  </span><span class="nt">env</span><span class="p">:</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">    </span><span class="nt">PRUNE_CACHE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ inputs.prune_cache }}</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">    </span><span class="no">cache_dir=$(uv cache dir)</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="w">    </span><span class="no">before_kib=$(du -sk &quot;$cache_dir&quot; | cut -f1)</span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="w">    </span><span class="no">if [[ &quot;$PRUNE_CACHE&quot; == &quot;true&quot; ]]; then</span>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="w">      </span><span class="no">uv cache prune --ci</span>
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="w">    </span><span class="no">fi</span>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a><span class="w">    </span><span class="no">after_kib=$(du -sk &quot;$cache_dir&quot; | cut -f1)</span>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a><span class="w">    </span><span class="no">{</span>
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a><span class="w">      </span><span class="no">echo &quot;before_kib=$before_kib&quot;</span>
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a><span class="w">      </span><span class="no">echo &quot;after_kib=$after_kib&quot;</span>
+<a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a><span class="w">      </span><span class="no">echo &quot;reclaimed_kib=$((before_kib - after_kib))&quot;</span>
+<a id="__codelineno-24-17" name="__codelineno-24-17" href="#__codelineno-24-17"></a><span class="w">    </span><span class="no">} &gt;&gt; &quot;$GITHUB_OUTPUT&quot;</span>
+</code></pre></div>
+<blockquote>
+<p>In this ML demo, the cache shrank from about 1.6 GiB to 36 KiB.</p>
+</blockquote>
+<h4 id="save-the-cache-and-compare-builds">Save the Cache and Compare Builds<a class="headerlink" href="#save-the-cache-and-compare-builds" title="Permanent link">&para;</a></h4>
+<p>With <code>enable-cache: true</code>, <code>setup-uv</code> saves the cache after a successful run when needed. GitHub does not overwrite an existing exact-key cache entry, even if local pruning runs.</p>
+<p>Run each strategy twice without changing dependencies and compare <strong>whole build times</strong>, including cache transfers on GitHub Actions, rather than cache size or <code>uv sync</code> time alone. See <a href="https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration">uv's CI caching guidance</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.instant", "navigation.indexes", "navigation.top", "content.code.copy", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>
