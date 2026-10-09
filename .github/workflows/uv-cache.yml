@@ -41,10 +41,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Dependency files and the ml-demo suffix help form the cache key.
-      # Matching caches are reused across eligible runs; entries expire after
-      # 7 days without access, and storage pressure can evict them sooner.
-      # Separate keys keep full and CI-pruned cache experiments independent.
+      # Cache key: setup-uv generates it automatically using, among other inputs:
+      # - cache-dependency-glob: hashes pyproject.toml and uv.lock; changing
+      #   either file changes the key.
+      # - cache-suffix: keeps full and CI-pruned caches separate.
+      #
+      # Cache reuse: eligible runs reuse a cache when the key matches.
+      # Cache retention: entries expire after 7 days without access;
+      # storage pressure can evict them sooner.
       - name: Set up uv and restore its package cache
         id: uv
         uses: astral-sh/setup-uv@v5
@@ -55,16 +59,18 @@ jobs:
             projects/proj5_uv_cache/pyproject.toml
             projects/proj5_uv_cache/uv.lock
           cache-suffix: ${{ inputs.prune_cache && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
-          # Prune explicitly below so size changes are visible, including on hits.
           prune-cache: false
 
+      # For "true", simulate an empty cache (a first build or an expired CI cache),
+      # troubleshoot cache problems.
+      # For "false", reuse cached packages for faster builds.
       - name: Clear uv cache for a cold install
         if: ${{ inputs.clean_cache }}
         run: uv cache clean
 
-      # .venv is recreated each run; only uv's package cache persists.
-      # `--locked` uses the committed uv.lock and fails if it needs updating,
-      # keeping each timed install reproducible without changing the lockfile.
+      # Environment: recreate .venv each run; reuse only uv's package cache.
+      # Dependencies: --locked uses the committed uv.lock without changing it
+      # and fails if it needs updating, keeping timed installs reproducible.
       - name: Install ML packages into a fresh virtual environment
         id: install
         shell: bash
@@ -79,6 +85,9 @@ jobs:
           projects/proj5_uv_cache/.venv/bin/python -c \
             "import tensorflow, transformers, sklearn; print('ML packages imported successfully')"
 
+      # When "prune_cache" is "true", the "--ci" option removes downloaded
+      # wheels and unpacked source files but keeps wheels built from source
+      # to avoid rebuilding.
       - name: Measure cache and optionally prune for CI
         id: cache_size
         shell: bash
