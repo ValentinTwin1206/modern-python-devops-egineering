@@ -134,81 +134,91 @@ A successful run installs the ML dependencies from the local cache without downl
 
 ### Manage uv Cache
 
-#### Prune Cache
-
-The `uv cache prune` command frees disk space by removing cache data the current `uv` can no longer use, such as entries in obsolete formats and unpacked files no cache record refers to. It keeps valid cached packages and does not uninstall packages from project environments.
-
-To see pruning in action, first add cache entries that the current `uv` version can no longer use. Use `uvx` to run an older release, `uv` 0.4.12, in an isolated tool environment. This older release writes to the shared cache using an outdated format (`wheels-v1`), giving the current `uv` version something to remove. Start by creating a temporary installation directory outside the project:
-
-```bash
-prune_demo=$(mktemp -d)
-```
-
-Install `scipy` with the older `uv` release, skipping dependencies with `--no-deps`:
-
-```bash
-uvx --from uv==0.4.12 uv pip install --python "$(uv python find 3.12)" --no-deps --target "$prune_demo" "scipy==1.15.3"
-```
-
-The older `uv` release created a `scipy` cache record under `wheels-v1` without changing the project dependencies. Use `find` to locate the record and see which cache format contains it:
-
-```bash
-find "$(uv cache dir)" -type d -path '*/wheels-v*/pypi/scipy' -print
-```
-
-Check the size again with `uv cache size --human`; in this run it grew from about 1.6 GiB to 1.8 GiB:
-
-```text
-1.8GiB
-```
-
-Remove the temporary installation; the old-format cache entries remain until they are pruned:
-
-```bash
-rm -r "$prune_demo"
-```
-
-Finally, validate that the `scipy` package get removed by running the following command:
-
-```bash
-uv cache prune
-```
-
-In this run, `uv` reported:
-
-```text
-Removed 1460 files (144.3MiB)
-```
-
-After pruning, `wheels-v1` was deleted, but the cache remained slightly larger than it was initially as `uvx` cached the `uv` 0.4.12 tool in the current `wheels-v6` format. `uv cache size --human` reported:
-
-```text
-1.7 GiB
-```
-
-#### Clean Cache
-
-The `uv cache clean` command removes **all** entries from the cache, including valid wheels and unpacked package files. Packages already installed in project environments remain, but future installs that need those packages must download or build them again:
-
-```bash
-uv cache clean
-```
-
-Inspect the project files with `ls -lah`; `uv cache clean` leaves `.venv` and its installed packages untouched, along with `pyproject.toml` and `uv.lock`. It removes cached wheel data, not the package files already installed from those wheels. Verify that `scikit-learn` still works:
-
-```bash
-.venv/bin/python -c "import sklearn; print(sklearn.__file__)"
-```
-
-#### Cleanup Summary
-
 The project environment and the shared cache are separate. Choose the cleanup command based on what you want to remove and whether later installs should reuse cached packages.
 
-| Goal | Commands | Effect |
-| --- | --- | --- |
-| Remove installed packages, keep cached data | `rm -r .venv` | Deletes the project's environment. A later `uv sync` can reuse the shared cache. |
-| Free cache space, keep reusable packages | `uv cache prune` | Removes obsolete and unreferenced cache data. Keeps valid package entries and leaves `.venv` unchanged. |
-| Remove installed packages and cached data | `rm -r .venv`, then `uv cache clean` | Deletes this project's environment and clears the shared cache for all projects, but leaves their environments in place. A later `uv sync` must download or build dependencies again; `--offline` cannot restore them from an empty cache. |
+=== "Prune Cache"
+
+    `uv cache prune` frees cache space by removing obsolete and unreferenced data while keeping valid package entries and leaving `.venv` unchanged.
+
+    To see pruning in action, first add cache entries that the current `uv` version can no longer use. Use `uvx` to run an older release, `uv` 0.4.12, in an isolated tool environment. This older release writes to the shared cache using an outdated format (`wheels-v1`), giving the current `uv` version something to remove. Start by creating a temporary installation directory outside the project:
+
+    ```bash
+    prune_demo=$(mktemp -d)
+    ```
+
+    Install `scipy` with the older `uv` release, skipping dependencies with `--no-deps`:
+
+    ```bash
+    uvx --from uv==0.4.12 uv pip install --python "$(uv python find 3.12)" --no-deps --target "$prune_demo" "scipy==1.15.3"
+    ```
+
+    The older `uv` release created a `scipy` cache record under `wheels-v1` without changing the project dependencies. Use `find` to locate the record and see which cache format contains it:
+
+    ```bash
+    find "$(uv cache dir)" -type d -path '*/wheels-v*/pypi/scipy' -print
+    ```
+
+    Check the size again with `uv cache size --human`; in this run it grew from about 1.6 GiB to 1.8 GiB:
+
+    ```text
+    1.8GiB
+    ```
+
+    Remove the temporary installation; the old-format cache entries remain until they are pruned:
+
+    ```bash
+    rm -r "$prune_demo"
+    ```
+
+    Finally, remove the old-format `scipy` cache record by running the following command:
+
+    ```bash
+    uv cache prune
+    ```
+
+    In this run, `uv` reported:
+
+    ```text
+    Removed 1460 files (144.3MiB)
+    ```
+
+    After pruning, `wheels-v1` was deleted, but the cache remained slightly larger than it was initially as `uvx` cached the `uv` 0.4.12 tool in the current `wheels-v6` format. `uv cache size --human` reported:
+
+    ```text
+    1.7 GiB
+    ```
+
+=== "Clean Cache"
+
+    `uv cache clean` removes **all** entries from the shared cache, including valid wheels and unpacked package files, while keeping installed packages in project environments unchanged. Future installs that need those packages must download or build them again.
+
+    Clear the shared cache:
+
+    ```bash
+    uv cache clean
+    ```
+
+    Inspect the project files with `ls -lah`; `uv cache clean` leaves `.venv` and its installed packages untouched, along with `pyproject.toml` and `uv.lock`. It removes cached wheel data, not the package files already installed from those wheels. Verify that `scikit-learn` still works:
+
+    ```bash
+    .venv/bin/python -c "import sklearn; print(sklearn.__file__)"
+    ```
+
+=== "Complete Cleanup"
+
+    Deleting `.venv` and running `uv cache clean` removes this project's installed packages and clears the shared cache for all projects, but leaves other projects' environments in place. A later `uv sync` must download or build dependencies again; `--offline` cannot restore them from an empty cache.
+
+    Remove this project's environment:
+
+    ```bash
+    rm -r .venv
+    ```
+
+    Clear the shared cache:
+
+    ```bash
+    uv cache clean
+    ```
 
 ## Using uv's Cache in CI Environments
 
