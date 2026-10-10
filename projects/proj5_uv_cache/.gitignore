@@ -1,0 +1,2 @@
+# Generate this fixture before building; keep the repository small.
+src/uv_cache_demo/data/embeddings.bin

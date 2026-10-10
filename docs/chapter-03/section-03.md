@@ -4,7 +4,7 @@ The cache is one of `uv`'s key features and a major contributor to its speed. It
 
 ## Applied Project
 
-The [uv cache demo](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) provides an Ubuntu 24.04 development container with uv and Python 3.12 for exploring cache reuse locally. Its [GitHub Actions workflow](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) recreates `.venv` from `uv.lock` and compares full and CI-pruned caches across runs.
+The [uv cache demo](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj5_uv_cache) combines large machine-learning dependencies with a local package containing a 16 MiB synthetic embedding matrix. Downloaded ML wheels demonstrate the trade-off between download time and cache storage; the local package makes retention of a source-built wheel visible after CI pruning. A generator creates identical sample data before packaging, keeping the repository small. These are synthetic features, not trained model weights.
 
 ## Building Blocks
 
@@ -53,10 +53,11 @@ From the repository's `projects/` directory, the following command builds the im
 
 #### Create and Inspect the Cache
 
-The `uv sync` command creates `.venv` if it does not exist and installs the project's dependencies there. In the background, `uv` maintains its package cache and updates `uv.lock` when needed:
+The `uv sync` command creates `.venv` if it does not exist and installs the project's dependencies there. For this demo, first generate the bundled fixture and fingerprint the build inputs. `--no-editable` installs the local package as a regular wheel, while `--locked` keeps the committed dependency versions:
 
 ```bash
-uv sync
+python scripts/generate_fixture.py
+UV_CACHE_DEMO_BUILD_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable
 ```
 
 Inspect the populated cache, including hidden housekeeping files; `uv cache dir` supplies the active cache path:
@@ -123,7 +124,8 @@ In this run, the cache size was about 1.6 GiB:
 To demonstrate cache reuse, remove the `.venv` first. Thus, `uv` must recreate the environment from `uv.lock` instead of using packages already installed there. Removing it deletes the environment's installed packages, scripts, and metadata; it does not delete the separate `uv` cache. In this demo, `UV_LINK_MODE=copy` makes `uv` copy package files from its cache into `.venv`, so reusable cache data and the active environment reside in two locations. The `--offline` flag prevents downloads, requiring the sync to use the local cache:
 
 ```bash
-rm -r .venv && uv sync --offline
+rm -r .venv
+UV_CACHE_DEMO_BUILD_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable --offline
 ```
 
 A successful run installs the ML dependencies from the local cache without downloading them. Verify that `scikit-learn` imports from `.venv`, not the cache:
@@ -222,16 +224,16 @@ The project environment and the shared cache are separate. Choose the cleanup co
 
 ## Using uv's Cache in CI Environments
 
-In CI workflows such as GitHub Actions, reusing uv's cache avoids repeated downloads and builds. This shortens jobs, reduces network use, and gives your team faster feedback. Keeping large downloaded packages, such as machine-learning libraries, in the cache avoids downloading them on every build. This can save time and network traffic, but also increases the cache size. Compare those savings with the time needed to restore and save the cache.
+In CI workflows such as GitHub Actions, reusing `uv`'s cache avoids repeated downloads and builds. This shortens jobs, reduces network use, and gives your team faster feedback. Keeping large downloaded packages, such as machine-learning libraries, in the cache avoids downloading them on every build. This can save time and network traffic, but also increases the cache size. Compare those savings with the time needed to restore and save the cache.
 
 ### The CI Caching Pattern
 
 The diagram below visualizes a sample CI caching pattern. Start with *Cache storage* to determine how package data is kept between jobs:
 
 - **Persistent runner:** Reuse a cache directory outside the job's temporary workspace so cleanup does not delete it.
-- **Temporary runner:** Restore a saved cache using a key based on the platform and dependency files; if no matching cache is available, uv populates a new one during installation. The [GitHub Actions example](#github-actions-example) uses this approach.
+- **Temporary runner:** Restore a saved cache using a key based on the platform and dependency files; if no matching cache is available, `uv` populates a new one during installation. The [GitHub Actions example](#github-actions-example) uses this approach.
 
-Both caching approaches now converge at *Create a Fresh Environment from Locked Dependencies*, using the committed `uv.lock`. Missing packages are downloaded and cached; an outdated lockfile causes the sync to fail rather than changing it.*Build the package, run tests, ...*, then *keep the cache or prune it with `uv cache prune --ci`*. This removes downloaded wheels but preserves wheels built from source, avoiding expensive rebuilds in future CI runs. Unlike regular `uv cache prune`, the CI option retains these built wheels. Compare both approaches before enabling pruning. Finally, *Save cache if needed or retain persistent directory* for the *Next build*. Preserve the package cache, not `.venv`, and include cache transfer time when comparing build durations.
+Both approaches converge at *Create a Fresh Environment from Locked Dependencies*, using the committed `uv.lock`. Missing packages are downloaded or built and cached; an outdated lockfile causes the sync to fail rather than changing it. After building and checking the package, keep the full cache or run `uv cache prune --ci`. Regular pruning removes unused entries; `--ci` additionally removes downloaded wheels and unpacked sources while retaining source-built wheels to avoid rebuilding. Finally, *Save cache if needed or retain persistent directory* for the next build. Preserve the package cache, not `.venv`, and include cache transfer time when comparing build durations.
 
 ```mermaid
 flowchart TD
@@ -242,25 +244,38 @@ flowchart TD
     persistent --> sync["Create a Fresh Environment from Locked Dependencies"]
     restore --> sync
     sync --> verify["Build package, run tests, ..."]
-    verify --> prune["Keep cache or prune with uv cache prune --ci"]
+    verify --> prune["Keep the cache or retain only locally built packages"]
     prune --> retain["Save cache if needed or retain persistent directory"]
     retain -. "Next build" .-> start
 ```
 
 ### GitHub Actions Example
 
-The [demo workflow](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) checks out the repository, sets up Python 3.12, and installs `uv` with package caching enabled. The following steps show how it restores the cache, creates a fresh environment, checks dependencies, and measures cache usage.
+The [uv-cache.yml](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) demo workflow shows how `uv`'s cache can speed up dependency installation in CI. It uses a **temporary runner**, so each job starts on a fresh machine. Only `uv`'s package cache is saved between runs; `.venv` is recreated from `uv.lock`. The workflow compares full and CI-pruned caches across runs, measuring installation time and cache storage. It runs manually or on pushes to `main` that change `projects/proj5_uv_cache/**` or the workflow file. Push runs enable pruning and disable cache clearing. Manual runs can change either setting using `prune_cache` and `clean_cache`.
+
+#### Set the Cache Directory and Measure Its Initial Size
+
+Initially, the workflow sets `UV_CACHE_DIR` under the GitHub runner's temporary storage and writes it to `GITHUB_ENV`, making the path available to subsequent steps. The measurement helper checks this directory without running `uv` or creating the cache; on a fresh runner, it normally reports 0 KiB.
+
+```yaml
+- name: Measure cache at the beginning of the job
+  id: cache_start
+  env:
+    UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
+  run: |
+    echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
+    bash projects/proj5_uv_cache/scripts/cache_size.sh "Before restoration"
+```
 
 #### Configure the Cache Key and Restore the Cache
 
-For `uv`'s saved package cache, GitHub checks both the cache key and the branch allowed to access it:
+The GitHub Action `astral-sh/setup-uv` installs the pinned `uv` version and manages its package cache. With caching enabled, the action restores a matching cache before dependency installation and saves a new cache after a successful job when needed. The action generates a cache key using inputs including the platform and selected files. These settings control caching:
 
-- **Branch builds** can restore caches from their own branch or the default branch (usually `main`), but not from unrelated feature branches.
-- **Pull-request builds** can also restore caches from the target branch. Caches saved by a pull-request run are limited to that pull request; `main` and other pull requests cannot reuse them.
-
-Keeping a matching cache on `main` therefore helps other branches reuse downloaded packages. If no accessible cache matches, `uv` downloads the missing packages as usual. These are GitHub's [cache-sharing rules](https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache), not restrictions imposed by `uv`.
-
-This step installs `uv`, configures the cache key, and restores any matching saved cache:
+- **`enable-cache: true`** — Enables restoring and saving uv's package cache across eligible runs.
+- **`cache-local-path`** — Uses the previously exported `UV_CACHE_DIR`, so the action, uv, and the measurement helper share the same cache directory.
+- **`cache-dependency-glob`** — Selects files whose contents contribute to the key. Dependency files, local package sources, and generated fixture data are included so changes produce a new key.
+- **`cache-suffix`** — Gives full and CI-pruned caches separate keys, allowing both strategies to be compared. `PRUNE_CACHE` includes the default for push runs and the choice made for manual runs.
+- **`prune-cache: false`** — Disables the action's automatic pruning. The workflow prunes explicitly later, so it can measure the effect even on exact cache hits.
 
 ```yaml
 - name: Set up uv and restore its package cache
@@ -269,64 +284,74 @@ This step installs `uv`, configures the cache key, and restores any matching sav
   with:
     version: "0.11.1"
     enable-cache: true
+    cache-local-path: ${{ env.UV_CACHE_DIR }}
     cache-dependency-glob: |
       projects/proj5_uv_cache/pyproject.toml
       projects/proj5_uv_cache/uv.lock
-    cache-suffix: ${{ inputs.prune_cache && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
+      projects/proj5_uv_cache/src/**/*.py
+      projects/proj5_uv_cache/src/**/*.json
+      projects/proj5_uv_cache/src/**/*.bin
+    cache-suffix: ${{ env.PRUNE_CACHE == 'true' && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
     prune-cache: false
 ```
 
-- `uses` — `astral-sh/setup-uv@v5`: Installs uv and manages the saved cache.
-- `with` — Action settings:
-    - `version` — Pins the `uv 0.11.1` release.
-    - `enable-cache` — Restores a matching cache and saves one after a successful run when needed.
-    - `cache-dependency-glob` — Hashes the contents of `pyproject.toml` and `uv.lock`. Changing either file changes the cache key.
-    - `cache-suffix` — Full or CI-pruned label: Keeps the two experiments separate.
-    - `prune-cache` — Leaves pruning to the following workflow's measured step.
+!!! info "GitHub Cache Access and Retention"
+
+    GitHub determines which caches a workflow can access. Branch runs can reuse caches from their own branch or the default branch. Pull-request runs can also access caches from the target branch, but caches they save are available only to that pull request. Matching caches on `main` therefore benefit other branches.
+
+    Saved cache entries cannot be overwritten and expire after seven days without access; storage pressure may evict them sooner. Without a matching accessible cache, `uv` downloads or builds dependencies as usual. See GitHub's [cache-sharing rules](https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache).
 
 #### Create a Fresh Environment from Locked Dependencies
 
-The workflow uses `uv sync --locked` to install the committed lockfile's dependencies into a fresh environment, reusing the restored package cache. Missing packages are downloaded and cached for later builds. If the lockfile is out of date, the command fails instead of changing it. The following step runs the installation and records its duration:
+The workflow uses `uv sync --locked --no-editable` to install into a fresh environment. `--locked` requires an up-to-date committed lockfile; `--no-editable` builds and installs the local package as a regular wheel, which uv caches alongside downloaded dependencies. Later runs can reuse this wheel. A separate `uv build --wheel` produces a distribution artifact but does not by itself demonstrate this installation-cache reuse.
+
+A GitHub cache hit only restores files: uv still checks whether the local wheel is current. Fresh checkouts change file timestamps, so the workflow generates the fixture, then runs `scripts/build_key.py` to fingerprint `pyproject.toml` and the `.py`, `.json`, and `.bin` files under `src/`. It exports the result as `UV_CACHE_DEMO_BUILD_KEY`, which the project's `tool.uv.cache-keys` setting uses instead of timestamps. Unchanged contents can reuse the wheel; changed build inputs trigger rebuilding. Generate the fixture and recompute this fingerprint before local syncs too, as shown in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/README.md#run-locally).
+
+The following step records installation time, including any necessary downloads and builds, then measures cache size outside the timer:
 
 ```yaml
-- name: Install ML packages into a fresh virtual environment
+- name: Create a fresh environment from locked dependencies
   id: install
   shell: bash
   run: |
     start_ms=$(date +%s%3N)
-    uv sync --directory projects/proj5_uv_cache --locked --python 3.12
+    uv sync --directory projects/proj5_uv_cache --locked --no-editable --python 3.12
     end_ms=$(date +%s%3N)
     echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
+    bash projects/proj5_uv_cache/scripts/cache_size.sh "After uv sync"
 ```
 
-#### Measure and Optionally Prune the Cache
+#### Keep the Cache or Retain Only Locally Built Packages
 
-After checking imports, the workflow can run `uv cache prune --ci` to remove downloaded prebuilt wheels and unpacked source distributions while keeping wheels built from source. This reduces the cache size without discarding potentially expensive builds, but later installs must download the removed packages again. The following step measures cache disk usage before and after optional pruning and reports the space freed. These measurements describe the local cache, not GitHub's saved archive:
+After checking the installed fixture and package imports, the workflow can run `uv cache prune --ci`. This retains the demo's source-built wheel but removes downloaded ML wheels, which later installs must download again. The job-level `PRUNE_CACHE` setting controls this step. A shared helper measures local cache disk usage with `du -sk`; a missing cache directory counts as zero:
 
 ```yaml
-- name: Measure cache and optionally prune for CI
+- name: Keep the cache or retain locally built packages
   id: cache_size
   shell: bash
-  env:
-    PRUNE_CACHE: ${{ inputs.prune_cache }}
   run: |
-    cache_dir=$(uv cache dir)
-    before_kib=$(du -sk "$cache_dir" | cut -f1)
     if [[ "$PRUNE_CACHE" == "true" ]]; then
       uv cache prune --ci
     fi
-    after_kib=$(du -sk "$cache_dir" | cut -f1)
-    {
-      echo "before_kib=$before_kib"
-      echo "after_kib=$after_kib"
-      echo "reclaimed_kib=$((before_kib - after_kib))"
-    } >> "$GITHUB_OUTPUT"
+    bash projects/proj5_uv_cache/scripts/cache_size.sh "After optional CI pruning"
 ```
 
-> In this ML demo, the cache shrank from about 1.6 GiB to 36 KiB.
+The roughly 16 MiB wheel makes retained space visible, but packaging data is still quick. A larger wheel does not necessarily mean an expensive build. Pruning saves cache space, but keeping the full cache may be faster for these large ML downloads. Measure both strategies.
 
 #### Save the Cache and Compare Builds
 
 With `enable-cache: true`, `setup-uv` saves the cache after a successful run when needed. GitHub does not overwrite an existing exact-key cache entry, even if local pruning runs.
 
-Run each strategy twice without changing dependencies and compare **whole build times**, including cache transfers on GitHub Actions, rather than cache size or `uv sync` time alone. See [uv's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration).
+The job summary reports cache size in KiB and the change from the previous checkpoint:
+
+| Checkpoint | What it shows |
+| --- | --- |
+| Job start, before restoration | The runner's initial cache, normally 0 KiB. |
+| After restoration | Cache data downloaded from GitHub. |
+| After optional `uv cache clean` | 0 KiB if clearing ran; otherwise the retained cache. |
+| After `uv sync` | Cache growth from downloads, builds, and unpacking. |
+| After optional `uv cache prune --ci` | Space retained for the next run. |
+
+Positive changes mean growth; negative changes mean reclaimed space. Optional commands are measured even when skipped. These are local disk sizes, not GitHub's compressed archive size or the installed `.venv` size. The helper does not run uv or modify its cache.
+
+Run each strategy twice without changing dependencies or package sources. On a cold run, uv logs `Building` and `Built uv-cache-demo`; an unchanged warm run should reuse the wheel without building it again. Compare **whole build times**, including cache transfers on GitHub Actions, rather than cache size or `uv sync` time alone. See [uv's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration).

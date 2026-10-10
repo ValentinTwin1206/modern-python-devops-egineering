@@ -1,0 +1,6 @@
+{
+  "rows": 32768,
+  "dimensions": 512,
+  "dtype": "uint8",
+  "seed": "uv-cache-demo-embeddings-v1"
+}
