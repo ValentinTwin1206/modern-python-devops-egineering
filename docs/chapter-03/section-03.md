@@ -34,7 +34,7 @@ The following table lists common `uv` commands and describes their effects on th
 | `uv cache prune` | Removes unused cache data and project environments to free disk space. Add `--ci` to also remove downloaded wheels and unpacked source files while preserving wheels built from source. This reduces CI cache size without requiring expensive rebuilds. |
 | `uv cache clean [package]` | Removes all cache entries, or only entries for the named package. |
 
-## Using uv's Cache for Local Development
+## Managing uv's Cache
 
 For day-to-day development, `uv` manages the cache automatically, and your project's `.venv` usually stays in place between sessions. Understanding the cache is useful when recreating environments, working offline, or freeing disk space, but managing it is less critical than in CI/CD, where environments are often rebuilt for every run. The following workflow lets you explore cache reuse and cleanup locally.
 
@@ -53,10 +53,15 @@ From the repository's `projects/` directory, the following command builds the im
 
 #### Create and Inspect the Cache
 
-The `uv sync` command creates `.venv` if it does not exist and installs the project's dependencies there. For this demo, first generate the bundled fixture and fingerprint the build inputs. `--no-editable` installs the local package as a regular wheel, while `--locked` keeps the committed dependency versions:
+First, `generate_fixture.py` creates a reproducible 16 MiB synthetic embedding matrix (`embeddings.bin`) from the project's data specification. The matrix is bundled in the local package's wheel, making its retained cache size visible after CI pruning; it is sample data, not a trained model:
 
 ```bash
 python scripts/generate_fixture.py
+```
+
+Next, `uv sync` creates `.venv` if needed and installs the dependencies. `--locked` uses the committed dependency versions, and `--no-editable` builds and caches a regular wheel for the local package. This project's cache settings use the fingerprint from `build_key.py` to rebuild that wheel when source files or the generated matrix change:
+
+```bash
 UV_CACHE_DEMO_BUILD_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable
 ```
 
@@ -134,13 +139,13 @@ A successful run installs the ML dependencies from the local cache without downl
 .venv/bin/python -c "import sklearn; print(sklearn.__file__)"
 ```
 
-### Manage uv Cache
+### Cleanup the Cache
 
 The project environment and the shared cache are separate. Choose the cleanup command based on what you want to remove and whether later installs should reuse cached packages.
 
 === "Prune Cache"
 
-    `uv cache prune` frees cache space by removing obsolete and unreferenced data while keeping valid package entries and leaving `.venv` unchanged.
+    The `uv cache prune` command frees cache space by removing obsolete and unreferenced data while keeping valid package entries and leaving `.venv` unchanged.
 
     To see pruning in action, first add cache entries that the current `uv` version can no longer use. Use `uvx` to run an older release, `uv` 0.4.12, in an isolated tool environment. This older release writes to the shared cache using an outdated format (`wheels-v1`), giving the current `uv` version something to remove. Start by creating a temporary installation directory outside the project:
 
@@ -160,13 +165,7 @@ The project environment and the shared cache are separate. Choose the cleanup co
     find "$(uv cache dir)" -type d -path '*/wheels-v*/pypi/scipy' -print
     ```
 
-    Check the size again with `uv cache size --human`; in this run it grew from about 1.6 GiB to 1.8 GiB:
-
-    ```text
-    1.8GiB
-    ```
-
-    Remove the temporary installation; the old-format cache entries remain until they are pruned:
+    Check the size again with `uv cache size --human`; in this run it grew from about 1.6 GiB to 1.8 GiB. Remove the temporary installation; the old-format cache entries remain until they are pruned:
 
     ```bash
     rm -r "$prune_demo"
@@ -184,15 +183,39 @@ The project environment and the shared cache are separate. Choose the cleanup co
     Removed 1460 files (144.3MiB)
     ```
 
-    After pruning, `wheels-v1` was deleted, but the cache remained slightly larger than it was initially as `uvx` cached the `uv` 0.4.12 tool in the current `wheels-v6` format. `uv cache size --human` reported:
+    After pruning, `wheels-v1` was deleted, but `uv cache size --human` still reported `1.7GiB`: `uvx` had cached the `uv` 0.4.12 tool in `wheels-v6`, leaving the cache slightly larger than before the demo.
+
+=== "Prune Cache in CI"
+
+    The `uv cache prune --ci` command removes unused data, downloaded wheels, and unpacked sources while retaining source-built wheels, reducing CI cache transfer size. Locate the `'uv_cache_demo-*.whl'` wheel before pruning:
+  
+    ```bash
+    find "$(uv cache dir)" -type f -name 'uv_cache_demo-*.whl' -print
+    ```
+
+    > If the `.whl` is not present, pass [Create and Inspect the Cache](#create-and-inspect-the-cache)
+
+    Measure the cache with `uv cache size --human`. In this container run, it reported:
 
     ```text
-    1.7 GiB
+    1.6GiB
+    ```
+
+    Prune the cache using the CI strategy:
+
+    ```bash
+    uv cache prune --ci
+    ```
+
+    After pruning, `uv cache size --human` reported `16.1MiB`, down from `1.6GiB`; sizes vary by platform and cache contents. Future CI runs can reuse the unchanged local wheel but must download ML wheels again. Confirm that the built wheel remains at the same path:
+
+    ```bash
+    find "$(uv cache dir)" -type f -name 'uv_cache_demo-*.whl' -print
     ```
 
 === "Clean Cache"
 
-    `uv cache clean` removes **all** entries from the shared cache, including valid wheels and unpacked package files, while keeping installed packages in project environments unchanged. Future installs that need those packages must download or build them again.
+    The `uv cache clean` command removes **all** entries from the shared cache, including valid wheels and unpacked package files, while keeping installed packages in project environments unchanged. Future installs that need those packages must download or build them again.
 
     Clear the shared cache:
 
@@ -255,7 +278,7 @@ The [uv-cache.yml](https://github.com/ValentinTwin1206/modern-python-devops-egin
 
 #### Set the Cache Directory and Measure Its Initial Size
 
-Initially, the workflow sets `UV_CACHE_DIR` under the GitHub runner's temporary storage and writes it to `GITHUB_ENV`, making the path available to subsequent steps. The measurement helper checks this directory without running `uv` or creating the cache; on a fresh runner, it normally reports 0 KiB.
+Initially, the workflow sets `UV_CACHE_DIR` under the GitHub runner's temporary storage and writes it to `GITHUB_ENV`, making the path available to subsequent steps. The inline measurement checks this directory without running `uv` or creating the cache; on a fresh runner, it normally reports 0 KiB.
 
 ```yaml
 - name: Measure cache at the beginning of the job
@@ -264,7 +287,12 @@ Initially, the workflow sets `UV_CACHE_DIR` under the GitHub runner's temporary 
     UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
   run: |
     echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
-    bash projects/proj5_uv_cache/scripts/cache_size.sh "Before restoration"
+    kib=0
+    if [[ -d "$UV_CACHE_DIR" ]]; then
+      kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+    fi
+    echo "Before restoration: ${kib} KiB"
+    echo "kib=$kib" >> "$GITHUB_OUTPUT"
 ```
 
 #### Configure the Cache Key and Restore the Cache
@@ -272,7 +300,7 @@ Initially, the workflow sets `UV_CACHE_DIR` under the GitHub runner's temporary 
 The GitHub Action `astral-sh/setup-uv` installs the pinned `uv` version and manages its package cache. With caching enabled, the action restores a matching cache before dependency installation and saves a new cache after a successful job when needed. The action generates a cache key using inputs including the platform and selected files. These settings control caching:
 
 - **`enable-cache: true`** — Enables restoring and saving uv's package cache across eligible runs.
-- **`cache-local-path`** — Uses the previously exported `UV_CACHE_DIR`, so the action, uv, and the measurement helper share the same cache directory.
+- **`cache-local-path`** — Uses the previously exported `UV_CACHE_DIR`, so the action, uv, and the measurements share the same cache directory.
 - **`cache-dependency-glob`** — Selects files whose contents contribute to the key. Dependency files, local package sources, and generated fixture data are included so changes produce a new key.
 - **`cache-suffix`** — Gives full and CI-pruned caches separate keys, allowing both strategies to be compared. `PRUNE_CACHE` includes the default for push runs and the choice made for manual runs.
 - **`prune-cache: false`** — Disables the action's automatic pruning. The workflow prunes explicitly later, so it can measure the effect even on exact cache hits.
@@ -318,12 +346,17 @@ The following step records installation time, including any necessary downloads 
     uv sync --directory projects/proj5_uv_cache --locked --no-editable --python 3.12
     end_ms=$(date +%s%3N)
     echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
-    bash projects/proj5_uv_cache/scripts/cache_size.sh "After uv sync"
+    kib=0
+    if [[ -d "$UV_CACHE_DIR" ]]; then
+      kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+    fi
+    echo "After uv sync: ${kib} KiB"
+    echo "kib=$kib" >> "$GITHUB_OUTPUT"
 ```
 
 #### Keep the Cache or Retain Only Locally Built Packages
 
-After checking the installed fixture and package imports, the workflow can run `uv cache prune --ci`. This retains the demo's source-built wheel but removes downloaded ML wheels, which later installs must download again. The job-level `PRUNE_CACHE` setting controls this step. A shared helper measures local cache disk usage with `du -sk`; a missing cache directory counts as zero:
+After checking the installed fixture and package imports, the workflow can run `uv cache prune --ci`. This retains the demo's source-built wheel but removes downloaded ML wheels, which later installs must download again. The job-level `PRUNE_CACHE` setting controls this step. Each checkpoint measures local cache disk usage with `du -sk`; a missing cache directory counts as zero:
 
 ```yaml
 - name: Keep the cache or retain locally built packages
@@ -333,7 +366,12 @@ After checking the installed fixture and package imports, the workflow can run `
     if [[ "$PRUNE_CACHE" == "true" ]]; then
       uv cache prune --ci
     fi
-    bash projects/proj5_uv_cache/scripts/cache_size.sh "After optional CI pruning"
+    kib=0
+    if [[ -d "$UV_CACHE_DIR" ]]; then
+      kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+    fi
+    echo "After optional CI pruning: ${kib} KiB"
+    echo "kib=$kib" >> "$GITHUB_OUTPUT"
 ```
 
 The roughly 16 MiB wheel makes retained space visible, but packaging data is still quick. A larger wheel does not necessarily mean an expensive build. Pruning saves cache space, but keeping the full cache may be faster for these large ML downloads. Measure both strategies.
@@ -352,6 +390,6 @@ The job summary reports cache size in KiB and the change from the previous check
 | After `uv sync` | Cache growth from downloads, builds, and unpacking. |
 | After optional `uv cache prune --ci` | Space retained for the next run. |
 
-Positive changes mean growth; negative changes mean reclaimed space. Optional commands are measured even when skipped. These are local disk sizes, not GitHub's compressed archive size or the installed `.venv` size. The helper does not run uv or modify its cache.
+Positive changes mean growth; negative changes mean reclaimed space. Optional commands are measured even when skipped. These are local disk sizes, not GitHub's compressed archive size or the installed `.venv` size. The measurements do not run uv or modify its cache.
 
 Run each strategy twice without changing dependencies or package sources. On a cold run, uv logs `Building` and `Built uv-cache-demo`; an unchanged warm run should reuse the wheel without building it again. Compare **whole build times**, including cache transfers on GitHub Actions, rather than cache size or `uv sync` time alone. See [uv's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration).

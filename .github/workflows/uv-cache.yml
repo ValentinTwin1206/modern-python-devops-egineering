@@ -49,14 +49,19 @@ jobs:
         uses: actions/checkout@v4
 
       # A new temporary runner normally starts with no package cache (0 KiB).
-      # The helper measures disk usage; it does not create or change the cache.
+      # Measuring disk usage does not create or change the cache.
       - name: Measure cache at the beginning of the job
         id: cache_start
         env:
           UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
         run: |
           echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
-          bash projects/proj5_uv_cache/scripts/cache_size.sh "Before restoration"
+          kib=0
+          if [[ -d "$UV_CACHE_DIR" ]]; then
+            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+          fi
+          echo "Before restoration: ${kib} KiB"
+          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -102,7 +107,13 @@ jobs:
 
       - name: Measure cache after restoration
         id: cache_restored
-        run: bash projects/proj5_uv_cache/scripts/cache_size.sh "After restoration"
+        run: |
+          kib=0
+          if [[ -d "$UV_CACHE_DIR" ]]; then
+            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+          fi
+          echo "After restoration: ${kib} KiB"
+          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       # For "true", simulate an empty cache (a first build or an expired CI cache),
       # troubleshoot cache problems.
@@ -113,7 +124,12 @@ jobs:
           if [[ "$CLEAN_CACHE" == "true" ]]; then
             uv cache clean
           fi
-          bash projects/proj5_uv_cache/scripts/cache_size.sh "After optional cleaning"
+          kib=0
+          if [[ -d "$UV_CACHE_DIR" ]]; then
+            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+          fi
+          echo "After optional cleaning: ${kib} KiB"
+          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       # Environment: recreate .venv each run; reuse only uv's package cache.
       # Dependencies: --locked uses the committed uv.lock without changing it
@@ -128,7 +144,12 @@ jobs:
           uv sync --directory projects/proj5_uv_cache --locked --no-editable --python 3.12
           end_ms=$(date +%s%3N)
           echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
-          bash projects/proj5_uv_cache/scripts/cache_size.sh "After uv sync"
+          kib=0
+          if [[ -d "$UV_CACHE_DIR" ]]; then
+            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+          fi
+          echo "After uv sync: ${kib} KiB"
+          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       - name: Verify the local wheel and ML dependencies
         run: |
@@ -145,7 +166,12 @@ jobs:
           if [[ "$PRUNE_CACHE" == "true" ]]; then
             uv cache prune --ci
           fi
-          bash projects/proj5_uv_cache/scripts/cache_size.sh "After optional CI pruning"
+          kib=0
+          if [[ -d "$UV_CACHE_DIR" ]]; then
+            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
+          fi
+          echo "After optional CI pruning: ${kib} KiB"
+          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       # This times only uv sync, not the GitHub cache download or upload.
       # Optional commands still get a measurement when skipped (normally no change).

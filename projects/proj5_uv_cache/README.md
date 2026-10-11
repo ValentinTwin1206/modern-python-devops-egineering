@@ -91,8 +91,9 @@ and a cache-size timeline in KiB:
 
 Each row shows the change from the previous measurement: positive means growth,
 negative means reclaimed space. Optional commands are measured even when skipped.
-The helper uses `du -sk` on the same `UV_CACHE_DIR` used by `setup-uv` and uv;
-a missing directory counts as zero. Measurements are outside the sync timer.
+Each workflow checkpoint uses `du -sk` on the same `UV_CACHE_DIR` used by
+`setup-uv` and uv; a missing directory counts as zero. Measurements are
+outside the sync timer.
 Also compare whole job durations, since cache transfers take time.
 
 On a cold run, the installation log shows `Building` and `Built uv-cache-demo`.
