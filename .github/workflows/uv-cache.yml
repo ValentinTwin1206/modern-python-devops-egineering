@@ -1,4 +1,4 @@
-# Demonstrates uv cache reuse for a local wheel and downloaded ML dependencies.
+# Demonstrates uv cache reuse for a local wheel and numerical dependencies.
 # GitHub Actions persists the cache across eligible workflow runs when the key
 # matches. Entries not accessed for over 7 days expire; storage pressure may
 # evict them sooner.
@@ -7,13 +7,13 @@
 # - Check out the repository and set up Python 3.12 and uv.
 # - Generate bundled sample data, fingerprint the package, and restore the cache.
 # - Optionally clear the restored cache before installation.
-# - Sync into a fresh .venv, building or reusing the local wheel, and check imports.
+# - Sync into a fresh .venv, building or reusing the local wheel, and run the report.
 # - Optionally prune downloaded wheels for CI, retaining the source-built wheel.
 # - Report cache size at the start, after restore, and after each cache-changing
 #   uv command, together with size changes and uv sync duration.
 # `clean_cache` clears the restored cache before installation; `prune_cache`
 # runs `uv cache prune --ci` after installation, even on an exact cache hit.
-name: uv cache demo (ML dependencies)
+name: uv cache demo (embedding analysis)
 
 on:
   push:
@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 jobs:
-  install-ml-dependencies:
+  analyze-embeddings:
     runs-on: ubuntu-latest
     # Push events have no dispatch inputs. Default to pruning without clearing;
     # manual runs can still choose either cache strategy.
@@ -70,7 +70,7 @@ jobs:
 
       # Bundle a 16 MiB synthetic embedding matrix in the local wheel. Generate
       # identical bytes each run so the example is visible without a large Git file.
-      - name: Generate the bundled ML fixture
+      - name: Generate the bundled embedding fixture
         run: python projects/proj5_uv_cache/scripts/generate_fixture.py
 
       # uv also checks whether a cached local wheel is current. Use file contents
@@ -102,7 +102,7 @@ jobs:
             projects/proj5_uv_cache/src/**/*.py
             projects/proj5_uv_cache/src/**/*.json
             projects/proj5_uv_cache/src/**/*.bin
-          cache-suffix: ${{ env.PRUNE_CACHE == 'true' && 'ml-demo-ci-pruned' || 'ml-demo-full' }}
+          cache-suffix: ${{ env.PRUNE_CACHE == 'true' && 'embeddings-demo-ci-pruned' || 'embeddings-demo-full' }}
           prune-cache: false
 
       - name: Measure cache after restoration
@@ -151,10 +151,10 @@ jobs:
           echo "After uv sync: ${kib} KiB"
           echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
-      - name: Verify the local wheel and ML dependencies
+      - name: Analyze the installed embeddings and generate a report
         run: |
-          projects/proj5_uv_cache/.venv/bin/python -c \
-            "import tensorflow, transformers, sklearn; from uv_cache_demo import cache_message, fixture_shape; print(cache_message()); print('Bundled matrix:', fixture_shape()); print('ML packages imported successfully')"
+          projects/proj5_uv_cache/.venv/bin/python -m uv_cache_demo \
+            --output "${{ runner.temp }}/embeddings.png"
 
       # When "prune_cache" is "true", the "--ci" option removes downloaded
       # wheels and unpacked source files but keeps wheels built from source

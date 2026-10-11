@@ -1,7 +1,7 @@
-# uv Cache Demo (ML Dependencies)
+# uv Cache Demo (Embedding Analysis)
 
-This project declares `tensorflow-cpu`, `transformers`, and `scikit-learn` in
-`pyproject.toml`. The committed `uv.lock` pins their resolved dependencies.
+This project uses NumPy, SciPy, and Matplotlib to analyze bundled synthetic
+embeddings. The committed `uv.lock` pins their resolved dependencies.
 The [GitHub Actions workflow](../../.github/workflows/uv-cache.yml) compares
 cache strategies. The package in `src/uv_cache_demo/` bundles a 16 MiB synthetic
 embedding matrix, making its retained source-built wheel visible after CI
@@ -35,11 +35,19 @@ package data files, in both the script and the workflow's cache globs.
 `uv build --wheel` alone produces a distribution artifact, not this installation
 cache demonstration. Run `uv lock` after changing dependencies.
 
-Check that the local package and ML packages can be imported:
+Run the installed package to calculate statistics, find the five closest rows
+to a query by cosine distance, and save a headless PNG report:
 
 ```shell
-.venv/bin/python -c "import tensorflow, transformers, sklearn; from uv_cache_demo import cache_message, fixture_shape; print(cache_message()); print('Bundled matrix:', fixture_shape()); print('ML packages imported successfully')"
+.venv/bin/python -m uv_cache_demo --output reports/embeddings.png
 ```
+
+NumPy loads the matrix and computes feature statistics and vector norms; SciPy
+compares one query with all rows; Matplotlib plots the norms and distances.
+Use `--query 123` to select another row (default: `0`). The query itself is
+excluded from the neighbors and distance histogram. The synthetic data has no
+semantic meaning, and the report avoids allocating an all-pairs distance matrix.
+Generated reports are ignored by Git.
 
 ## Start the Development Container
 
@@ -108,11 +116,43 @@ hits are not overwritten; the reported sizes describe the local cache, not
 the compressed archive stored by GitHub.
 
 CI pruning retains the local package's built wheel but removes the downloaded
-ML wheels, so subsequent runs download those dependencies again. The bundled
-data makes retained space visible, but packaging it is still quick; wheel size
+numerical and plotting wheels, so subsequent runs download those dependencies
+again. The bundled data makes retained space visible, but packaging it is still quick; wheel size
 does not imply expensive compilation or a guaranteed speedup. Keeping the full
 cache (`prune_cache=false`) can be preferable for large downloads; measure
 both strategies rather than assuming pruning always makes jobs faster.
+
+## Measured Container Results
+
+Measured with `Dockerfile.devEnv` on Linux x86_64, Ubuntu 24.04, Python 3.12.13,
+and uv 0.11.1, using the committed lockfile (NumPy 2.5.3, SciPy 1.18.1,
+Matplotlib 3.11.2). The project was mounted at `/app`; a fresh environment at
+`/home/bob/demo-venv` was selected with `UV_PROJECT_ENVIRONMENT`, using the
+image's copy link mode. Each reinstall recreated that environment.
+
+| Cache checkpoint | Size (`du -sk`, KiB) | Change (KiB) |
+| --- | ---: | ---: |
+| Before sync (image housekeeping files) | 16 | — |
+| Cold `uv sync --locked --no-editable` | 281,308 | +281,292 |
+| Fresh offline reinstall from the full cache | 281,308 | 0 |
+| `uv cache prune --ci` | 16,464 | −264,844 |
+| Fresh online reinstall after CI pruning | 281,308 | +264,844 |
+| Add old-format SciPy and the older uv tool | 464,912 | +183,604 |
+| `uv cache prune` | 313,284 | −151,628 |
+| `uv cache clean` | 0 | −313,284 |
+
+CI pruning reduced the cache from **274.7 MiB to 16.1 MiB**, reclaiming
+**258.6 MiB (94.1%)** of allocated disk space. The source-built wheel's path,
+modification time, and SHA-256 stayed unchanged through both reinstalls and
+CI pruning. The normal-prune rows use the tutorial's `uvx --from uv==0.4.12`
+and `scipy==1.15.3` example; the older uv tool remains cached after normal pruning.
+
+The cold sync took 33.27 seconds, the full-cache offline reinstall 2.87 seconds,
+and the reinstall after CI pruning 31.95 seconds. These are single local
+measurements, excluding report execution and GitHub cache transfers. Sizes and
+times vary by platform and network. uv's removed-file size can differ from
+`du`'s allocated disk usage. The numerical report and PNG output were verified,
+and the installed report still ran after pruning and full cache cleanup.
 
 For a local cache walkthrough and an explanation of the CI example,
 see [Dependency Caching with uv](../../docs/chapter-03/section-03.md#using-uvs-cache-in-ci-environments).

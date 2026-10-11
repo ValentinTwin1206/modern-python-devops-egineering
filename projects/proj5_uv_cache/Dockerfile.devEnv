@@ -31,11 +31,12 @@ RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
 ENV UV_CACHE_DIR=/home/bob/.cache/uv \
     UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     UV_LINK_MODE=copy \
+    PATH=/home/bob/.local/bin:$PATH \
     HOME=/home/bob \
     USER=bob
 
 WORKDIR /app
 USER bob
-RUN uv python install 3.12
+RUN uv python install 3.12 --default
 
 CMD ["/bin/bash"]
