@@ -16,4 +16,4 @@ build-backend = "uv_build"
 [tool.uv]
 # Compute this fingerprint before syncing; see scripts/build_key.py and README.md.
 # File timestamps change on fresh CI checkouts, even when the contents do not.
-cache-keys = [{ env = "UV_CACHE_DEMO_BUILD_KEY" }]
+cache-keys = [{ env = "CACHE_DEMO_KEY" }]

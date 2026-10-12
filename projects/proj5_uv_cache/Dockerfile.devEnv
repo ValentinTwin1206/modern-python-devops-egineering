@@ -23,8 +23,8 @@ RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
         --create-home --shell /bin/bash --groups sudo bob \
     && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
     && chmod 0440 /etc/sudoers.d/bob \
-    && mkdir -p /app /opt/uv-python \
-    && chown -R bob:"${HOST_GID}" /app /opt/uv-python
+    && mkdir -p /app /opt/uv-python /home/bob/scipy-demo \
+    && chown -R bob:"${HOST_GID}" /app /opt/uv-python /home/bob/scipy-demo
 
 # Keep installed Python outside the disposable package cache. Copying packages
 # into .venv lets the environment continue working after uv cache clean.

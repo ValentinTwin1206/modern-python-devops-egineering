@@ -14,7 +14,7 @@ install the locked dependencies and build or reuse the local package's wheel:
 
 ```shell
 python scripts/generate_fixture.py
-UV_CACHE_DEMO_BUILD_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable
+CACHE_DEMO_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable
 ```
 
 The generator uses `data/fixture.json` to create 32,768 rows of 512 unsigned
@@ -39,7 +39,7 @@ Run the installed package to calculate statistics, find the five closest rows
 to a query by cosine distance, and save a headless PNG report:
 
 ```shell
-.venv/bin/python -m uv_cache_demo --output reports/embeddings.png
+.venv/bin/python -m uv_cache_demo.main --output reports/embeddings.png
 ```
 
 NumPy loads the matrix and computes feature statistics and vector norms; SciPy

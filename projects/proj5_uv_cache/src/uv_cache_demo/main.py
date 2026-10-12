@@ -1,14 +1,38 @@
 """Inspect synthetic embeddings and save a headless numerical report."""
 
 import argparse
+import json
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
-from uv_cache_demo import load_embeddings
+
+def cache_message() -> str:
+    """Return a message that verifies the installed package works."""
+    return "Local wheel imported successfully"
+
+
+def fixture_shape() -> tuple[int, int]:
+    """Check the installed fixture's size and return its matrix dimensions."""
+    data = files(__package__).joinpath("data")
+    spec = json.loads(data.joinpath("fixture.json").read_text())
+    with data.joinpath("embeddings.bin").open("rb") as stream:
+        size = stream.seek(0, 2)
+    if spec["dtype"] != "uint8" or size != spec["rows"] * spec["dimensions"]:
+        raise ValueError("The bundled embedding matrix does not match its specification")
+    return spec["rows"], spec["dimensions"]
+
+
+def load_embeddings() -> NDArray[np.uint8]:
+    """Load the validated matrix from the installed package's bundled data."""
+    shape = fixture_shape()
+    payload = files(__package__).joinpath("data/embeddings.bin").read_bytes()
+    return np.frombuffer(payload, dtype=np.uint8).reshape(shape)
 
 
 def main() -> None:

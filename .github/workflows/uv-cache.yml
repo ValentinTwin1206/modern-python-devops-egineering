@@ -68,18 +68,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Bundle a 16 MiB synthetic embedding matrix in the local wheel. Generate
-      # identical bytes each run so the example is visible without a large Git file.
-      - name: Generate the bundled embedding fixture
-        run: python projects/proj5_uv_cache/scripts/generate_fixture.py
-
-      # uv also checks whether a cached local wheel is current. Use file contents
-      # instead of timestamps, which change every time a runner checks out code.
-      # Export the fingerprint for uv's cache-keys setting in pyproject.toml.
-      - name: Fingerprint the local package build inputs
+      # Generate the bundled fixture and fingerprint build inputs for uv's cache key.
+      - name: Generate fixture and fingerprint build inputs
         run: |
+          python projects/proj5_uv_cache/scripts/generate_fixture.py
           build_key=$(python projects/proj5_uv_cache/scripts/build_key.py)
-          echo "UV_CACHE_DEMO_BUILD_KEY=$build_key" >> "$GITHUB_ENV"
+          echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
       # Cache key: setup-uv generates it automatically using, among other inputs:
       # - cache-dependency-glob: hashes dependency files, sources, and bundled data;
@@ -153,7 +147,7 @@ jobs:
 
       - name: Analyze the installed embeddings and generate a report
         run: |
-          projects/proj5_uv_cache/.venv/bin/python -m uv_cache_demo \
+          projects/proj5_uv_cache/.venv/bin/python -m uv_cache_demo.main \
             --output "${{ runner.temp }}/embeddings.png"
 
       # When "prune_cache" is "true", the "--ci" option removes downloaded
