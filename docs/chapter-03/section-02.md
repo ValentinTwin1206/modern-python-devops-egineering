@@ -147,7 +147,7 @@ The resolver now includes `pywin32` only on Windows systems, producing a valid d
 
 ### The Lockfile
 
-The `uv.lock` file records exact versions of direct and transitive dependencies, their relationships, package sources, and download hashes so later installations can reuse the resolved versions. Dependency locking is a tool-agnostic technique also used by `npm` in JavaScript and `cargo` in Rust, though lockfile formats differ. `uv` generates this TOML file next to `pyproject.toml`, covering the project's supported operating systems and Python versions. Run `uv lock` to resolve the requirements declared in `pyproject.toml` and create or update `uv.lock` without installing packages into the project environment.
+The `uv.lock` file records exact versions of direct and transitive dependencies, their relationships, package sources, and download hashes so later installations can reuse the resolved versions. Dependency locking is a tool-agnostic technique also used by `npm`, `cargo`, `go`, etc., though lockfile formats differ. `uv` generates this TOML file next to `pyproject.toml`, covering the project's supported operating systems and Python versions. Run `uv lock` to resolve the requirements declared in `pyproject.toml` and create or update the lockfile without installing packages into the project environment.
 
 ```bash
 uv lock
@@ -182,15 +182,11 @@ dependencies = [
 Commit `uv.lock` to version control and review changes alongside `pyproject.toml` so development, CI, and production can reuse the reviewed versions. Let uv manage the file rather than editing it manually.
 
 !!! info "Commands that update the lockfile"
-    `uv lock`, `uv add`, and `uv remove` create or update `uv.lock` as needed. `uv sync` and `uv run` also update it automatically when it is missing or stale, as can commands that read it, such as `uv tree` and `uv export`. Use `--locked` to reject a missing or stale lockfile instead of updating it, or `--frozen` to use an existing lockfile without checking whether it is current.
+    `uv lock`, `uv add`, `uv remove`, `uv sync`, `uv run`, `uv tree`, and `uv export` create or update `uv.lock` as needed.
 
-### Validate and Upgrade
+### Upgrade the Lockfile
 
-Verify that the lockfile is still in sync with `pyproject.toml` — use this in CI or before committing:
-
-```shell
-uv lock --check
-```
+The `uv lock` command creates or updates the lockfile without creating a project virtual environment or installing packages into one. It may download package metadata, wheels, or source archives to resolve dependencies. It keeps existing locked versions where possible and leaves an up-to-date lockfile unchanged, even when newer versions are available. To force a fresh search for newer versions, use `--upgrade` or `--upgrade-package`; the dependencies in `pyproject.toml` still apply.
 
 === "Single Dependency"
 
@@ -207,6 +203,20 @@ uv lock --check
     ```bash
     uv lock --upgrade
     ```
+
+Install the updated versions into the project's virtual environment:
+
+```bash
+uv sync
+```
+
+### Validate the Lockfile
+
+Verify that the lockfile is still in sync with `pyproject.toml` — use this in CI or before committing:
+
+```bash
+uv lock --check
+```
 
 ## Synchronizing
 
