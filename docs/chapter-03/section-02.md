@@ -147,13 +147,15 @@ The resolver now includes `pywin32` only on Windows systems, producing a valid d
 
 ### The Lockfile
 
-The `uv.lock` file records exact versions of direct and transitive dependencies, their relationships, package sources, and download hashes so later installations can reuse the resolved versions. Dependency locking is a tool-agnostic technique also used by `npm`, `cargo`, `go`, etc., though lockfile formats differ. `uv` generates this TOML file next to `pyproject.toml`, covering the project's supported operating systems and Python versions. Run `uv lock` to resolve the requirements declared in `pyproject.toml` and create or update the lockfile without installing packages into the project environment.
+Dependency locking is a tool-agnostic technique also used by `npm`, `cargo`, `go`, etc., though lockfile formats differ. `uv` handles dependency locking via `uv.lock`, a TOML file generated next to `pyproject.toml` that covers the project's supported operating systems and Python versions. Commit `uv.lock` to version control and review changes alongside `pyproject.toml` so development, CI, and production can reuse the reviewed versions. The lockfile records exact versions of direct and transitive dependencies, their relationships, package sources, and download hashes so later installations can reuse the resolved versions.
+
+The `uv lock` command resolves the requirements declared in `pyproject.toml` and creates or updates the lockfile without creating a project virtual environment or installing packages. It may download package metadata, wheels, or source archives during resolution. It preserves existing locked versions where possible and leaves an up-to-date lockfile unchanged, even when newer versions are available.
 
 ```bash
 uv lock
 ```
 
-Download entries and other packages are omitted for readability. Each `[[package]]` entry identifies a resolved package. Here, FastAPI is locked to `0.115.14`, which satisfies the declared range, and Starlette is one of its transitive dependencies. The top-level `version` and `revision` describe the lockfile format, not the project's version.
+The following code block is an excerpt of `uv.lock`, with download entries and other packages omitted for readability. Each `[[package]]` entry describes a resolved package: FastAPI is locked to `0.115.14`, which satisfies the declared range, and Starlette is one of its transitive dependencies. The top-level `version` and `revision` describe the lockfile format, not the project's version.
 
 ```toml
 version = 1
@@ -179,14 +181,12 @@ dependencies = [
 ]
 ```
 
-Commit `uv.lock` to version control and review changes alongside `pyproject.toml` so development, CI, and production can reuse the reviewed versions. Let uv manage the file rather than editing it manually.
-
 !!! info "Commands that update the lockfile"
     `uv lock`, `uv add`, `uv remove`, `uv sync`, `uv run`, `uv tree`, and `uv export` create or update `uv.lock` as needed.
 
 ### Upgrade the Lockfile
 
-The `uv lock` command creates or updates the lockfile without creating a project virtual environment or installing packages into one. It may download package metadata, wheels, or source archives to resolve dependencies. It keeps existing locked versions where possible and leaves an up-to-date lockfile unchanged, even when newer versions are available. To force a fresh search for newer versions, use `--upgrade` or `--upgrade-package`; the dependencies in `pyproject.toml` still apply.
+The `uv lock --upgrade` command resolves all dependencies to the latest versions allowed by the constraints in `pyproject.toml`. Use `--upgrade-package` instead to upgrade a specific dependency while retaining other locked versions where possible.
 
 === "Single Dependency"
 
@@ -212,7 +212,7 @@ uv sync
 
 ### Validate the Lockfile
 
-Verify that the lockfile is still in sync with `pyproject.toml` — use this in CI or before committing:
+The `uv lock --check` command validates that the lockfile is in sync with `pyproject.toml` without modifying it. Use it in CI or before committing to catch outdated lockfiles:
 
 ```bash
 uv lock --check
