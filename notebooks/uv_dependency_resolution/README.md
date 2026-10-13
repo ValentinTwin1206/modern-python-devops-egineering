@@ -17,7 +17,7 @@ host machine. It accompanies the technical documentation in
 | II — Declare Dependencies | Write a `pyproject.toml`; `uv add` / `uv remove`; dependency groups; markers. |
 | III — Lock and Sync | `uv lock`, `uv tree`, `uv sync`. |
 | IV — Change a Requirement | Bump a pin; watch a broken pin fail; repair it. |
-| V — Check for Drift | `uv lock --check` and `uv sync --locked`. |
+| V — Check for Drift | Separate frozen and locked installs; a non-editable package demo with source edits and an explicit reinstall. |
 | VI — Upgrade on Bob's Terms | `uv lock --upgrade-package` and `uv lock --upgrade`. |
 | VII — Export and Explore Sources | Export `requirements.txt`; add and remove a local Git dependency. |
 | Epilogue | File/command/effect table and Bob's three rules. |
@@ -28,7 +28,7 @@ host machine. It accompanies the technical documentation in
 | --- | --- |
 | `.devcontainer/Dockerfile` | Ubuntu 24.04 image with Python 3, `pip`, `venv`, JupyterLab, `ipykernel`, and `uv`, running as `bob`. |
 | `.devcontainer/devcontainer.json` | VS Code Dev Container configuration. It mounts this directory at `/workspace` and uses the `bob` container user. |
-| `uv_dependency_lab.ipynb` | The dependency-management lab. It creates and edits a local `pyproject.toml`, `uv.lock`, `.venv`, and disposable Git helper as it runs. |
+| `uv_dependency_lab.ipynb` | The dependency-management lab. It creates and edits a local `pyproject.toml`, `uv.lock`, `.venv`, a separate `installed-demo/` package, and a disposable Git helper as it runs. |
 
 The image contains Jupyter tooling and `uv`, but no application dependencies.
 The notebook installs those dependencies deliberately with `uv` commands so
@@ -53,5 +53,5 @@ the lockfile and environment changes remain visible.
 The notebook's shell commands run from `/workspace`, which is the mounted
 `uv_dependency_resolution` directory. Generated `pyproject.toml`, `uv.lock`,
 and `.venv` files therefore belong to this dedicated lab workspace. The first
-reset cell also removes the lab-generated `requirements.txt` and `local-helper/`
-from a previous run; keep other work outside this folder.
+reset cell also removes the lab-generated `requirements.txt`, `installed-demo/`,
+and `local-helper/` from a previous run; keep other work outside this folder.

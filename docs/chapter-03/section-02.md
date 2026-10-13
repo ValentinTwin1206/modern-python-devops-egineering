@@ -147,21 +147,42 @@ The resolver now includes `pywin32` only on Windows systems, producing a valid d
 
 ### The Lockfile
 
-Dependency locking ensures that every installation uses the exact same dependency versions, making builds reproducible and preventing unexpected breakages caused by newly released package versions.
+The `uv.lock` file records exact versions of direct and transitive dependencies, their relationships, package sources, and download hashes so later installations can reuse the resolved versions. Dependency locking is a tool-agnostic technique also used by `npm` in JavaScript and `cargo` in Rust, though lockfile formats differ. `uv` generates this TOML file next to `pyproject.toml`, covering the project's supported operating systems and Python versions. Run `uv lock` to resolve the requirements declared in `pyproject.toml` and create or update `uv.lock` without installing packages into the project environment.
 
-Resolve the declared dependencies and write the result to `uv.lock`:
-
-```shell
+```bash
 uv lock
 ```
 
-!!! note "uv.lock file"
-    The `uv.lock` file is the single source of truth for a project's installed versions. It contains the fully resolved dependency graph — all direct and transitive dependencies with exact versions. Because `uv` uses a universal resolution strategy, the lockfile is portable across operating systems and Python versions.
+Download entries and other packages are omitted for readability. Each `[[package]]` entry identifies a resolved package. Here, FastAPI is locked to `0.115.14`, which satisfies the declared range, and Starlette is one of its transitive dependencies. The top-level `version` and `revision` describe the lockfile format, not the project's version.
 
-`uv add`, `uv remove`, and `uv lock` update the lockfile. `uv sync` and `uv run` can also update it when `pyproject.toml` has changed. Review lockfile changes together with the requirements that caused them.
+```toml
+version = 1
+revision = 3
+requires-python = ">=3.11"
 
-!!! note "Commit the lockfile"
-    Commit `uv.lock` to version control. Only then do development, CI, and production install the same versions.
+[[package]]
+name = "fastapi"
+version = "0.115.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+]
+
+[[package]]
+name = "starlette"
+version = "0.46.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+]
+```
+
+Commit `uv.lock` to version control and review changes alongside `pyproject.toml` so development, CI, and production can reuse the reviewed versions. Let uv manage the file rather than editing it manually.
+
+!!! info "Commands that update the lockfile"
+    `uv lock`, `uv add`, and `uv remove` create or update `uv.lock` as needed. `uv sync` and `uv run` also update it automatically when it is missing or stale, as can commands that read it, such as `uv tree` and `uv export`. Use `--locked` to reject a missing or stale lockfile instead of updating it, or `--frozen` to use an existing lockfile without checking whether it is current.
 
 ### Validate and Upgrade
 
@@ -171,51 +192,89 @@ Verify that the lockfile is still in sync with `pyproject.toml` — use this in 
 uv lock --check
 ```
 
-Upgrade a single dependency to the latest version its constraint allows, leaving everything else untouched:
+=== "Single Dependency"
 
-```shell
-uv lock --upgrade-package fastapi
-```
+    Upgrade a single dependency to the latest version its constraint allows, retaining other locked versions where possible.
 
-Upgrade all dependencies to the latest versions allowed by their declared ranges:
+    ```bash
+    uv lock --upgrade-package fastapi
+    ```
 
-```shell
-uv lock --upgrade
-```
+=== "All Dependencies"
+
+    Upgrade all dependencies to the latest versions allowed by their declared ranges.
+
+    ```bash
+    uv lock --upgrade
+    ```
 
 ## Synchronizing
 
 ### Install from the Lockfile
 
-Make the `.venv` match `uv.lock` exactly — packages are installed, upgraded, downgraded, or removed as needed:
+The `uv sync` command prepares a project's Python environment by installing the dependency versions recorded in `uv.lock`. It creates an *in-project* virtual environment (`.venv`) if needed and installs, upgrades, downgrades, or removes packages to match the selected dependencies and dependency groups. If the lockfile is outdated relative to `pyproject.toml`, it re-locks automatically before installing.
 
-```shell
-uv sync
-```
+=== "Default"
 
-Include a dependency group:
+    Install dependencies from `project.dependencies` in `pyproject.toml` and the default dependency groups, including their transitive dependencies (packages those dependencies require). The `dev` group is included by default unless `tool.uv.default-groups` changes that selection.
 
-```shell
-uv sync --group dev
-```
+    ```bash
+    uv sync
+    ```
 
-Include all groups:
+=== "Dependency Group"
 
-```shell
-uv sync --all-groups
-```
+    Include a dependency group alongside `project.dependencies` and the default groups. This example explicitly selects `dev`, which is normally already included by default.
 
-If the lockfile is outdated relative to `pyproject.toml`, `uv sync` re-locks automatically before installing.
+    ```bash
+    uv sync --group dev
+    ```
+
+=== "All Groups"
+
+    Install `project.dependencies` and all dependency groups, but not optional extras unless explicitly requested.
+
+    ```bash
+    uv sync --all-groups
+    ```
 
 ### Frozen Installs
 
-In CI and production, an automatic re-lock is unwanted: the build must install *exactly* what was reviewed. The `--locked` flag checks that `uv.lock` matches `pyproject.toml` and fails if it is stale:
+The `uv sync --frozen` command performs *frozen installs* that use the dependency versions recorded in an existing lockfile without checking whether it matches the declarations in `pyproject.toml` or updating it. Any dependency change in `pyproject.toml` is therefore not resolved into a new lockfile during the sync.
 
-```shell
-uv sync --locked
+It can be used in CI after [lockfile validation](#validate-and-upgrade), or in intermediate `Dockerfile` layers where the files needed for validation are not yet available, including builds of [`uv` workspaces](./section-01.md#manage-related-projects-with-uv-workspaces). These layers can install dependencies separately from the project source. Once all project files are available, uv's [intermediate-layer guidance](https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers) recommends a final sync with `--locked` to validate the lockfile.
+
+```bash
+uv sync --frozen [--no-install-project] [--no-install-workspace]
 ```
 
-A failing locked sync signals that someone changed `pyproject.toml` without re-locking. `--frozen` instead uses the existing lockfile *without checking* whether it is current.
+- `--no-install-project`: Skips installing the project itself while still installing its dependencies.
+- `--no-install-workspace`: Installs only dependencies, not workspace projects.
+
+### Locked Installs
+
+!!! info "CI/CD and Production Builds"
+    Locked, non-editable installs suit production targets and CI/CD steps that prepare deployment artifacts. Typical locations are *GitHub Actions* workflow files and `Dockerfile` build steps. *Kubernetes Manifests* can also run the command through container `command` and `args` fields, though installing dependencies during the image build avoids startup-time downloads.
+
+The `uv sync --locked` command performs *locked installs* that prepare the project environment using the dependency versions recorded in `uv.lock`, while checking that the lockfile matches the declarations in `pyproject.toml`. If the lockfile is missing or stale, the command fails rather than changing it automatically, requiring it to be created or updated and reviewed before the build proceeds. The `pyproject.toml` must define a `[build-system]` for `uv sync` to install the project itself. See uv's [editable installation guidance](https://docs.astral.sh/uv/concepts/projects/sync/#editable-installation).
+
+=== "Editable"
+
+    By default, `uv sync` installs the project and workspace members in *editable mode*, so imports use their source checkout and reflect source edits without reinstalling.
+
+    ```bash
+    uv sync --locked
+    ```
+
+=== "Non-Editable"
+
+    With `--no-editable`, the project is installed into the virtual environment as a regular Python package, so Python imports the installed files rather than your source files directly. The installed package can still be imported if you move or remove the source folder, however, editing source files does not change the installed version. 
+    
+    For example, a package named `sync_demo` on Python 3.12 is installed under `.venv/lib/python3.12/site-packages/sync_demo/`, alongside `sync_demo-0.1.0.dist-info/`, which stores its name, version, and other package information. A regular sync may reuse that installation. To apply your edits, use the optional `--reinstall-package sync-demo` flag to force rebuilding and reinstalling. Running a source file directly still executes your edited code.
+
+    ```bash
+    uv sync --locked --no-editable [--reinstall-package sync-demo]
+    ```
 
 ## Resolution
 
