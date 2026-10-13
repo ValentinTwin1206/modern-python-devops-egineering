@@ -183,7 +183,7 @@ First, run [`generate_fixture.py`](https://github.com/ValentinTwin1206/modern-py
 python scripts/generate_fixture.py
 ```
 
-The following command uses [`build_key.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/scripts/build_key.py) to fingerprint `pyproject.toml` and the package's Python, JSON, and binary files, then passes that fingerprint to `uv` as `CACHE_DEMO_KEY`. The project's [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/pyproject.toml) lists this variable under `tool.uv.cache-keys`, so changes to the fingerprinted inputs trigger a new wheel instead of reusing a stale one. The `--reinstall` flag reinstalls packages even if they are already installed, and `--no-editable` installs the local package as a regular wheel rather than an editable install from the source tree:
+The following command uses [`build_key.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj5_uv_cache/scripts/build_key.py) to fingerprint `pyproject.toml` and the package's Python, JSON, and binary files, then passes that fingerprint to `uv` as `CACHE_DEMO_KEY`. The project's `pyproject.toml` lists this variable under `tool.uv.cache-keys`, so changes to the fingerprinted inputs trigger a new wheel instead of reusing a stale one. The `--reinstall` flag reinstalls packages even if they are already installed, and `--no-editable` installs the local package as a regular wheel rather than an editable install from the source tree:
 
 ```bash
 CACHE_DEMO_KEY=$(python scripts/build_key.py) uv sync --no-editable --reinstall
