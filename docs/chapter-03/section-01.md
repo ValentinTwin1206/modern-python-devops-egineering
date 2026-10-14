@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Written in Rust, `uv` is a Python project and package manager maintained by [Astral](https://astral.sh/) since its first [release in 2024](https://astral.sh/blog/uv). `uv` manages a project from its first files to a published package. Its central configuration file is `pyproject.toml`, which describes the project, its dependencies, and, when needed, how to build it. This section follows one project through that workflow.
+Written in Rust, `uv` is a Python project and package manager maintained by [Astral](https://astral.sh/) since its first [release in 2024](https://astral.sh/blog/uv). `uv` manages a project from its first files to a published package. Its central configuration file is `pyproject.toml`, which describes a project's metadata and dependencies. This section scaffolds a small web application as a workspace with a Bottle backend and a Streamlit frontend.
 
 ## Install uv
 
@@ -33,321 +33,210 @@ uv --version
 ## Manage Python with uv
 
 ### Installing Python with uv
-Like [`nvm`](https://github.com/nvm-sh/nvm) for Node.js and [`rustup`](https://rust-lang.github.io/rustup/) for Rust, `uv` can install and select interpreter versions without replacing the system interpreter. Use the `uv python` commands to manage interpreters. Install version 3.13 alongside the system interpreter:
+
+Like [`nvm`](https://github.com/nvm-sh/nvm) for Node.js and [`rustup`](https://rust-lang.github.io/rustup/) for Rust, `uv` can install and select interpreter versions without replacing the system interpreter. Use the `uv python` commands to manage interpreters. Install version 3.12 alongside the system interpreter:
 
 ```shell
-uv python install 3.13
+uv python install 3.12
 ```
 
-On Linux, `uv` stores managed interpreter files in `~/.local/share/uv/python` by default. Run `uv python dir` to see the configured installation directory. For example, the output looks like this; the home-directory path varies by user:
-
-```bash
-$ uv python dir
-/home/{user}/.local/share/uv/python
-```
-
-### Change the Project's Python Pin
-
-Installing an interpreter does not select it for every project. A `.python-version` pin selects the local interpreter; `requires-python` in `pyproject.toml` declares which versions the project supports. From the directory that will contain the examples, create the pin. `--no-project` skips compatibility checks against an existing project:
+On Linux, `uv` stores managed interpreter files in `~/.local/share/uv/python` by default. Run `uv python dir` to see the configured installation directory. The home-directory path varies by user:
 
 ```shell
-uv python pin --no-project 3.13
+uv python dir
 ```
 
-The command writes `3.13` to `.python-version` in the current directory. Projects initialized here or in its subdirectories inherit this as their default Python version. To use another Python version the `--python <version>` must be passed alongside the `uv init` command when [Initializing a Project](#initialize-a-project).
+## Set Up an uv Workspace
 
-```mermaid
-flowchart LR
-    parent["Parent directory<br/>.python-version: 3.13"] -->|"uv init"| inherited["Project A<br/>Python 3.13"]
-    parent -->|"uv init --python 3.12"| overridden["Project B<br/>Python 3.12"]
+### Create the Workspace
+
+A [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) groups related projects under one root. Each component keeps its own `pyproject.toml`, while the workspace shares one `uv.lock` and resolves dependencies together. Here the workspace contains an HTTP backend and a browser-facing frontend; neither component depends on the other yet.
+
+Initialize the workspace root as a bare project using Python 3.12. The root project owns the workspace configuration and the shared lockfile:
+
+```shell
+uv init --bare --python 3.12 --vcs none uv-workspace
 ```
 
-## Initialize a Project
+Create directories for the two workspace members:
 
-### Choose a Project Type
+```shell
+mkdir -p uv-workspace/backend uv-workspace/frontend
+```
 
-At the start of a project, `uv init` can scaffold a simple application, a packaged application, a library, or a bare `pyproject.toml` for a custom layout. Run these examples from the directory pinned to Python 3.13 in [Manage Python with uv](#manage-python-with-uv); no `--python` flag is needed. The inherited pin sets `requires-python` to `>=3.13`; standard templates also create their own `.python-version`, while the bare template relies on the parent pin.
+After both components are initialized, the root `pyproject.toml` lists them as workspace members. Each member owns its project metadata, dependencies, and local interpreter pin. The first dependency resolution creates the single root `uv.lock`.
 
-=== "Simple application"
+### Pin Python for the Components
 
-    An **application** is a program you run, such as a script or web server. This simple template has no `[build-system]` table in `pyproject.toml` and is not installed as a package in `.venv`.
+Both workspace members use Python 3.12. A `.python-version` file selects the interpreter for local commands; `requires-python` in each `pyproject.toml` declares the versions supported by that project. Workspace members must have compatible `requires-python` requirements, and using the same pin here makes that relationship explicit.
 
-    ```shell
-    uv init --app --no-package hello-app
-    ```
+=== "Backend"
 
-    The initial files include a script (`main.py`) at the project root:
-
-    ```text
-    hello-app/
-    ├── .git/
-    ├── .gitignore
-    ├── .python-version
-    ├── README.md
-    ├── main.py
-    └── pyproject.toml
-    ```
-
-    Its complete `pyproject.toml` can look like this:
-
-    ```toml
-    [project]
-    name = "hello-app"
-    version = "0.1.0"
-    description = "A small Python application"
-    readme = "README.md"
-    requires-python = ">=3.13"
-    dependencies = []
-    ```
-
-    To run it, pass the Python filename to `uv run` such as the generated `main.py`:
+    `--no-project` writes the pin before the member's `pyproject.toml` exists:
 
     ```shell
-    uv run main.py
+    uv --directory uv-workspace/backend python pin --no-project 3.12
     ```
 
-=== "Packaged application"
+=== "Frontend"
 
-    A **packaged application** is a runnable program with a `[build-system]` table in `pyproject.toml`, allowing it to be installed and distributed. Packaging describes how code is delivered, not what it does; both applications and libraries can be packaged. Create one with an installable Python package and a command-line entry point:
+    Use the same Python version for the frontend member:
 
     ```shell
-    uv init --app --package --build-backend uv hello-app
+    uv --directory uv-workspace/frontend python pin --no-project 3.12
     ```
 
-    Its source code lives in a **Python package**, an importable directory containing `__init__.py`, under `src/`:
+### Initialize the Workspace Components
 
-    ```text
-    hello-app/
-    ├── .git/
-    ├── .gitignore
-    ├── .python-version
-    ├── README.md
-    ├── pyproject.toml
-    └── src/
-        └── hello_app/
-            └── __init__.py
-    ```
+Initialize each member as a packaged application. The template creates project metadata and starter package files; this section uses that generated scaffolding without implementing application modules.
 
-    Its complete `pyproject.toml` can look like this (with a `main` function in `hello_app`):
+=== "Backend"
 
-    ```toml
-    [project]
-    name = "hello-app"
-    version = "0.1.0"
-    description = "A packaged Python application"
-    readme = "README.md"
-    requires-python = ">=3.13"
-    dependencies = []
-
-    [project.scripts]
-    hello-app = "hello_app:main"
-
-    [build-system]
-    requires = ["uv_build>=0.11,<0.12"]
-    build-backend = "uv_build"
-    ```
-
-    In development, `uv run` syncs `.venv` and installs the project in editable mode, keeping imports pointed at your working tree. After changing code in `src/hello_app/`, run the entry point declared in `[project.scripts]` such as `hello-app` again:
+    The backend is a Python application that will provide HTTP endpoints. Initialize it as a packaged application, disabling Git initialization because the workspace root is the repository:
 
     ```shell
-    uv run hello-app
+    uv init --app --package --vcs none --author-from none uv-workspace/backend
     ```
 
-=== "Library"
-
-    A **library** provides reusable functions and classes that other projects import, rather than a program users run directly. The `--lib` option creates a packaged project with a `[build-system]` table in `pyproject.toml` for building and distributing it. Create one with an importable Python package:
+    When run inside an existing project, `uv init` discovers the workspace and registers the new project as a member. Inspect the member configuration:
 
     ```shell
-    uv init --lib --build-backend uv hello-library
+    cat uv-workspace/backend/pyproject.toml
     ```
 
-    The library has an importable Python package under `src/`. The `py.typed` marker tells type checkers that the library provides type information:
+=== "Frontend"
 
-    ```text
-    hello-library/
-    ├── .git/
-    ├── .gitignore
-    ├── .python-version
-    ├── README.md
-    ├── pyproject.toml
-    └── src/
-        └── hello_library/
-            ├── __init__.py
-            └── py.typed
-    ```
-
-    Its complete `pyproject.toml` can look like this:
-
-    ```toml
-    [project]
-    name = "hello-library"
-    version = "0.1.0"
-    description = "A reusable Python library"
-    readme = "README.md"
-    requires-python = ">=3.13"
-    dependencies = []
-
-    [build-system]
-    requires = ["uv_build>=0.11,<0.12"]
-    build-backend = "uv_build"
-    ```
-
-=== "Bare project"
-
-    Unlike the other templates, `--bare` creates only a `pyproject.toml`; it does not scaffold source files. This template suits existing codebases and projects with a custom source layout. Because `--bare` controls scaffolding rather than project type, it can be combined with `--lib` or `--package` to add a build system without generating source files.
-
-    Create a minimal starting point for an existing codebase or a custom layout:
+    The frontend will provide a small interactive UI with [Streamlit](https://streamlit.io/). Initialize it as a separate packaged application in the same workspace:
 
     ```shell
-    uv init --bare hello-project
+    uv init --app --package --vcs none --author-from none uv-workspace/frontend
     ```
 
-    Only the configuration file is created:
+    Inspect the generated project metadata:
 
-    ```text
-    hello-project/
-    └── pyproject.toml
+    ```shell
+    cat uv-workspace/frontend/pyproject.toml
     ```
 
-    Its complete `pyproject.toml` can look like this:
+Confirm that the root includes both projects as workspace members and that the lockfile is at the root:
 
-    ```toml
-    [project]
-    name = "hello-project"
-    version = "0.1.0"
-    requires-python = ">=3.13"
-    dependencies = []
-    ```
+```shell
+cat uv-workspace/pyproject.toml
+```
 
-!!! info "uv init defaults"
+Each member has its own project metadata and Python pin, while the workspace has one lockfile at its root rather than one per component.
 
-    In `uv v0.11.1`, standard templates initialize a Git repository and create `.gitignore` by default; `--bare` skips Git initialization, and `--vcs none` disables it. Packaged templates default to Astral's `uv_build` backend, not setuptools. To use setuptools, pass `--build-backend setuptools`; the packaged examples above explicitly select uv's backend with `--build-backend uv`.
+### Add a Workspace Dependency
+
+The backend and frontend already share a workspace. Add a small library under `packages/` to see how another project joins it. Create the parent directory:
+
+```shell
+mkdir -p uv-workspace/packages
+```
+
+Initialize a library. Because it is created inside the workspace, `uv init` adds it to the root workspace members:
+
+```shell
+uv init --lib --vcs none --author-from none uv-workspace/packages/shared-components
+```
+
+Inspect the root workspace configuration:
+
+```shell
+cat uv-workspace/pyproject.toml
+```
+
+Make the backend depend on the local library. `--workspace` records the dependency as a workspace source instead of fetching a package from an index:
+
+```shell
+uv --directory uv-workspace/backend add --workspace shared-components
+```
+
+Inspect the backend's dependency and workspace source:
+
+```shell
+cat uv-workspace/backend/pyproject.toml
+```
+
+This adds the library as a third workspace member and resolves all members into the single root lockfile. Workspace dependencies are installed editably during development.
 
 ## Work in the Project Environment
 
 ### Add Dependencies and Run the Project
 
-!!! info "Automatic Environment Updates"
+By default, `uv add` updates project metadata and the workspace lockfile, creates a virtual environment if needed, and installs dependencies. Run the commands from each member while addressing it explicitly with `--directory`.
 
-    By default, `uv add` updates `pyproject.toml` and `uv.lock`, creates an in-project virtual environment `.venv` if needed, and installs the dependencies and packaged project. No activation or separate synchronization step is needed here. See [Dependency Management with uv](./section-02.md#synchronizing) for synchronization workflows.
+=== "Backend"
 
-Continue with the **Packaged application** example above, working from the `hello-app` project root. Add [Bottle](https://bottlepy.org/docs/dev/), a small web framework, with an exact version requirement:
+    Add [Bottle](https://bottlepy.org/docs/dev/), a small web framework, to the backend with an exact version requirement:
+
+    ```shell
+    uv --directory uv-workspace/backend add "bottle==0.13.4"
+    ```
+
+
+=== "Frontend"
+
+    Add Streamlit to the frontend:
+    ```shell
+    uv --directory uv-workspace/frontend add streamlit
+    ```
+
+The dependencies are recorded in each member's `pyproject.toml`, while `uv.lock` remains at the workspace root. The generated workspace tree now looks like this:
+
+```text
+uv-workspace/
+├── pyproject.toml
+├── uv.lock
+├── backend/
+│   ├── .python-version
+│   ├── README.md
+│   ├── pyproject.toml
+│   └── src/
+│       └── backend/
+│           └── __init__.py
+└── frontend/
+    ├── .python-version
+    ├── README.md
+    ├── pyproject.toml
+    └── src/
+        └── frontend/
+            └── __init__.py
+```
+
+Inspect the backend metadata:
 
 ```shell
-uv add "bottle==0.13.4"
+cat uv-workspace/backend/pyproject.toml
 ```
 
-> Use `==` to specify a version
-
-The complete configuration keeps the packaged application's entry point and build backend unchanged; only `dependencies` gains Bottle:
-
-```toml title="pyproject.toml"
-[project]
-name = "hello-app"
-version = "0.1.0"
-description = "A packaged Python application"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = ["bottle==0.13.4"]
-
-[project.scripts]
-hello-app = "hello_app:main"
-
-[build-system]
-requires = ["uv_build>=0.11,<0.12"]
-build-backend = "uv_build"
-```
-
-Add [Ruff](https://docs.astral.sh/ruff/) for linting and [pytest](https://docs.pytest.org/en/stable/) for testing to the `dev` dependency group, rather than the runtime requirements:
+Inspect the frontend metadata:
 
 ```shell
-uv add --dev ruff pytest
+cat uv-workspace/frontend/pyproject.toml
 ```
 
-This adds `[dependency-groups]` to `pyproject.toml` and installs both tools in `.venv`. The **complete updated `pyproject.toml`** now looks like this.
-
-```toml title="pyproject.toml"
-[project]
-name = "hello-app"
-version = "0.1.0"
-description = "A packaged Python application"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = ["bottle==0.13.4"]
-
-[project.scripts]
-hello-app = "hello_app:main"
-
-[build-system]
-requires = ["uv_build>=0.11,<0.12"]
-build-backend = "uv_build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-    "ruff>=0.16.10",
-]
-```
-
-> **Version Note:** Your Ruff and pytest versions may differ. `>=` allows newer releases; use `==` to require an exact version, as with Bottle. `uv.lock` records the exact resolved versions either way.
-
-Replace the generated code in `src/hello_app/__init__.py` with this Bottle application. Its `main()` function starts the server, so the existing `[project.scripts]` entry is unchanged:
-
-```python title="src/hello_app/__init__.py"
-from bottle import Bottle
-
-app = Bottle()
-
-@app.get("/")
-def hello():
-    return "Hello from Bottle!"
-
-
-def main() -> None:
-    app.run(host="127.0.0.1", port=8080)
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Run the existing console command using the project's environment, then open `http://127.0.0.1:8080/`. The editable installation uses your updated source code directly. Stop the server with Ctrl+C:
+Inspect the root lockfile location:
 
 ```shell
-uv run hello-app
+ls uv-workspace/uv.lock
 ```
 
-### Use the Tool Table
+The generated package files are scaffolding only. No Bottle routes or Streamlit UI are implemented in this section. Once application code is added, `uv run --directory uv-workspace/backend ...` and `uv run --directory uv-workspace/frontend ...` run commands in the corresponding workspace project.
 
-Tools that support `pyproject.toml` can keep their settings alongside the project metadata, instead of using separate tool-specific configuration files. These tables configure the tools but do not install them:
+Add [Ruff](https://docs.astral.sh/ruff/) for linting and [pytest](https://docs.pytest.org/en/stable/) for testing to the backend's `dev` dependency group, rather than its runtime requirements:
 
-- `ruff`: Set `line-length = 88` to limit line width. `[tool.ruff]` keeps this and other Ruff settings in `pyproject.toml` instead of a separate `ruff.toml`.
-- `pytest`: Set `testpaths = ["tests"]` to locate tests and `addopts = "-ra"` to show a summary of non-passing tests. `[tool.pytest.ini_options]` keeps these settings in `pyproject.toml` instead of a separate `pytest.ini`.
+```shell
+uv --directory uv-workspace/backend add --dev ruff pytest
+```
 
-The **complete updated `pyproject.toml`** combines runtime dependencies, development tools, packaging, and tool configuration:
+Your Ruff and pytest versions may differ. `uv` writes compatible version ranges to project metadata and resolves exact versions in the shared `uv.lock`.
 
-```toml title="pyproject.toml"
-[project]
-name = "hello-app"
-version = "0.1.0"
-description = "A packaged Python application"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = ["bottle==0.13.4"]
+### Use the `[tool.*]` Table
 
-[project.scripts]
-hello-app = "hello_app:main"
+Tools that support `pyproject.toml` can keep their settings alongside project metadata instead of using separate tool-specific configuration files. These tables configure tools but do not install them. Add Ruff and pytest settings to the backend project:
 
-[build-system]
-requires = ["uv_build>=0.11,<0.12"]
-build-backend = "uv_build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-    "ruff>=0.16.10",
-]
-
+```toml title="uv-workspace/backend/pyproject.toml"
 [tool.ruff]
 line-length = 88
 
@@ -356,112 +245,44 @@ testpaths = ["tests"]
 addopts = "-ra"
 ```
 
+The workspace project files now hold component-specific metadata and settings, while dependency resolution is shared at the root. Put future backend tests in `tests/`; configuration alone does not create test files.
+
 ## Build a Package
 
-Python packaging separates building into a **frontend** and a **backend**, with their interface defined by [PEP 517](https://peps.python.org/pep-0517/). The frontend coordinates the build, while the backend creates installable distributions. [PEP 518](https://peps.python.org/pep-0518/) defines how a project declares its backend and build requirements in `[build-system]`.
+Python packaging separates building into a **frontend** and a **backend**, with their interface defined by [PEP 517](https://peps.python.org/pep-0517/). The build frontend coordinates the build, while the build backend creates installable distributions. [PEP 518](https://peps.python.org/pep-0518/) defines how a project declares its build backend and requirements in `[build-system]`.
 
-Build frontends coordinate the build and invoke the project's configured backend; common frontends include:
+The frontend in that packaging terminology is distinct from the Streamlit UI component. Common build frontends include `python -m build`, `pip wheel`, and `uv build`; common build backends include `setuptools.build_meta`, `hatchling.build`, and `uv_build`. The packaged application templates use `uv_build` in their `[build-system]` table.
 
-| Frontend | Summary |
-| --- | --- |
-| `python -m build` | Builds a wheel and source archive by invoking the project's configured backend. |
-| `pip wheel` | Builds a wheel from source for installation or distribution. |
-| `uv build` | Builds project distributions through uv's project workflow. |
-
-Build backends implement the PEP 517 interface that creates distributions; common backends include:
-
-| Backend | Summary |
-| --- | --- |
-| `setuptools.build_meta` | Provides a mature, broadly compatible build implementation. |
-| `hatchling.build` | Provides a lightweight backend for modern Python projects. |
-| `poetry.core.masonry.api` | Builds distributions from Poetry project metadata without requiring the Poetry CLI. |
-| `mesonpy` | Builds Python packages with native extensions using Meson. |
-| `scikit_build_core.build` | Connects CMake-based native builds to Python packaging. |
-| `uv_build` | Provides a fast build backend designed for uv projects. |
-
-As noted [above](#choose-a-project-type), the build backend is defined in the `[build-system]` table in `pyproject.toml`. Run `uv build` from the project root to build the package:
+Build the backend distributions from its project directory:
 
 ```shell
-uv build
+uv build uv-workspace/backend --out-dir uv-workspace/backend/dist
 ```
 
-Run `ls -lah dist/` to inspect the generated files. For this `hello-app` example, the output is:
+Build the frontend distributions:
 
-```text
-total 20K
-drwxr-xr-x 2 vprav vprav 4.0K Oct  5 06:15 .
-drwxr-xr-x 5 vprav vprav 4.0K Oct  5 06:15 ..
--rw-r--r-- 1 vprav vprav    1 Oct  5 06:15 .gitignore
--rw-r--r-- 1 vprav vprav 1.6K Oct  5 06:15 hello_app-0.1.0-py3-none-any.whl
--rw-r--r-- 1 vprav vprav  608 Oct  5 06:15 hello_app-0.1.0.tar.gz
+```shell
+uv build uv-workspace/frontend --out-dir uv-workspace/frontend/dist
+```
+
+The output directory is selected explicitly so each component's distributions remain with that component. Inspect the backend output:
+
+```shell
+ls -lah uv-workspace/backend/dist/
 ```
 
 ## Publish a Package
 
-Before uploading, check the project name, version, and package contents. Set a PyPI token in `UV_PUBLISH_TOKEN`, then publish the files in `dist/`:
-
-For more detail on wheel packaging and uploading distributions, see [Chapter 02, Section 01](../chapter-02/section-01.md).
+Before uploading, check the project name, version, and package contents. Set a PyPI token in `UV_PUBLISH_TOKEN`, then pass a component's distribution files to `uv publish`:
 
 ```shell
-uv publish
+uv publish uv-workspace/backend/dist/*.whl uv-workspace/backend/dist/*.tar.gz
 ```
 
-By default, this publishes to PyPI. For a first trial, use [TestPyPI](https://test.pypi.org/) with a TestPyPI token and its upload URL:
+For a first trial, use [TestPyPI](https://test.pypi.org/) with a TestPyPI token and its upload URL:
 
 ```shell
-uv publish --publish-url https://test.pypi.org/legacy/
+uv publish --publish-url https://test.pypi.org/legacy/ uv-workspace/backend/dist/*.whl uv-workspace/backend/dist/*.tar.gz
 ```
 
-## Manage Related Projects with uv Workspaces
-
-When several related packages live in one repository, a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) lets each keep its own `pyproject.toml` while sharing one `uv.lock`. For example, a root project can include packages under `packages/`:
-
-```toml title="pyproject.toml (root)"
-[tool.uv.workspace]
-members = ["packages/server", "packages/client"]
-```
-
-The `server` and `client` members each have their own project metadata. For example, `packages/server/pyproject.toml` can define the server package:
-
-```toml title="pyproject.toml (server)"
-[project]
-name = "server"
-version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = []
-
-[build-system]
-requires = ["uv_build>=0.11,<0.12"]
-build-backend = "uv_build"
-```
-
-The client can depend on the server by declaring it as a dependency and mapping it to the workspace member in `packages/client/pyproject.toml`:
-
-```toml title="pyproject.toml (client)"
-[project]
-name = "client"
-version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = ["server"]
-
-[tool.uv.sources]
-server = { workspace = true }
-
-[build-system]
-requires = ["uv_build>=0.11,<0.12"]
-build-backend = "uv_build"
-```
-
-The workspace root includes both members, and the client uses the server from that same workspace:
-
-```mermaid
-flowchart TD
-    root["Workspace root<br/>pyproject.toml<br/>uv.lock"]
-    server["packages/server<br/>pyproject.toml"]
-    client["packages/client<br/>pyproject.toml"]
-    root -->|includes member| server
-    root -->|includes member| client
-    client -->|workspace dependency| server
-```
-
-Start with one project; introduce a workspace when related packages need to be developed together.
+Repeat the publish command with `uv-workspace/frontend/dist/*.whl` and `uv-workspace/frontend/dist/*.tar.gz` when that component is ready to release. For more detail on wheel packaging and uploading distributions, see [Chapter 02, Section 01](../chapter-02/section-01.md).

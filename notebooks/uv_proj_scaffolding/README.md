@@ -1,15 +1,15 @@
 # Project Scaffolding with uv — A New Hope for Bob
 
-Bob builds his first modern Python project, one visible step at a time. This lab accompanies [Chapter 03, Section 01](../../docs/chapter-03/section-01.md). Its Dev Container supplies uv and a Jupyter kernel; the notebook creates projects and manages their Python environments.
+Bob scaffolds a backend and frontend in one modern Python workspace, one visible step at a time. This lab accompanies [Chapter 03, Section 01](../../docs/chapter-03/section-01.md). Its Dev Container supplies uv and a Jupyter kernel; the notebook creates projects and manages their Python environments.
 
 | Stage | What Bob explores |
 | --- | --- |
 | Getting started | Install options and the uv version in the container |
-| Initialize | `--no-package`, `--package`, `--lib`, `--bare` and their generated files |
-| Python and environment | Interpreter pin, `requires-python`, `uv sync` and `.venv` |
-| Configure and run | `uv add`, `uv run`, and `[tool.ruff]` |
-| Distribute | `uv_build`, wheel, source archive, and publication guidance |
-| Grow | A local workspace member and shared lockfile |
+| Set up | A workspace root, backend and frontend members, matching Python 3.12 pins, and one root lockfile |
+| Initialize | Packaged application scaffolding for Bottle backend and Streamlit frontend |
+| Configure and run | `uv add`, shared resolution, and `[tool.*]` settings |
+| Distribute | `uv_build`, wheels, source archives, and publication guidance |
+| Grow | A shared library as a workspace member and a local workspace dependency |
 
 ## Run the lab
 
