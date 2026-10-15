@@ -4,6 +4,35 @@
 
 This section shows how to use `uv` to scaffold a multi-project workspace, initialize its backend and frontend components, and configure project metadata and shared workspace settings in `pyproject.toml` and `uv.lock`. The example pairs a Bottle backend with a Streamlit frontend.
 
+## The Modern Python Standard
+
+The `pyproject.toml` is the modern standard to describe a Python project. [PEP 518](https://peps.python.org/pep-0518/) established it for build-system requirements, [PEP 621](https://peps.python.org/pep-0621/) standardized project metadata, and [PEP 735](https://peps.python.org/pep-0735/) standardized dependency groups. Together with tool-specific settings, these entries bring project metadata, build configuration, and dependency declarations that were often scattered across `setup.py`, `setup.cfg`, and `requirements.txt` into one clear source of truth. Exact resolved versions belong in the lockfile, which helps keep installations consistent and reduces environment drift.
+
+`uv` builds its project workflows around `pyproject.toml` and the lockfile. It writes project metadata and dependency declarations to the project file and uses the lockfile to keep environments consistent. A small web backend could keep these settings together in one file:
+
+```toml
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "example-web-app"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "bottle>=0.13",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+
+[tool.ruff]
+line-length = 88
+```
+
 ## Install uv
 
 `uv` is distributed as a single, self-contained static binary and can be installed without Python already present.
