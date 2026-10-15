@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Chapter 03 introduces `uv`, Astral's modern Python project and package manager, and explores how it supports the full project lifecycle - from scaffolding and dependency configuration to building and publishing packages. Its streamlined resolver and lockfile keep dependencies consistent, while its cache can be reused across runs to speed up environment setup and Continuous Integration (CI) jobs. The chapter also covers workflows beyond managed projects, including standalone scripts and environments, running command-line tools with `uvx`, and using the familiar `uv pip` interface with existing requirements files.
+Chapter 03 introduces `uv`, Astral's Rust-based Python project and package manager, first released in 2024. Its project configuration centers on `pyproject.toml`, which records project metadata and dependencies, while its lockfile supports reproducible installs. The chapter covers scaffolding workspaces, managing and caching dependencies, building and publishing packages, and workflows for standalone scripts, environments, and command-line tools with `uvx` or `uv pip`.
 
 ## Overview
 

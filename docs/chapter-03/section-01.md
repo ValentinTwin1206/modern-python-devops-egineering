@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Written in Rust, `uv` is a Python project and package manager maintained by [Astral](https://astral.sh/) since its first [release in 2024](https://astral.sh/blog/uv). `uv` manages a project from its first files to a published package. Its central configuration file is `pyproject.toml`, which describes a project's metadata and dependencies. This section scaffolds a small web application as a workspace with a Bottle backend and a Streamlit frontend.
+This section shows how to use `uv` to scaffold a multi-project workspace, initialize its backend and frontend components, and configure project metadata and shared workspace settings in `pyproject.toml` and `uv.lock`. The example pairs a Bottle backend with a Streamlit frontend.
 
 ## Install uv
 
@@ -31,8 +31,6 @@ uv --version
 ```
 
 ## Manage Python with uv
-
-### Installing Python with uv
 
 Like [`nvm`](https://github.com/nvm-sh/nvm) for Node.js and [`rustup`](https://rust-lang.github.io/rustup/) for Rust, `uv` can install and select interpreter versions without replacing the system interpreter. Use the `uv python` commands to manage interpreters. Install version 3.12 alongside the system interpreter:
 

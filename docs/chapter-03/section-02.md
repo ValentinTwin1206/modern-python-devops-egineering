@@ -2,90 +2,44 @@
 
 ## Introduction
 
-Modern Python applications are built on top of dependencies. Managing those dependencies becomes increasingly challenging when developers work on different operating systems, use different Python versions, or require platform-specific tooling.
-
-`uv` splits dependency management into three concerns: **declaring** what a project needs (`pyproject.toml`), **locking** the resolved versions (`uv.lock`), and **synchronizing** the environment (`.venv`) to match the lockfile. Each concern has its own commands, and each file has exactly one responsibility.
-
-!!! note "Scope"
-    For project setup, Python versions, and project environments, see [Project Scaffolding with uv](./section-01.md). Standalone environments and tools are covered in [Section 04](./section-04.md).
+This section explains how `uv` manages project dependencies, from adding packages from indexes or Git repositories to organizing development tools and locking resolved versions for consistent environments. See [adding dependencies](#add-dependencies), [dependency groups](#dependency-groups), [Git package sources](#add-a-dependency-from-a-git-repository), and [the lockfile](#the-lockfile) for details.
 
 ## Declaring Dependencies
 
-### The `pyproject.toml`
+`uv` provides dedicated commands for adding and removing dependencies. By default, these commands update the project's dependency declarations, resolve versions into a lockfile, and synchronize the virtual environment. Runtime requirements belong in the standard project dependency field, while other tables can describe development groups or tool-specific package sources.
 
-The `pyproject.toml` declares the *intent* of a project: which packages it needs and which version ranges are acceptable. It does not record exact versions of transitive dependencies — that is the lockfile's job.
-
-A minimal, complete project file looks like this:
+Start with a project file that contains metadata but no dependencies:
 
 ```toml
 [project]
 name = "license-service"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.115,<0.116",
-    "httpx==0.27.2",
-    "rich>=13.7,<14",
-]
 ```
 
-### Add and Remove
+### Add Dependencies
 
-Instead of editing the file by hand, `uv` can modify the `dependencies` entry for you and immediately re-resolve.
+#### Add from a Package Index
 
-Add a runtime dependency:
+Use `uv add` to update the `dependencies` entry in `pyproject.toml` and immediately re-resolve. By default, `uv` selects the newest version compatible with the project's Python requirement and records it as a lower bound (`>=`):
 
-```shell
+```bash
 uv add requests
 ```
 
-Without an explicit constraint, `uv` writes a lower bound at the current version into `pyproject.toml`:
+To require an exact version, use the `==` constraint:
 
-```toml
-dependencies = [
-    "requests>=2.32.3",
-]
-```
-
-Add a dependency with an explicit constraint:
-
-```shell
+```bash
 uv add "httpx==0.27.2"
 ```
 
-Remove a dependency:
+To allow patch releases within the `0.115` series, specify a version range:
 
-```shell
-uv remove requests
+```bash
+uv add "fastapi>=0.115,<0.116"
 ```
 
-Every `uv add` / `uv remove` updates `pyproject.toml`, re-resolves the graph into `uv.lock`, and syncs the `.venv` in one step.
-
-### Alternative Sources
-
-`uv add` can also install from a Git repository. For example, add `httpx` from its source repository:
-
-```shell
-uv add "httpx @ git+https://github.com/encode/httpx"
-```
-
-`uv` records `httpx` as a dependency in `[project]` and its Git location under `[tool.uv.sources]`. Prefer a released package from an index unless you need code from a repository.
-
-### Version Constraints
-
-The constraint style controls how much freedom the resolver has:
-
-| Constraint | Meaning | Typical use |
-| --- | --- | --- |
-| `httpx==0.27.2` | exactly this version | maximum reproducibility at declaration level |
-| `fastapi>=0.115,<0.116` | any patch release within a minor version | applications |
-| `rich>=13.7` | this version or anything newer | libraries with wide compatibility |
-
-Prefer ranges for applications and libraries; the lockfile already guarantees exact versions at install time. Exact pins in `pyproject.toml` are only needed when a specific version is a hard requirement.
-
-### Dependency Groups
-
-Development tools, test frameworks, and documentation generators are not needed in production. Dependency groups separate them from runtime requirements:
+After these commands, the complete project file looks like this. **NOTE** that the `requests` lower bound may vary:
 
 ```toml
 [project]
@@ -93,7 +47,74 @@ name = "license-service"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115,<0.116",
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "httpx==0.27.2", # Require this exact version
+    "requests>=2.32.3", # Set a minimum version
+]
+```
+
+!!! info "Choosing version constraints"
+    **Prefer version ranges for applications and libraries, such as `fastapi>=0.115,<0.116`.** The lockfile records exact resolved versions for reproducible installs, so use exact pins in `pyproject.toml` only when a specific version is required.
+
+#### Add a Dependency from a Git Repository
+
+`uv` can add a package directly from a Git repository:
+
+```bash
+uv add "flask @ git+https://github.com/pallets/flask"
+```
+
+Instead of putting the Git URL directly in `[project].dependencies`, `uv` adds the package name there and records the repository location under `[tool.uv.sources]`. After this command, the complete project file looks like this:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "flask",
+    "httpx==0.27.2", # Require this exact version
+    "requests>=2.32.3", # Set a minimum version
+]
+
+[tool.uv.sources]
+flask = { git = "https://github.com/pallets/flask" }
+```
+
+#### Dependency Groups
+
+Development tools, test frameworks, and documentation generators are not needed in production. Dependency groups separate them from runtime requirements:
+
+=== "Dev"
+
+    Add test and development tools to the `dev` group with `--group`. The `dev` group is special-cased, so `--dev` can also be used as a shortcut:
+
+    ```bash
+    uv add --group dev pytest
+    uv add --dev ruff
+    ```
+
+=== "Docs"
+
+    Add MkDocs to a separate `docs` group:
+
+    ```bash
+    uv add --group docs "mkdocs>=1.6.1,<2.0"
+    ```
+
+After these commands, the complete project file looks like this:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "flask",
+    "httpx==0.27.2", # Require this exact version
+    "requests>=2.32.3", # Set a minimum version
 ]
 
 [dependency-groups]
@@ -101,31 +122,23 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.15",
 ]
+docs = [
+    "mkdocs>=1.6.1,<2.0",
+]
+
+[tool.uv.sources]
+flask = { git = "https://github.com/pallets/flask" }
 ```
 
-Add a package directly into a group:
+#### Dependency Markers
 
-```shell
-uv add --group dev pytest
+Some packages are available only on specific platforms or Python versions, so PEP 508 environment markers let you declare them only where they can be installed. For example, a Flask web app can use `pywin32` for Windows Integrated Authentication; `uv add` accepts markers with `--marker`, so you can restrict `pywin32` to Windows. See uv's [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) for other platform and Python-version conditions used in mixed environments such as Windows, Linux, WSL, CI, and production containers.
+
+```bash
+uv add "pywin32>=310" --marker "sys_platform == 'win32'"
 ```
 
-The `dev` group is special-cased and can also be targeted with a shortcut:
-
-```shell
-uv add --dev ruff
-```
-
-Remove a package from a group:
-
-```shell
-uv remove --group dev pytest
-```
-
-### Dependency Markers
-
-Some dependencies are only valid on specific platforms or Python versions. Without additional information, the resolver assumes that every dependency must be installed in every environment.
-
-Consider a project that uses Windows Authentication through `pywin32`. Declared unconditionally, `uv sync` fails on Linux because `pywin32` publishes no Linux wheels. A marker restricts the dependency to the platforms where it exists:
+After this command, the complete project file looks like this:
 
 ```toml
 [project]
@@ -133,15 +146,71 @@ name = "license-service"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115,<0.116",
-    "pywin32>=310; sys_platform == 'win32'",
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "flask",
+    "httpx==0.27.2", # Require this exact version
+    "pywin32>=310; sys_platform == 'win32'", # Windows-only
+    "requests>=2.32.3", # Set a minimum version
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0",
+]
+
+[tool.uv.sources]
+flask = { git = "https://github.com/pallets/flask" }
 ```
 
-The resolver now includes `pywin32` only on Windows systems, producing a valid dependency graph across all environments.
+### Remove Dependencies
 
-!!! note
-    Dependency markers are defined by the `PEP 508` standard; see the [common markers](https://docs.astral.sh/uv/concepts/resolution/#common-marker-values) documentation of `uv`. Operating system and Python version markers are by far the most common use cases, especially in mixed environments such as Windows, Linux, WSL, CI runners, and production containers.
+Use `uv remove` to remove a dependency. Choose the matching command for a normal or grouped dependency:
+
+=== "Normal Dependencies"
+
+    Remove a runtime dependency:
+
+    ```bash
+    uv remove requests
+    ```
+
+=== "Grouped Dependencies"
+
+    Remove a dependency from the `dev` group:
+
+    ```bash
+    uv remove --group dev pytest
+    ```
+
+If you run both commands, the complete project file looks like this:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "flask",
+    "httpx==0.27.2", # Require this exact version
+    "pywin32>=310; sys_platform == 'win32'", # Windows-only
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15",
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0",
+]
+
+[tool.uv.sources]
+flask = { git = "https://github.com/pallets/flask" }
+```
 
 ## Locking
 
@@ -220,7 +289,10 @@ uv lock --check
 
 ## Synchronizing
 
-### Install from the Lockfile
+### Default Synchronization
+
+!!! info "Local Development"
+    Use the default sync for day-to-day development. It keeps the virtual environment aligned with the project metadata and, by default, installs the project in editable mode with the configured default dependency groups.
 
 The `uv sync` command prepares a project's Python environment by installing the dependency versions recorded in `uv.lock`. It creates an *in-project* virtual environment (`.venv`) if needed and installs, upgrades, downgrades, or removes packages to match the selected dependencies and dependency groups. If the lockfile is outdated relative to `pyproject.toml`, it re-locks automatically before installing.
 
@@ -250,9 +322,10 @@ The `uv sync` command prepares a project's Python environment by installing the 
 
 ### Frozen Installs
 
-The `uv sync --frozen` command performs *frozen installs* that use the dependency versions recorded in an existing lockfile without checking whether it matches the declarations in `pyproject.toml` or updating it. Any dependency change in `pyproject.toml` is therefore not resolved into a new lockfile during the sync.
+!!! info "Intermediate Docker Layers"
+    Use frozen syncs in intermediate Docker layers or workspace builds when dependencies need to be installed before all project source files are available. Because `--frozen` skips lockfile freshness checks, validate the lockfile separately and run a final `--locked` sync once all project files are present. See [uv's intermediate-layer guidance](https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers).
 
-It can be used in CI after [lockfile validation](#validate-and-upgrade), or in intermediate `Dockerfile` layers where the files needed for validation are not yet available, including builds of [`uv` workspaces](./section-01.md#manage-related-projects-with-uv-workspaces). These layers can install dependencies separately from the project source. Once all project files are available, uv's [intermediate-layer guidance](https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers) recommends a final sync with `--locked` to validate the lockfile.
+The `uv sync --frozen` command performs *frozen installs* that use the dependency versions recorded in an existing lockfile without checking whether it matches the declarations in `pyproject.toml` or updating it. Any dependency change in `pyproject.toml` is therefore not resolved into a new lockfile during the sync.
 
 ```bash
 uv sync --frozen [--no-install-project] [--no-install-workspace]
@@ -286,29 +359,30 @@ The `uv sync --locked` command performs *locked installs* that prepare the proje
     uv sync --locked --no-editable [--reinstall-package sync-demo]
     ```
 
-## Resolution
+### Resolution Strategies
 
-Before a lockfile can be written, the package manager must find a set of versions that satisfies every declared constraint, including all transitive constraints — this process is called **resolution**. `uv` resolves automatically whenever dependencies are added, updated, or synchronized.
+Before writing a lockfile, `uv` resolves direct and transitive dependencies to find versions that satisfy all declared constraints. It does this automatically when dependencies are added, updated, or synchronized and, by default, selects the latest compatible version of each dependency.
 
-### Strategies
+For libraries, testing only against the latest versions is insufficient: a declaration such as `fastapi>=0.100.0` claims compatibility with *every* version from `0.100.0` upward, not just the newest release.
 
-By default, `uv` prefers the latest compatible version of each dependency. For libraries, testing only against the latest versions is insufficient: a declaration such as `fastapi>=0.100.0` claims compatibility with *every* version from `0.100.0` upward, not just the newest release.
+=== "All Dependencies"
 
-Install the lowest compatible version for all direct and transitive dependencies:
+    Install the lowest compatible versions for all direct and transitive dependencies:
 
-```shell
-uv sync --resolution lowest
-```
+    ```bash
+    uv sync --resolution lowest
+    ```
 
-Install the lowest compatible versions for direct dependencies only, keeping transitive dependencies at their latest:
+=== "Direct Dependencies"
 
-```shell
-uv sync --resolution lowest-direct
-```
+    Install the lowest compatible versions for direct dependencies only, keeping transitive dependencies at their latest:
 
-These strategies are particularly useful in CI pipelines to verify that declared version bounds are accurate.
+    ```bash
+    uv sync --resolution lowest-direct
+    ```
 
-### Inspect the Graph
+
+#### Inspect the Graph
 
 Display the resolved dependency tree, showing which package pulled in which transitive dependency:
 
