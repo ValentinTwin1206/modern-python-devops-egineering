@@ -10,6 +10,12 @@ services:
     volumes:
       - .:/workspace:cached
     working_dir: /workspace
+    extra_hosts:
+      - "keycloak.localhost:172.30.0.1"
+    environment:
+      PLAYWRIGHT_HOST_GATEWAY: 172.30.0.1
+      KEYCLOAK_TEST_USERNAME: ${KEYCLOAK_TEST_USERNAME}
+      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
     networks:
       license_service_network:
 
@@ -26,16 +32,13 @@ services:
     env_file:
       - .env
     environment:
-      # Shared admin credential for the X-API-Key path (Step 8).
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
-      # `iss` claim in browser-issued tokens (host-facing Keycloak URL).
-      OIDC_ISSUER_URL: http://keycloak.localhost:8081/realms/license-service
-      # JWKS is fetched from inside the container network.
-      OIDC_JWKS_URL: http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
-      DATABASE_PATH: /app/data/licenses.db
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL}
+      DATABASE_PATH: ${DATABASE_PATH}
     networks:
       license_service_network:
-        ipv4_address: ${BACKEND_IP:-172.30.0.2}
+        ipv4_address: ${BACKEND_IP}
 
   frontend:
     build: ./frontend
@@ -54,26 +57,26 @@ services:
       - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
     networks:
       license_service_network:
-        ipv4_address: ${FRONTEND_IP:-172.30.0.3}
+        ipv4_address: ${FRONTEND_IP}
     environment:
-      BACKEND_URL: http://backend:8080
+      BACKEND_URL: ${BACKEND_URL}
       # Must match the backend so the admin X-API-Key path keeps working.
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
     command: start-dev --import-realm
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HOSTNAME: http://keycloak.localhost:8081
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
     ports:
       - "8081:8080"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
       license_service_network:
-        ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
+        ipv4_address: ${KEYCLOAK_IP}
 
   influxdb:
     image: influxdb:2.7
@@ -87,7 +90,7 @@ services:
       retries: 10
     networks:
       license_service_network:
-        ipv4_address: ${INFLUXDB_IP:-172.30.0.40}
+        ipv4_address: ${INFLUXDB_IP}
     ports:
       - "8086:8086"
     volumes:
@@ -103,7 +106,7 @@ services:
         condition: service_healthy
     networks:
       license_service_network:
-        ipv4_address: ${GRAFANA_IP:-172.30.0.50}
+        ipv4_address: ${GRAFANA_IP}
     ports:
       - "3001:3000"
     volumes:

@@ -2,7 +2,7 @@
 
 ## Applied Project
 
-Section 02 extends the project introduced in [section-01](section-01.md) with a monitoring stack for collecting and visualizing API metrics.
+Section 02 extends the project introduced in [Section 01](section-01.md) with a monitoring stack for collecting and visualizing API metrics.
 
 The monitoring stack consists of two main components:
 
@@ -43,7 +43,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
+
     networks:
       license_service_network:
         ipv4_address: ${INFLUXDB_IP:-172.30.0.40}
@@ -61,7 +61,6 @@ services:
       influxdb:
         condition: service_healthy
     networks:
-      license_service_network:
         ipv4_address: ${GRAFANA_IP:-172.30.0.50}
     ports:
       - "3001:3000"
@@ -94,11 +93,12 @@ differences are:
 ## Monitoring
 ### InfluxDB
 
-To showcase the integration with InfluxDB, the backend writes every HTTP requests through it's middleware stack towards the database. 
+**Integrating the influx client in the middleware**
 
-The backend uses one measurement, `api_requests`, for all HTTP request and writes the HTTP method and the endpoint as tags and the returned status code as an measured field to the database. Writing to an influx datasource in Python can easily be done with the `influxdb-client` and the usage of the [Point](https://docs.influxdata.com/influxdb/v2/reference/glossary/#point) constructor as the following code snippet of the `middleware.py` showcases.
+The backend writes each incoming request through its middleware stack to the Influx database. Therefore, it uses one measurement, `api_requests`, for all requests. It records `method`, `endpoint`, and `client_ip` as tags, and `status_code` and `duration_ms` as fields. Duration is measured in milliseconds around request handling. The [Point](https://docs.influxdata.com/influxdb/v2/reference/glossary/#point) constructor from `influxdb-client` is used to create each InfluxDB record:
 
 ```python
+# middleware.py
 import os
 
 from influxdb_client import InfluxDBClient, Point
@@ -114,39 +114,67 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 point = (
   Point("api_requests")
     .tag("method", method)
-    .tag("path", path)
+    .tag("endpoint", endpoint)
+    .tag("client_ip", client_ip)
+    .field("duration_ms", duration_ms)
     .field("status_code", status_code)
 )
 
 write_api.write( bucket=os.environ["INFLUXDB_BUCKET"], org=os.environ["INFLUXDB_ORG"], record=point, )
 ```
 
-!!! info "Connect with InfluxDB"
-	Open <http://localhost:8086>, sign in with the InfluxDB credentials from
-	`.env`, and open **Explore**. Select the `oidc_license_service` organization
-	and `api_metrics` bucket. Choose the `api_requests` measurement and a recent
-	time range to verify that request points have been stored.
+**Exploring metrics in influx**
+
+Open [http://localhost:8086](http://localhost:8086) in your browser and sign in with the InfluxDB credentials from the `.env` file. Open **Data Explorer** and select the `api_metrics` buckets.
+
+**Data Explorer** lets you explore the data stored in InfluxDB without building a dashboard first. You can choose a time range, focus on particular metrics, and display the results as a graph or table. Within the **Data Explorer** you can choose between the visual query builder or switch to **Script Editor** to enter a query directly.
+
+!!! info "api counts per minute"
+    For a first example, select **Script Editor** and paste the following query. It uses Flux, InfluxDB's query language, to count API requests in one-minute intervals. Choose a time range that includes recent requests, then click **Submit**. If no data appears, send a few requests through the application and run the query again:
+
+    ```flux
+    from(bucket: "api_metrics")
+      |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+      |> filter(fn: (r) => r._measurement == "api_requests")
+      |> filter(fn: (r) => r._field == "status_code")
+      |> aggregateWindow(every: 1m, fn: count, createEmpty: true)
+      |> yield(name: "api_calls")
+    ```
+
+    * `aggregateWindow` counts the records in each one-minute interval and includes empty intervals with a count of zero. 
+    * `yield` names the result `api_calls`
+
 
 ### Grafana
 
 Grafana is used as an visualization layer for the tracked metrics information and must be configured with the InfluxDB data source.
 
-!!! info "Connect Grafana with InfluxDB"
-    In Grafana, open **Connections** → **Data sources** → **Add new data source**, select **InfluxDB**, and use these settings:
+Open [http://localhost:3001](http://localhost:3001) in your browser and sign with the Grafana credentials from the `.env` file. 
+
+**Connection Grafana with the Influx Database**
+
+To forward the metrics to Grafana, the Influx database has to be actively connected with the Grafana instance. Open *Connections* > *Add new data source*. Select *InfluxDB* and set *Flux* as the query language and use the following settings and confirm the with clicking on *Save & test*:
 
     * URL: `http://influxdb:8086`
     * Organization: `oidc_license_service`
     * Bucket: `api_metrics`
     * Token: `INFLUXDB_TOKEN` from `.env`
 
-    Click **Save & test**. 
-    
-The project uses two visualizations to show the incoming http traffic.
+**Exploring metrics with Grafana**
 
-* a table view that lists incoming http requests 
-* a visualization showing the http traffic over time. 
+Once the influx database is connected, navigate to *Explore*, set *influxdb* as the query language and provide the query from above into the code editor and run the query. The result should be the same as explored within InfluxDB.
 
-Check the [README.md](./../../projects/bonus1_license_service_oidc/grafana/README.md) for more information about the technical implementation. 
+**Configuring Dashboards and alerts**
+
+Grafana provides the possibility to visualize metrics in configurable dashboards or configuring alerts when certain kind of thresholds are activated. Check the [README](./../../projects/bonus1_license_service_oidc/grafana/README.md) of the grafana folder that provides detailed information about the used visualizations of the course:
+
+  * a table view that lists incoming HTTP requests
+  * a visualization showing HTTP traffic over time
+  * a visualization showing average request latency over time
+  * an alert for brute-force blocks, based on HTTP 429 responses
+
+!!! info "For more information"
+    The individual dashboard and alert configuration are documented in the [README](./../../projects/bonus1_license_service_oidc/grafana/README.md)
 
 ## Development Workflow
 

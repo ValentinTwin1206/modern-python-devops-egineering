@@ -11,7 +11,7 @@ config:
   processor: "./helpers/test-helpers.cjs"
 
 scenarios:
-  - name: "GET license"
+  - name: "GET license and validate returned token"
     flow:
       - get:
           url: "/licenses"
@@ -19,3 +19,11 @@ scenarios:
           headers:
             x-api-key: "dev-secret"
           afterResponse: "checkResponse"
+      # A 429 response does not produce a token, so do not issue a request with
+      # an empty path parameter. The condition is evaluated per virtual user.
+      - ifTrue:
+          condition: "{{ tokenCaptured }}"
+          then:
+            - get:
+                url: "/licenses/{{ cloudsmithToken }}"
+                afterResponse: "checkTokenResponse"

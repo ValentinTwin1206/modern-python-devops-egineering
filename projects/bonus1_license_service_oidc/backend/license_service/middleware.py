@@ -2,6 +2,7 @@
 
 import os
 import logging
+import time
 
 from fastapi import Request as FastAPIRequest, responses
 from influxdb_client import InfluxDBClient, Point
@@ -136,20 +137,25 @@ def configure_middleware(app) -> None:
 
     @app.middleware("http")
     async def metrics_middleware(request: FastAPIRequest, call_next):
-        """Record each API path and its HTTP status in InfluxDB."""
+        """Record request status and latency in InfluxDB."""
+        started_at = time.perf_counter()
         try:
             response = await call_next(request)
         except Exception:
             # Exceptions do not produce a Response object, so record them as
             # failed requests before allowing the exception to propagate.
-            await _write_metric(request, 500)
+            duration_ms = (time.perf_counter() - started_at) * 1000
+            await _write_metric(request, 500, duration_ms)
             raise
 
         # Write after the endpoint completes to capture its actual status code.
-        await _write_metric(request, response.status_code)
+        duration_ms = (time.perf_counter() - started_at) * 1000
+        await _write_metric(request, response.status_code, duration_ms)
         return response
 
-    async def _write_metric(request: FastAPIRequest, status_code: int) -> None:
+    async def _write_metric(
+        request: FastAPIRequest, status_code: int, duration_ms: float
+    ) -> None:
         """Write one API request metric to InfluxDB."""
         if app.state.metrics is None:
             return
@@ -170,14 +176,16 @@ def configure_middleware(app) -> None:
             .tag("endpoint", request.url.path)
             .tag("client_ip", client_ip)
             .field("status_code", status_code)
+            .field("duration_ms", duration_ms)
         )
         try:
             logger.info(
-                "Writing API metric: method=%s endpoint=%s client_ip=%s status_code=%s",
+                "Writing API metric: method=%s endpoint=%s client_ip=%s status_code=%s duration_ms=%.2f",
                 request.method,
                 request.url.path,
                 client_ip,
                 status_code,
+                duration_ms,
             )
             write_api.write(
                 bucket=os.getenv("INFLUXDB_BUCKET", "api_metrics"),

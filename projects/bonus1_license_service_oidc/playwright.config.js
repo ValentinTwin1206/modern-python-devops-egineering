@@ -3,7 +3,10 @@ import path from 'path';
 
 const ARTIFACTS_DIR = path.resolve(process.env.TEST_RESULTS_DIR || '/tmp/playwright-artifacts');
 const TEST_DIR = path.resolve(process.env.TEST_ROOT_DIR || './tests');
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://frontend:8501';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8501';
+const browserArgs = process.env.PLAYWRIGHT_HOST_GATEWAY
+  ? [`--host-resolver-rules=MAP localhost ${process.env.PLAYWRIGHT_HOST_GATEWAY}, MAP keycloak.localhost ${process.env.PLAYWRIGHT_HOST_GATEWAY}`]
+  : [];
 
 export default defineConfig({
   testDir: TEST_DIR,
@@ -30,6 +33,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     ignoreHTTPSErrors: true,
     bypassCSP: true,
+    launchOptions: { args: browserArgs },
   },
   projects: [{
     name: 'Chromium',

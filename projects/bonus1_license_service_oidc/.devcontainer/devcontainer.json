@@ -3,6 +3,7 @@
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
+  "postCreateCommand": "npm ci",
   "runServices": [
     "backend",
     "frontend",

@@ -1,0 +1,92 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: PyGuard Stakeholders
+    folder: PyGuard
+    interval: 1m
+    rules:
+      - uid: bg0oi7baxefpcf
+        title: PyGuard HTTP 429 Alert
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: bg0kwzzxbw4xsc
+            model:
+              intervalMs: 1000
+              maxDataPoints: 43200
+              query: |-
+                from(bucket: "api_metrics")
+                  |> range(start: -5m)
+                  |> filter(fn: (r) =>
+                    r._measurement == "api_requests" and
+                    r._field == "status_code" and
+                    r._value == 429 and
+                    r.endpoint == "/licenses" and
+                    (r.method == "GET" or r.method == "POST")
+                  )
+                  |> group()
+                  |> aggregateWindow(every: 1m, fn: count, createEmpty: false)
+                  |> yield(name: "pyguard_429_blocks")
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    type: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: max
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: max
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: PyGuard blocked a request with HTTP 429
+        isPaused: false
