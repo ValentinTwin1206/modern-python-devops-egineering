@@ -51,8 +51,8 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 *lab/
+!/notebooks/uv_cache_lab/
 
 # IDE settings
 .idea/
 .vscode/
-

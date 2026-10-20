@@ -1,0 +1,20 @@
+{
+    "name": "uv Cache Lab",
+    "build": { "context": "..", "dockerfile": "Dockerfile" },
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "remoteUser": "bob",
+    "containerUser": "bob",
+    "updateRemoteUserUID": false,
+    "customizations": {
+        "vscode": {
+            "extensions": ["ms-python.python", "ms-toolsai.jupyter", "ms-toolsai.jupyter-renderers"],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "notebook.defaultKernel": "uv-cache-python3",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "forwardPorts": [8888]
+}

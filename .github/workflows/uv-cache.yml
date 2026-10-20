@@ -20,7 +20,7 @@ on:
     branches:
       - main
     paths:
-      - "projects/proj5_uv_cache/**"
+      - "notebooks/uv_cache_lab/**"
       - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
@@ -71,8 +71,8 @@ jobs:
       # Generate the bundled fixture and fingerprint build inputs for uv's cache key.
       - name: Generate fixture and fingerprint build inputs
         run: |
-          python projects/proj5_uv_cache/scripts/generate_fixture.py
-          build_key=$(python projects/proj5_uv_cache/scripts/build_key.py)
+          python notebooks/uv_cache_lab/scripts/generate_fixture.py
+          build_key=$(python notebooks/uv_cache_lab/scripts/build_key.py)
           echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
       # Cache key: setup-uv generates it automatically using, among other inputs:
@@ -91,11 +91,11 @@ jobs:
           enable-cache: true
           cache-local-path: ${{ env.UV_CACHE_DIR }}
           cache-dependency-glob: |
-            projects/proj5_uv_cache/pyproject.toml
-            projects/proj5_uv_cache/uv.lock
-            projects/proj5_uv_cache/src/**/*.py
-            projects/proj5_uv_cache/src/**/*.json
-            projects/proj5_uv_cache/src/**/*.bin
+            notebooks/uv_cache_lab/pyproject.toml
+            notebooks/uv_cache_lab/uv.lock
+            notebooks/uv_cache_lab/src/**/*.py
+            notebooks/uv_cache_lab/src/**/*.json
+            notebooks/uv_cache_lab/src/**/*.bin
           cache-suffix: ${{ env.PRUNE_CACHE == 'true' && 'embeddings-demo-ci-pruned' || 'embeddings-demo-full' }}
           prune-cache: false
 
@@ -135,7 +135,7 @@ jobs:
         shell: bash
         run: |
           start_ms=$(date +%s%3N)
-          uv sync --directory projects/proj5_uv_cache --locked --no-editable --python 3.12
+          uv sync --directory notebooks/uv_cache_lab --locked --no-editable --python 3.12
           end_ms=$(date +%s%3N)
           echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
           kib=0
@@ -147,11 +147,11 @@ jobs:
 
       - name: Analyze the installed embeddings and generate a report
         run: |
-          projects/proj5_uv_cache/.venv/bin/python -m uv_cache_demo.main \
+          notebooks/uv_cache_lab/.venv/bin/python -m uv_cache_demo.main \
             --output "${{ runner.temp }}/embeddings.png"
 
       # When "prune_cache" is "true", the "--ci" option removes downloaded
-      # wheels and unpacked source files but keeps wheels built from source
+      # wheels and unzipped source distributions but keeps wheels built from source
       # to avoid rebuilding, including this demo's local wheel.
       - name: Keep the cache or retain locally built packages
         id: cache_size

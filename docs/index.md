@@ -2,18 +2,15 @@
 
 ## Introduction
 
-The practical course ***Modern Python Engineering*** deals with tools,
-standards, and delivery workflows behind modern Python development.
-Chapter 01 introduces the basics of Python environments, Chapter 02
-introduces common Python project distribution formats, and Chapter 03
-provides a deep dive into *uv* as a modern Python project and package
-manager. Chapter 04 brings that foundation together in a real-world
-Python application, where you build a plugin for a CLI framework based on
-a GitHub template repository while learning common design patterns,
-development workflows, CI/CD practices, and integrations with platforms
-such as *GitHub*, *PyPI*, and *Docker Hub*. The bonus chapter closes the
-course with a historical look at Python project configuration, from early
-`distutils` layouts to the modern `pyproject.toml` standard.
+The practical course ***Modern Python Engineering*** follows the path from
+setting up a development environment to delivering a complete application.
+Chapter 01 explores system Python, virtual environments, Conda, and Dev
+Containers, while Chapter 02 explains how to package and distribute software
+as wheels, operating-system packages, containers, and Conda packages.
+Chapter 03 brings project setup, dependency management, and packaging
+together through uv workflows. Chapter 04 applies these foundations to a
+license service with OpenID Connect authentication, covering orchestration,
+monitoring, testing, and continuous integration and delivery.
 
 ## Overview
 
@@ -23,12 +20,6 @@ Use the navigation on the left to move through the chapters and bonus material:
 |---------|-------- |
 | [Chapter 01](./chapter-01/index.md) | Python Development Environments       |
 | [Chapter 02](./chapter-02/index.md) | Python Software Delivery              |
-| [Chapter 03](./chapter-03/index.md) | uv Python Package and Project Manager |
-| [Chapter 04](./chapter-04/index.md) | Depsight - Real World Python Project  |
+| [Chapter 03](./chapter-03/index.md) | Modern Python Workflows with uv       |
+| [Chapter 04](./chapter-04/index.md) | An OIDC-enabled License Server        |
 | [Bonus](./chapter-bonus/index.md) | Python Project Configuration History    |
-
-## External Links
-
-- [Depsight GitHub Repository](https://github.com/ValentinTwin1206/depsight-dependency-manager)
-- [Depsight Third-Party Plugin Template Repository](https://github.com/ValentinTwin1206/depsight-third-party-plugin)
-- [Depsight Third-Party Plugin Technical Instructions](https://valentintwin1206.github.io/depsight-third-party-plugin/)
