@@ -9,6 +9,7 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
     - navigation.instant
     - navigation.indexes
     - navigation.top
@@ -80,7 +81,9 @@ nav:
       - Sections:
         - Section 01: chapter-03/section-01.md
         - Section 02: chapter-03/section-02.md
-        - Section 03: chapter-03/section-03.md
+        - Section 03:
+            - Dependency Caching: chapter-03/section-03/uv_cache.md
+            - Caching in CI: chapter-03/section-03/uv_cache_ci.md
         - Section 04: chapter-03/section-04.md
   - Chapter 04:
       - Overview: chapter-04/index.md

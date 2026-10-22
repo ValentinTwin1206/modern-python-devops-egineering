@@ -3,7 +3,7 @@
 Bob explores downloaded wheels, an unzipped source distribution, a locally
 built wheel, link modes, and three cleanup commands in
 [uv_cache_lab.ipynb](./uv_cache_lab.ipynb). The technical companion is
-[Chapter 03, Section 03](../../docs/chapter-03/section-03.md).
+[Chapter 03, Section 03](../../docs/chapter-03/section-03/uv_cache.md).
 
 ## Run the lab
 
@@ -26,3 +26,4 @@ package from the lockfile on fresh runners, compares full and CI-pruned caches,
 and reports install time and cache sizes. `prune_cache` keeps source-built
 wheels while dropping downloaded wheels and unzipped source distributions;
 `clean_cache` simulates a cold install. These are independent workflow inputs.
+See [the CI cache explanation](../../docs/chapter-03/section-03/uv_cache_ci.md).
