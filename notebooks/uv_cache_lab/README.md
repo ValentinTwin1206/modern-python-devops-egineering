@@ -22,8 +22,39 @@ so the main environment still works after cleaning the package cache.
 ## CI example
 
 [uv-cache.yml](../../.github/workflows/uv-cache.yml) builds the same local
-package from the lockfile on fresh runners, compares full and CI-pruned caches,
-and reports install time and cache sizes. `prune_cache` keeps source-built
-wheels while dropping downloaded wheels and unzipped source distributions;
-`clean_cache` simulates a cold install. These are independent workflow inputs.
+package from the lockfile on fresh runners with uv 0.11.1. `setup-uv` restores
+the package cache and handles CI pruning before saving new archives, retaining
+source-built wheels. Exact cache hits skip pruning and saving. Each run creates
+a fresh `.venv` and reports the cache restore result, whether a cold experiment
+was requested, and `uv sync` duration in milliseconds (excluding cache transfers).
+
+Manual runs offer `cold_cache` (default: `false`). Enabling it skips cache
+restoration and saving. Each fresh GitHub-hosted runner starts without the
+project's package cache, so no cleaning command is needed and remote archives
+remain unchanged. The summary distinguishes skipped restoration from a cache
+miss. Compare several
+warm and cold runs with unchanged dependencies and build inputs; a larger wheel
+does not guarantee a faster total job.
 See [the CI cache explanation](../../docs/chapter-03/section-03/uv_cache_ci.md).
+
+### Fixture size
+
+From the lab folder, generate a larger fixture with:
+
+```bash
+python scripts/generate_fixture.py --size 256
+CACHE_DEMO_KEY=$(python scripts/build_key.py) uv sync --locked --no-editable --python 3.12
+.venv/bin/python -m uv_cache_demo.main --output reports/embeddings.png
+```
+
+`--size` is a positive integer in MiB. The default is 16 MiB for the notebook;
+CI uses 256 MiB. Generation writes deterministic 1 MiB blocks and updates
+`src/uv_cache_demo/data/fixture.json` with the actual row count. The generated
+binary is ignored by Git; the metadata is tracked and will show a local change
+when using a different size. Run the generator without `--size` to return to
+the 16 MiB fixture and default metadata. Recalculate `CACHE_DEMO_KEY` after
+generation so uv invalidates the local wheel when its contents change. The CI
+action's dependency globs also include the generated data and metadata.
+
+The report memory-maps the installed matrix and processes it in chunks to keep
+working memory bounded; its per-row norms and distances still grow with row count.

@@ -1,19 +1,6 @@
-# Demonstrates uv cache reuse for a local wheel and numerical dependencies.
-# GitHub Actions persists the cache across eligible workflow runs when the key
-# matches. Entries not accessed for over 7 days expire; storage pressure may
-# evict them sooner.
-#
-# Workflow steps:
-# - Check out the repository and set up Python 3.12 and uv.
-# - Generate bundled sample data, fingerprint the package, and restore the cache.
-# - Optionally clear the restored cache before installation.
-# - Sync into a fresh .venv, building or reusing the local wheel, and run the report.
-# - Optionally prune downloaded wheels for CI, retaining the source-built wheel.
-# - Report cache size at the start, after restore, and after each cache-changing
-#   uv command, together with size changes and uv sync duration.
-# `clean_cache` clears the restored cache before installation; `prune_cache`
-# runs `uv cache prune --ci` after installation, even on an exact cache hit.
-name: uv cache demo (embedding analysis)
+# Persist uv's package cache, not .venv.
+# Cold experiments skip restoration and saving on fresh GitHub-hosted runners.
+name: uv cache demo
 
 on:
   push:
@@ -24,12 +11,8 @@ on:
       - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
-      prune_cache:
-        description: "Run uv cache prune --ci after installation"
-        type: boolean
-        default: true
-      clean_cache:
-        description: "Run uv cache clean before installing (cold run)"
+      cold_cache:
+        description: "Skip uv cache restoration for a cold installation"
         type: boolean
         default: false
 
@@ -39,168 +22,79 @@ permissions:
 jobs:
   analyze-embeddings:
     runs-on: ubuntu-latest
-    # Push events have no dispatch inputs. Default to pruning without clearing;
-    # manual runs can still choose either cache strategy.
     env:
-      PRUNE_CACHE: ${{ github.event_name == 'push' || inputs.prune_cache }}
-      CLEAN_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.clean_cache }}
+      COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.cold_cache }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      # A new temporary runner normally starts with no package cache (0 KiB).
-      # Measuring disk usage does not create or change the cache.
-      - name: Measure cache at the beginning of the job
-        id: cache_start
-        env:
-          UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
-        run: |
-          echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
-          kib=0
-          if [[ -d "$UV_CACHE_DIR" ]]; then
-            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
-          fi
-          echo "Before restoration: ${kib} KiB"
-          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # Generate the bundled fixture and fingerprint build inputs for uv's cache key.
+      # Generate before hashing: both the metadata and binary enter both keys.
+      # Keep the project's content fingerprint for uv's local wheel cache.
       - name: Generate fixture and fingerprint build inputs
+        env:
+          FIXTURE_SIZE_MIB: "256"
         run: |
-          python notebooks/uv_cache_lab/scripts/generate_fixture.py
+          python notebooks/uv_cache_lab/scripts/generate_fixture.py --size "$FIXTURE_SIZE_MIB"
           build_key=$(python notebooks/uv_cache_lab/scripts/build_key.py)
           echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
-      # Cache key: setup-uv generates it automatically using, among other inputs:
-      # - cache-dependency-glob: hashes dependency files, sources, and bundled data;
-      #   changing them changes the key.
-      # - cache-suffix: keeps full and CI-pruned caches separate.
-      #
-      # Cache reuse: eligible runs reuse a cache when the key matches.
-      # Cache retention: entries expire after 7 days without access;
-      # storage pressure can evict them sooner.
-      - name: Set up uv and restore its package cache
+      - name: Set up uv and optionally restore its package cache
         id: uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.11.1"
           enable-cache: true
-          cache-local-path: ${{ env.UV_CACHE_DIR }}
+          restore-cache: ${{ env.COLD_CACHE != 'true' }}
+          save-cache: ${{ env.COLD_CACHE == 'true' && 'false' || 'auto' }}
+          prune-cache: true
           cache-dependency-glob: |
             notebooks/uv_cache_lab/pyproject.toml
             notebooks/uv_cache_lab/uv.lock
+            notebooks/uv_cache_lab/scripts/*.py
             notebooks/uv_cache_lab/src/**/*.py
             notebooks/uv_cache_lab/src/**/*.json
             notebooks/uv_cache_lab/src/**/*.bin
-          cache-suffix: ${{ env.PRUNE_CACHE == 'true' && 'embeddings-demo-ci-pruned' || 'embeddings-demo-full' }}
-          prune-cache: false
 
-      - name: Measure cache after restoration
-        id: cache_restored
-        run: |
-          kib=0
-          if [[ -d "$UV_CACHE_DIR" ]]; then
-            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
-          fi
-          echo "After restoration: ${kib} KiB"
-          echo "kib=$kib" >> "$GITHUB_OUTPUT"
-
-      # For "true", simulate an empty cache (a first build or an expired CI cache),
-      # troubleshoot cache problems.
-      # For "false", reuse cached packages for faster builds.
-      - name: Clear uv cache for a cold install
-        id: cache_cleaned
-        run: |
-          if [[ "$CLEAN_CACHE" == "true" ]]; then
-            uv cache clean
-          fi
-          kib=0
-          if [[ -d "$UV_CACHE_DIR" ]]; then
-            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
-          fi
-          echo "After optional cleaning: ${kib} KiB"
-          echo "kib=$kib" >> "$GITHUB_OUTPUT"
-
-      # Environment: recreate .venv each run; reuse only uv's package cache.
-      # Dependencies: --locked uses the committed uv.lock without changing it
-      # and fails if it needs updating, keeping timed installs reproducible.
-      # Local package: --no-editable builds a regular wheel in uv's cache on a
-      # cold run; later runs can reuse it when the build fingerprint matches.
+      # A fresh hosted runner has no project .venv; only the package cache is restored.
+      # Time only uv sync, excluding generation, cache transfer, and the report.
       - name: Create a fresh environment from locked dependencies
         id: install
         shell: bash
         run: |
           start_ms=$(date +%s%3N)
-          uv sync --directory notebooks/uv_cache_lab --locked --no-editable --python 3.12
+          uv sync \
+            --directory notebooks/uv_cache_lab \
+            --locked \
+            --no-editable \
+            --python 3.12
           end_ms=$(date +%s%3N)
           echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
-          kib=0
-          if [[ -d "$UV_CACHE_DIR" ]]; then
-            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
-          fi
-          echo "After uv sync: ${kib} KiB"
-          echo "kib=$kib" >> "$GITHUB_OUTPUT"
 
       - name: Analyze the installed embeddings and generate a report
         run: |
           notebooks/uv_cache_lab/.venv/bin/python -m uv_cache_demo.main \
             --output "${{ runner.temp }}/embeddings.png"
 
-      # When "prune_cache" is "true", the "--ci" option removes downloaded
-      # wheels and unzipped source distributions but keeps wheels built from source
-      # to avoid rebuilding, including this demo's local wheel.
-      - name: Keep the cache or retain locally built packages
-        id: cache_size
-        shell: bash
-        run: |
-          if [[ "$PRUNE_CACHE" == "true" ]]; then
-            uv cache prune --ci
-          fi
-          kib=0
-          if [[ -d "$UV_CACHE_DIR" ]]; then
-            kib=$(du -sk "$UV_CACHE_DIR" | cut -f1)
-          fi
-          echo "After optional CI pruning: ${kib} KiB"
-          echo "kib=$kib" >> "$GITHUB_OUTPUT"
-
-      # This times only uv sync, not the GitHub cache download or upload.
-      # Optional commands still get a measurement when skipped (normally no change).
-      # Sizes are local disk usage; GitHub's compressed cache archive is separate.
       - name: Show cache and installation time
         env:
-          CACHE_HIT: ${{ steps.uv.outputs.cache-hit }}
-          CACHE_CLEARED: ${{ env.CLEAN_CACHE }}
-          CACHE_PRUNED: ${{ env.PRUNE_CACHE }}
+          RESTORE_STATUS: ${{ env.COLD_CACHE == 'true' && 'Skipped' || (steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored') }}
           INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
-          START_KIB: ${{ steps.cache_start.outputs.kib }}
-          RESTORED_KIB: ${{ steps.cache_restored.outputs.kib }}
-          CLEANED_KIB: ${{ steps.cache_cleaned.outputs.kib }}
-          INSTALLED_KIB: ${{ steps.install.outputs.kib }}
-          PRUNED_KIB: ${{ steps.cache_size.outputs.kib }}
         run: |
           {
             echo '## uv cache demo'
             echo ''
             echo '| Measurement | Result |'
             echo '| --- | --- |'
-            echo "| Cache restored before optional clearing | $CACHE_HIT |"
-            echo "| Local cache cleared before install | $CACHE_CLEARED |"
-            echo "| CI pruning performed after install | $CACHE_PRUNED |"
+            echo "| setup-uv cache restoration | $RESTORE_STATUS |"
+            echo "| Cold-cache experiment requested | $COLD_CACHE |"
             echo "| uv sync duration | ${INSTALL_MS} ms |"
             echo ''
-            echo '| Cache checkpoint | Size (KiB) | Change from previous (KiB) |'
-            echo '| --- | ---: | ---: |'
-            echo "| Job start, before restoration | $START_KIB | — |"
-            echo "| After restoration | $RESTORED_KIB | $((RESTORED_KIB - START_KIB)) |"
-            echo "| After optional uv cache clean | $CLEANED_KIB | $((CLEANED_KIB - RESTORED_KIB)) |"
-            echo "| After uv sync | $INSTALLED_KIB | $((INSTALLED_KIB - CLEANED_KIB)) |"
-            echo "| After optional uv cache prune --ci | $PRUNED_KIB | $((PRUNED_KIB - INSTALLED_KIB)) |"
-            echo ''
-            echo 'Positive changes mean growth; negative changes mean reclaimed space. Skipped commands are still measured.'
-            echo 'Exact cache-key hits are not overwritten; sizes describe local disk usage, not the compressed GitHub archive.'
-            echo 'On a cold run, uv logs Building/Built uv-cache-demo; an unchanged warm run should reuse its wheel without building.'
+            echo 'Duration measures only uv sync; it excludes GitHub cache restoration and saving time.'
+            echo 'Cold experiments skip cache restoration and saving; remote archives remain unchanged.'
+            echo 'Compare multiple runs with unchanged dependencies and build inputs; no speedup is guaranteed.'
           } >> "$GITHUB_STEP_SUMMARY"
