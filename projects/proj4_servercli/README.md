@@ -26,7 +26,7 @@ graph LR
     NUITKA --> DEB[Debian package]
     NUITKA --> MSI[Windows MSI package]
     DEB --> APT[APT installation]
-    APT --> COMMAND[/usr/bin/server-cli]
+    APT --> COMMAND["/usr/bin/server-cli"]
     MSI --> WINGET[WinGet installation]
     WINGET --> EXE[server-cli.exe]
 ```
