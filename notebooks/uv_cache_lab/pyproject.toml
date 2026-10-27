@@ -7,6 +7,9 @@ dependencies = [
     "numpy>=2.4,<3",
     "scipy>=1.17,<2",
     "matplotlib>=3.10,<4",
+    "scikit-learn>=1.7,<2",
+    "pyarrow>=20,<25",
+    "threadpoolctl>=3.6,<4",
 ]
 
 [build-system]

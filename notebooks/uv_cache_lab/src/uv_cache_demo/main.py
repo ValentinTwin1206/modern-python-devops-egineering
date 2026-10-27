@@ -6,10 +6,15 @@ from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from threadpoolctl import threadpool_limits
 
 
 def cache_message() -> str:
@@ -78,16 +83,53 @@ def main() -> None:
     for row in nearest:
         print(f"  row {row}: cosine distance={distances[row]:.6f}")
 
-    figure = Figure(figsize=(10, 4), layout="constrained")
+    # Bound analysis cost even when CI bundles a much larger matrix.
+    sample_rows = np.linspace(0, rows - 1, min(rows, 2048), dtype=np.int64)
+    sample = embeddings[sample_rows].astype(np.float32)
+    components = min(2, dimensions, len(sample_rows))
+    with threadpool_limits(limits=1):
+        projection = PCA(
+            n_components=components, svd_solver="randomized", random_state=0
+        ).fit_transform(sample)
+        labels = KMeans(
+            n_clusters=min(4, len(sample_rows)), n_init=10, random_state=0
+        ).fit_predict(sample)
+    # A one-feature fixture still has a useful one-dimensional projection.
+    x = projection[:, 0]
+    y = projection[:, 1] if components == 2 else np.zeros_like(x)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    parquet_output = args.output.with_suffix(".parquet")
+    pq.write_table(
+        pa.table(
+            {
+                "row": sample_rows,
+                "principal_component_1": x,
+                "principal_component_2": y,
+                "cluster": labels,
+                "norm": norms[sample_rows],
+                "query_cosine_distance": distances[sample_rows],
+            }
+        ),
+        parquet_output,
+    )
+    print(f"Analyzed {len(sample_rows):,} sampled rows; clusters are synthetic")
+    print(f"Saved sampled analysis: {parquet_output}")
+
+    figure = Figure(figsize=(15, 4), layout="constrained")
     FigureCanvasAgg(figure)
-    norm_plot, distance_plot = figure.subplots(1, 2)
+    norm_plot, distance_plot, projection_plot = figure.subplots(1, 3)
     norm_plot.hist(norms, bins=50)
     norm_plot.set(title="Synthetic embedding norms", xlabel="L2 norm", ylabel="Rows")
     distance_plot.hist(distances[candidates], bins=50)
     distance_plot.set(
         title=f"Distances from row {args.query}", xlabel="Cosine distance", ylabel="Rows"
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
+    projection_plot.scatter(x, y, c=labels, s=5, cmap="tab10", alpha=0.6)
+    projection_plot.set(
+        title="Sampled PCA projection (synthetic clusters)",
+        xlabel="Principal component 1",
+        ylabel="Principal component 2",
+    )
     figure.savefig(args.output, format="png", dpi=120)
     print(f"Saved report: {args.output}")
 

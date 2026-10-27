@@ -1,0 +1,94 @@
+# Compare with uv-cache.yml by retaining downloaded prebuilt wheels too.
+name: uv full cache demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-embeddings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate fixture and fingerprint build inputs
+        env:
+          FIXTURE_SIZE_MIB: "256"
+        run: |
+          python notebooks/uv_cache_lab/scripts/generate_fixture.py --size "$FIXTURE_SIZE_MIB"
+          build_key=$(python notebooks/uv_cache_lab/scripts/build_key.py)
+          echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
+
+      - name: Set up uv and restore its full package cache
+        id: uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.11.1"
+          enable-cache: true
+          cache-suffix: full-cache-demo
+          prune-cache: false
+          cache-dependency-glob: |
+            notebooks/uv_cache_lab/pyproject.toml
+            notebooks/uv_cache_lab/uv.lock
+            notebooks/uv_cache_lab/scripts/*.py
+            notebooks/uv_cache_lab/src/**/*.py
+            notebooks/uv_cache_lab/src/**/*.json
+            notebooks/uv_cache_lab/src/**/*.bin
+
+      - name: Measure restored package cache size
+        run: |
+          mkdir -p "$UV_CACHE_DIR"
+          bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+          echo "RESTORED_CACHE_BYTES=$bytes" >> "$GITHUB_ENV"
+          echo "RESTORED_CACHE_SIZE=$(numfmt --to=iec-i --suffix=B "$bytes")" >> "$GITHUB_ENV"
+
+      - name: Create a fresh environment from locked dependencies
+        id: install
+        shell: bash
+        run: |
+          start_ms=$(date +%s%3N)
+          uv sync \
+            --directory notebooks/uv_cache_lab \
+            --locked \
+            --no-editable \
+            --python 3.12
+          end_ms=$(date +%s%3N)
+          echo "milliseconds=$((end_ms - start_ms))" >> "$GITHUB_OUTPUT"
+
+      - name: Analyze the installed embeddings and generate a report
+        run: |
+          notebooks/uv_cache_lab/.venv/bin/python -m uv_cache_demo.main \
+            --output "${{ runner.temp }}/embeddings.png"
+
+      - name: Show cache and installation time
+        env:
+          RESTORE_STATUS: ${{ steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored' }}
+          INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
+        run: |
+          cache_bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+          cache_size=$(numfmt --to=iec-i --suffix=B "$cache_bytes")
+          echo "RESTORED_CACHE_SIZE=$RESTORED_CACHE_SIZE ($RESTORED_CACHE_BYTES bytes)"
+          echo "CACHE_SIZE_AFTER_SYNC=$cache_size ($cache_bytes bytes)"
+          {
+            echo '## uv full cache demo'
+            echo ''
+            echo '| Measurement | Result |'
+            echo '| --- | --- |'
+            echo "| setup-uv cache restoration | $RESTORE_STATUS |"
+            echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"
+            echo "| uv sync duration | ${INSTALL_MS} ms |"
+            echo "| Local uv cache after sync | $cache_size |"
+            echo ''
+            echo 'Duration measures only uv sync; it excludes GitHub cache restoration and saving time.'
+            echo 'Cache sizes describe local files, not compressed remote archives.'
+            echo 'Downloaded prebuilt wheels are retained; exact cache hits skip saving.'
+            echo 'Only runs reporting Restored qualify as warm measurements.'
+          } >> "$GITHUB_STEP_SUMMARY"

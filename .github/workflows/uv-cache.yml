@@ -60,6 +60,13 @@ jobs:
             notebooks/uv_cache_lab/src/**/*.json
             notebooks/uv_cache_lab/src/**/*.bin
 
+      - name: Measure restored package cache size
+        run: |
+          mkdir -p "$UV_CACHE_DIR"
+          bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+          echo "RESTORED_CACHE_BYTES=$bytes" >> "$GITHUB_ENV"
+          echo "RESTORED_CACHE_SIZE=$(numfmt --to=iec-i --suffix=B "$bytes")" >> "$GITHUB_ENV"
+
       # A fresh hosted runner has no project .venv; only the package cache is restored.
       # Time only uv sync, excluding generation, cache transfer, and the report.
       - name: Create a fresh environment from locked dependencies
@@ -85,6 +92,10 @@ jobs:
           RESTORE_STATUS: ${{ env.COLD_CACHE == 'true' && 'Skipped' || (steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored') }}
           INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
         run: |
+          cache_bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+          cache_size=$(numfmt --to=iec-i --suffix=B "$cache_bytes")
+          echo "RESTORED_CACHE_SIZE=$RESTORED_CACHE_SIZE ($RESTORED_CACHE_BYTES bytes)"
+          echo "CACHE_SIZE_AFTER_SYNC=$cache_size ($cache_bytes bytes; before setup-uv post-action pruning)"
           {
             echo '## uv cache demo'
             echo ''
@@ -92,7 +103,9 @@ jobs:
             echo '| --- | --- |'
             echo "| setup-uv cache restoration | $RESTORE_STATUS |"
             echo "| Cold-cache experiment requested | $COLD_CACHE |"
+            echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"
             echo "| uv sync duration | ${INSTALL_MS} ms |"
+            echo "| Local uv cache after sync, before post-action pruning | $cache_size |"
             echo ''
             echo 'Duration measures only uv sync; it excludes GitHub cache restoration and saving time.'
             echo 'Cold experiments skip cache restoration and saving; remote archives remain unchanged.'
