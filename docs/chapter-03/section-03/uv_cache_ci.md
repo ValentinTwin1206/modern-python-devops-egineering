@@ -50,8 +50,6 @@ GitHub removes cache entries not accessed for over seven days, and repository st
 
 The `uv cache demo` workflow in [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) is a streamlined example of using `uv`'s package cache in CI. It compares warm and cold installations to measure the potential installation-time savings from cache reuse.
 
-See [Run the Workflow and Compare Cache Performance](#run-the-workflow-and-compare-cache-performance) for execution instructions and measured results.
-
 ### Workflow Triggers and Job Configuration
 
 GitHub Actions starts a workflow when an event configured under `on` occurs. Common triggers include **Pushes**, **Pull Requests**, **Manual (Workflow) Dispatches**, **Scheduled Runs**, and **Published Releases**. The `uv cache demo` workflow runs automatically when a push to `main` changes files matching either path pattern listed in the YAML below. It can also be started manually from the repository's **Actions** tab, with an optional cold-cache experiment. Both triggers run the same analysis job on a GitHub-hosted Ubuntu runner. In the diagram, grayed-out triggers and dashed arrows indicate events not configured in this workflow.
@@ -118,7 +116,7 @@ After the CI environment is set up, `generate_fixture.py` creates a synthetic em
         echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 ```
 
-### Configure setup-uv and Restore the Cache
+### Setup uv and Restore the Cache
 
 The [`astral-sh/setup-uv`](https://github.com/astral-sh/setup-uv) GitHub Action is developed, released, and maintained by Astral, the company behind `uv`. It installs `uv`, adds it to the runner's `PATH`, and provides options to configure its setup and package-cache behavior, including cache restoration, pruning, and saving. Its remote cache key incorporates an internal cache version, architecture, platform, and detected Python version, along with a hash of matching files; the explicit patterns in this workflow cover dependencies and local build inputs, including generated data, so changes invalidate the remote cache. Manual runs can optionally skip restoration for a **cold installation** because each fresh GitHub-hosted runner starts without the project's package cache.
 
@@ -214,7 +212,20 @@ The command validates the installed matrix and calculates statistics and cosine 
 
 ### Show Cache and Installation Time
 
+Immediately after `setup-uv` and before `uv sync`, the workflow measures the restored local package cache. `du -sb` counts its size in bytes, and `numfmt` converts that value to a human-readable IEC unit such as MiB. Measuring before installation shows what was retained in the remote cache, before downloaded packages grow the local cache again.
+
+```yaml
+- name: Measure restored package cache size
+  run: |
+    mkdir -p "$UV_CACHE_DIR"
+    bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+    echo "RESTORED_CACHE_BYTES=$bytes" >> "$GITHUB_ENV"
+    echo "RESTORED_CACHE_SIZE=$(numfmt --to=iec-i --suffix=B "$bytes")" >> "$GITHUB_ENV"
+```
+
 The final step writes cache restoration status, the requested experiment, and installation time to the job summary. It derives `RESTORE_STATUS` from the action's boolean `cache-hit` output: `Skipped` when cold mode disables restoration, `Restored` when a cache entry is found, or `Not restored` when no entry matches. The install step calculates `INSTALL_MS` by subtracting `start_ms` from `end_ms` around `uv sync`; the duration is in milliseconds and excludes fixture generation, cache restoration and saving, and report execution. Thus, `COLD_CACHE=true` measures a cold installation, while `COLD_CACHE=false` is a warm run only when `RESTORE_STATUS` is `Restored`.
+
+The report also includes the cache size recorded before installation and its size after `uv sync`, before `setup-uv`'s post-action pruning. These are local directory sizes, not compressed remote archive sizes. A size reported after skipped or unsuccessful restoration does not represent a restored archive; interpret it alongside the restoration status.
 
 ```yaml
 - name: Show cache and installation time
@@ -222,6 +233,10 @@ The final step writes cache restoration status, the requested experiment, and in
     RESTORE_STATUS: ${{ env.COLD_CACHE == 'true' && 'Skipped' || (steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored') }}
     INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
   run: |
+    cache_bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
+    cache_size=$(numfmt --to=iec-i --suffix=B "$cache_bytes")
+    echo "RESTORED_CACHE_SIZE=$RESTORED_CACHE_SIZE ($RESTORED_CACHE_BYTES bytes)"
+    echo "CACHE_SIZE_AFTER_SYNC=$cache_size ($cache_bytes bytes; before setup-uv post-action pruning)"
     {
       echo '## uv cache demo'
       echo ''
@@ -229,7 +244,9 @@ The final step writes cache restoration status, the requested experiment, and in
       echo '| --- | --- |'
       echo "| setup-uv cache restoration | $RESTORE_STATUS |"
       echo "| Cold-cache experiment requested | $COLD_CACHE |"
+      echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"
       echo "| uv sync duration | ${INSTALL_MS} ms |"
+      echo "| Local uv cache after sync, before post-action pruning | $cache_size |"
       echo ''
       echo 'Duration measures only uv sync; it excludes GitHub cache restoration and saving time.'
       echo 'Cold experiments skip cache restoration and saving; remote archives remain unchanged.'
@@ -239,19 +256,38 @@ The final step writes cache restoration status, the requested experiment, and in
 
 ## Run the Workflow and Compare Cache Performance
 
-To measure the installation-time benefit of caching, run `uv-cache.yml` three times from the repository's **Actions** tab using **Run workflow**. Keep `main` at the same commit, with unchanged dependencies, fixture settings, Python version, and runner platform; stop if the revision changes. GitHub executes the pushed workflow, so local edits are not included. For CLI execution, see the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/README.md#run-the-ci-comparison-from-the-command-line).
+### Execute the Cache Strategy Comparison
 
-- **First, populate the cache for the warm measurement.** Select `main`, leave `cold_cache` unchecked, and start the workflow with caching enabled. This run installs the project and allows any newly built wheels to be saved for reuse by a later runner; it is not necessarily warm itself. Wait for successful completion and exclude this preparation run from the comparison.
-- **Next, run the workflow with a warm cache to measure installation with restored artifacts.** Leave `cold_cache` unchecked so the new runner can restore the package cache populated earlier. After success, confirm `Restored` in **Show cache and installation time**, then record the run URL and `INSTALL_MS` from that step's log. If it reports `Not restored`, the cache was not restored and the run does not qualify as warm; investigate and retry, stopping after three unsuccessful warm attempts.
-- **Finally, run the workflow with a cold cache to measure installation without restored artifacts.** Check `cold_cache` to disable cache restoration and saving, so the fresh runner installs without the saved package cache while leaving the remote archive intact. After success, require `Skipped` in the same reporting step and record the run URL and `INSTALL_MS`. Verify that both measured runs share the same commit and execution settings before comparing their installation times.
+The project contains two workflows for comparing cache strategies in CI. One uses CI-optimized cache pruning (**uv cache demo**, [`uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml)), while the other preserves a full cache (**uv full cache demo**, [`uv-cache-compare.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache-compare.yml)). Comparing both strategies against a cold installation helps show how cache retention affects storage needs and execution time. The numbered steps below describe how the experiment was carried out.
 
-The table below compares the two measured installations after all three workflow runs completed successfully; the initial cache-population run is excluded. The *Warm Run* restored the saved package cache, while the *Cold Run* deliberately skipped restoration. Each duration comes from `INSTALL_MS` in the completed run's **Show cache and installation time** log and measures only `uv sync`. Both runs used the same commit, workflow, locked dependencies, 256 MiB fixture, Python 3.12.15, and CI environment.
+1. **Populate the CI-optimized cache.** In **Actions**, select **uv cache demo**, open **Run workflow**, choose `main`, and leave `cold_cache` unchecked (`false`). Start the run and wait for success. Keep `main` unchanged throughout the experiment.
+2. **Populate the full cache.** Select **uv full cache demo** and run it on `main`. This workflow has no `cold_cache` input. Wait for success; exclude both population runs from the results.
+3. **Measure the CI-optimized warm run.** Run **uv cache demo** again on `main` with `cold_cache` unchecked (`false`). After success, confirm `Restored` in **Show cache and installation time** before recording the result.
+4. **Measure the full-cache warm run.** Run **uv full cache demo** again on `main`, with no additional input. After success, confirm `Restored` in the same reporting step. If either warm run reports `Not restored`, investigate and retry that workflow before continuing; stop after three unsuccessful warm attempts.
+5. **Measure the cold baseline.** Run **uv cache demo** on `main` with `cold_cache` checked (`true`). After success, confirm `Skipped` in the reporting step. For each of the three measured runs, record its link, `INSTALL_MS`, cache size before installation, and total job time. Confirm that all used the same commit before comparing them.
 
-| Run type | Run | Package cache restored? | `uv sync` duration (ms) |
-| --- | --- | --- | --- |
-| `cold_cache=false` | [40470165314](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40470165314) | Yes | 902 |
-| `cold_cache=true` | [40470247744](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40470247744) | No | 5399 |
+### Compare Cache Size and Execution Time
 
-!!! info "Measured Installation-Time Savings"
+The table below compares measured `uv sync` times and cache sizes for a CI-optimized cache, a full cache, and a cold installation without a restored cache. All measured runs used the same project revision, dependencies, fixture, Python and uv versions, and runner image; cache-population runs are excluded. Installation times exclude cache transfers and analysis. Cache sizes describe the local cache before installation, not compressed archives; the cold run's 1.4 KiB contains only initial uv cache metadata.
 
-    **The warm installation took 83.29% less time: 902 ms versus 5399 ms, saving 4497 ms.** Savings are calculated as `(5399 - 902) / 5399 × 100%`. This single pair is illustrative, not statistically conclusive. The `uv sync` timing excludes fixture generation, cache transfers, pruning, and report execution, so it does not establish total CI savings.
+| Workflow | Run | Cache Restored | Cache Size | `uv sync` (duration) | Total job (s) |
+| --- | --- | --- | --- | --- | --- |
+| `uv-cache.yml` | [40477587054](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477587054) | Yes (Warm) | 257 MiB | 1.241 s | 16 |
+| `uv-cache-compare.yml` | [40477673592](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477673592) | Yes (Warm) | 925 MiB | 0.100 s | 30 |
+| `uv-cache.yml` | [40477788176](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477788176) | No (Cold) | 1.4 KiB | 6.507 s | 23 |
+
+### Conclusion
+
+**The CI-optimized cache provided substantial installation-time savings while producing the shortest total job in this comparison.** Its `uv sync` took 1.241 s instead of the cold run's 6.507 s, about 81% less time and roughly 82% of the installation-time saving achieved by the full cache. Retaining the full cache's additional 668 MiB reduced installation time by just another 1.141 s, to 0.100 s, while its total job took 30 s versus 16 s for the CI-optimized run. CI-optimized pruning therefore used about 72% less cache and finished about 47% sooner than the full-cache run. It also finished 7 s sooner than the cold run, whereas the full-cache run took 7 s longer despite having the fastest installation. A faster `uv sync` alone does not guarantee a faster CI job. The table below summarizes these differences; percentages use the baseline named in each row.
+
+| Strategy | Baseline | `uv sync` difference | Total job difference | Cache size difference |
+| --- | --- | --- | --- | --- |
+| CI-optimized cache | Cold installation | 5.266 s faster (80.9% less time) | 7 s faster (30.4% less time) | Not compared |
+| Full cache | Cold installation | 6.407 s faster (98.5% less time) | 7 s slower (30.4% more time) | Not compared |
+| CI-optimized cache | Full cache | 1.141 s slower | 14 s faster (46.7% less time) | 668 MiB smaller (72.2% less data) |
+
+> Cache size reductions are compared only between the two warm runs
+
+!!! tip "Favor CI-Optimized Cache Pruning"
+
+    These results support [Astral's CI caching strategy](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration), which favors retaining expensive source-built wheels rather than prebuilt wheels that can be downloaded quickly. CI-optimized pruning offered the better observed balance of cache size, installation time, and total job time here.
