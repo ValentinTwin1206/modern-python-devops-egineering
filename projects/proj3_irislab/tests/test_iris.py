@@ -3,7 +3,7 @@
 import numpy as np
 from PIL import Image
 
-from redsticks.iris import (
+from irislab.iris import (
     _filter_iris_pixels,
     _iris_candidate_mask_from_center,
     _robust_color,
@@ -44,7 +44,7 @@ def test_extract_iris_returns_color_from_segmented_eye(monkeypatch):
     eye_mask[10:30, 20:70] = True
 
     monkeypatch.setattr(
-        "redsticks.iris._segment_eyes",
+        "irislab.iris._segment_eyes",
         lambda image, device: [eye_mask],
     )
 

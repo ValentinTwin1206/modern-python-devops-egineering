@@ -1,6 +1,6 @@
 """Iris localization and color extraction using MediaPipe Face Landmarker.
 
-MediaPipe runs a local face-landmark model to locate the irises. RedSticks
+MediaPipe runs a local face-landmark model to locate the irises. IrisLab
 then samples pixels from each iris and calculates a representative RGB color.
 
 No cloud inference is used.
@@ -25,7 +25,7 @@ from mediapipe.tasks.python import vision
 from PIL.Image import Image
 
 
-logger = logging.getLogger("redsticks")
+logger = logging.getLogger("irislab")
 
 absl_logging.set_verbosity(absl_logging.ERROR)
 absl_logging.set_stderrthreshold(absl_logging.ERROR)
@@ -35,11 +35,12 @@ absl_logging.set_stderrthreshold(absl_logging.ERROR)
 # Model
 # ---------------------------------------------------------------------------
 
-_MODEL_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "models"
-    / "face_landmarker.task"
-)
+def model_path() -> Path:
+    """Return the configured model path, or the source-tree default."""
+    configured = os.environ.get("IRISLAB_MODEL_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    return Path(__file__).resolve().parents[2] / "models" / "face_landmarker.task"
 
 
 # ---------------------------------------------------------------------------
@@ -89,24 +90,24 @@ class IrisResult:
 def _create_detector(device: str = "cpu") -> vision.FaceLandmarker:
     """Create the local MediaPipe Face Landmarker for the requested device."""
 
-    if not _MODEL_PATH.is_file():
+    path = model_path()
+    if not path.is_file():
         raise FileNotFoundError(
             "MediaPipe Face Landmarker model not found: "
-            f"{_MODEL_PATH}\n"
-            "Expected the model at "
-            "'models/face_landmarker.task'."
+            f"{path}\n"
+            "Set IRISLAB_MODEL_PATH to the model file."
         )
 
     if device == "cuda":
         logger.info("Using MediaPipe GPU delegate")
         base_options = python.BaseOptions(
-            model_asset_path=str(_MODEL_PATH),
+            model_asset_path=str(path),
             delegate=python.BaseOptions.Delegate.GPU,
         )
     else:
         logger.debug("Using MediaPipe CPU delegate")
         base_options = python.BaseOptions(
-            model_asset_path=str(_MODEL_PATH),
+            model_asset_path=str(path),
             delegate=python.BaseOptions.Delegate.CPU,
         )
 

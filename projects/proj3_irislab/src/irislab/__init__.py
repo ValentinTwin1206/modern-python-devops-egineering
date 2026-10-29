@@ -1,4 +1,4 @@
-"""redsticks: lipstick shade suggestions from eye-color images."""
+"""IrisLab: iris-color analysis from portrait images."""
 
 from .analyze import EyeColorDetectionError, ColorAnalysisResult, analyze
 
