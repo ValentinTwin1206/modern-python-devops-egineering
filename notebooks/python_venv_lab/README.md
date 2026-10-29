@@ -5,6 +5,8 @@ isolate installed packages. The technical companion is
 [Chapter 01, Section 02](../../docs/chapter-01/section-02.md); the story starts
 in [The Raise of Python](../python_system_lab/python_system_lab.ipynb).
 
+![Python venv project logo](./project_logo.png)
+
 ## Run the lab
 
 1. Install Docker and the VS Code Dev Containers extension.

@@ -5,6 +5,8 @@ targets, and import paths. The technical companion is
 [Chapter 01, Section 01](../../docs/chapter-01/section-01.md). Continue with
 [The Isolation Awakens](../python_venv_lab/python_venv_lab.ipynb).
 
+![Python System Environment project logo](./project_logo.png)
+
 ## Run the lab
 
 1. Install Docker and the VS Code Dev Containers extension.
