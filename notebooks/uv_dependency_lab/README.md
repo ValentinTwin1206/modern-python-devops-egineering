@@ -1,6 +1,6 @@
 # Dependency Management — Bob Discovers the Force of uv
 
-After [his first uv project](../uv_proj_scaffolding/uv_proj_scaffolding_lab.ipynb),
+After [his first uv project](../uv_proj_scaffolding_lab/uv_proj_scaffolding_lab.ipynb),
 **Bob** teaches himself dependency management with `uv`.
 One project, three files — `pyproject.toml` (intent), `uv.lock` (truth),
 `.venv` (reality) — and one command per step.
@@ -42,13 +42,13 @@ the lockfile and environment changes remain visible.
 
 1. Open the repository root in VS Code.
 2. Run **Dev Containers: Reopen in Container** and choose the
-   `notebooks/uv_dependency_resolution` folder.
+   `notebooks/uv_dependency_lab` folder.
 3. Open `uv_dependency_lab.ipynb` after the container is ready.
 4. Select **Python 3 - uv Dependency Resolution** as the notebook kernel.
 5. Run the cells from top to bottom.
 
 The notebook's shell commands run from `/workspace`, which is the mounted
-`uv_dependency_resolution` directory. Generated `pyproject.toml`, `uv.lock`,
+`uv_dependency_lab` directory. Generated `pyproject.toml`, `uv.lock`,
 and `.venv` files therefore belong to this dedicated lab workspace. The first
 reset cell also removes the lab-generated `requirements.txt`, `installed-demo/`,
 `resolution-demo/`, and `local-helper/` from a previous run; keep other work outside this folder.

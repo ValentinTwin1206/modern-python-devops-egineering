@@ -14,9 +14,9 @@ Bob scaffolds a backend and frontend in one modern Python workspace, one visible
 ## Run the lab
 
 1. Install Docker and the VS Code Dev Containers extension.
-2. Open the `notebooks/uv_proj_scaffolding` folder in a Dev Container.
+2. Open the `notebooks/uv_proj_scaffolding_lab` folder in a Dev Container.
 3. Select the **Python 3 - uv Project Scaffolding** kernel and run `uv_proj_scaffolding_lab.ipynb` from top to bottom.
 
 The notebook creates examples in `lab/` within this folder. Its first executable setup cell resets **only** `lab/` so the lab can be rerun. This directory is git-ignored. A network connection is needed for the first interpreter, dependency, and build-backend downloads. Publishing is explained but never executed.
 
-Continue with [Bob's dependency lab](../uv_dependency_resolution/uv_dependency_lab.ipynb) for locking, syncing, and upgrading dependencies.
+Continue with [Bob's dependency lab](../uv_dependency_lab/uv_dependency_lab.ipynb) for locking, syncing, and upgrading dependencies.

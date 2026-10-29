@@ -16,7 +16,7 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
-| [Section 01](./section-01.md) | Python system environment | - | [system_interpreter](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/system_interpreter/system_interpreter.ipynb) |
-| [Section 02](./section-02.md) | Python `venv` environment | [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md)        | [venv_environment](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/venv_environment/venv_environment.ipynb) |
+| [Section 01](./section-01.md) | Python system environment | - | [The Raise of Python](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_system_lab/python_system_lab.ipynb) |
+| [Section 02](./section-02.md) | Python `venv` environment | [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) | [The Isolation Awakens](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_venv_lab/python_venv_lab.ipynb) |
 | [Section 03](./section-03.md) | Python Conda environment  | [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md)       | |
 | [Section 04](./section-04.md) | Python Dev Containers     | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md)             | |

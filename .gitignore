@@ -52,6 +52,10 @@ htmlcov/
 .ipynb_checkpoints/
 *lab/
 !/notebooks/uv_cache_lab/
+!/notebooks/uv_dependency_lab/
+!/notebooks/uv_proj_scaffolding_lab/
+!/notebooks/python_system_lab/
+!/notebooks/python_venv_lab/
 
 # IDE settings
 .idea/

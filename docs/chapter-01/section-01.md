@@ -6,11 +6,11 @@ This page explains how Python is installed on common operating systems and where
 
 ### Project Setup
 
-See the [system interpreter notebook](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/system_interpreter/system_interpreter.ipynb).
+See the [system interpreter notebook](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_system_lab/python_system_lab.ipynb).
 
 ### Run the Project
 
-Setup and usage details are documented in the [notebook README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/system_interpreter/README.md).
+Setup and usage details are documented in the [notebook README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_system_lab/README.md).
 
 ## Python System Setup
 

@@ -8,6 +8,8 @@ This page covers Python's standard-library `venv` module.
 
 The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
 
+For a hands-on introduction to the environment itself, see [The Isolation Awakens](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_venv_lab/python_venv_lab.ipynb) and its [setup instructions](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/python_venv_lab/README.md).
+
 ### Run the Project
 
 Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).

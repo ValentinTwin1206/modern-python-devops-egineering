@@ -1,5 +1,5 @@
 {
-    "name": "System Interpreter Teaching",
+    "name": "Python System Lab",
     "build": {
         "context": "..",
         "dockerfile": "Dockerfile"
@@ -8,7 +8,6 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "remoteUser": "bob",
     "containerUser": "bob",
-    "updateRemoteUserUID": false,
     "customizations": {
         "vscode": {
             "extensions": [
@@ -17,9 +16,9 @@
                 "ms-toolsai.jupyter-renderers"
             ],
             "settings": {
-                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "python.defaultInterpreterPath": "/opt/jupyter/bin/python",
                 "jupyter.kernels.filter": [],
-                "notebook.defaultKernel": "system-python3",
+                "notebook.defaultKernel": "system-lab-python3",
                 "terminal.integrated.defaultProfile.linux": "bash"
             }
         }

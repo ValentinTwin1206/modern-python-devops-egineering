@@ -35,7 +35,7 @@ extra_css:
   - assets/python-palette.css
 
 extra_javascript:
-  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js
   - assets/javascripts/mermaid.js
 
 markdown_extensions:
