@@ -23,7 +23,7 @@ These variables configure where `uv` caches data, whether it can reuse it, and h
 
 ### Commands That Populate the Cache
 
-Package operations populate or reuse cache entries; cleanup commands remove them. For project locking and syncing, see [Dependency Management with `uv`](../section-02.md).
+Package operations populate or reuse cache entries; cleanup commands remove them. For project locking and syncing, see [Dependency Management with `uv`](./section-02.md).
 
 | Command | Effect on the cache |
 | --- | --- |

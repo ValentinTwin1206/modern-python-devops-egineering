@@ -400,4 +400,4 @@ When another tool expects a `requirements.txt`, export one from the project's lo
 uv export --format requirements.txt -o requirements.txt
 ```
 
-Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](./section-04.md#work-with-legacy-projects).
+Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](./section-05.md#work-with-legacy-projects).

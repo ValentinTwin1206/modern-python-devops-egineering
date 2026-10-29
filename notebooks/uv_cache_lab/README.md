@@ -3,7 +3,7 @@
 Bob explores downloaded wheels, an unzipped source distribution, a locally
 built wheel, link modes, and three cleanup commands in
 [uv_cache_lab.ipynb](./uv_cache_lab.ipynb). The technical companion is
-[Chapter 03, Section 03](../../docs/chapter-03/section-03/uv_cache.md).
+[Chapter 03, Section 03](../../docs/chapter-03/section-03.md).
 
 ## Run the lab
 
@@ -35,7 +35,7 @@ remain unchanged. The summary distinguishes skipped restoration from a cache
 miss. Compare several
 warm and cold runs with unchanged dependencies and build inputs; a larger wheel
 does not guarantee a faster total job.
-See [the CI cache explanation](../../docs/chapter-03/section-03/uv_cache_ci.md).
+See [the CI cache explanation](../../docs/chapter-03/section-04.md).
 
 ### Run the CI comparison from the command line
 
