@@ -1,0 +1,2779 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Technical course notes for Python packaging and development environments.">
+      
+      
+      
+      
+        <link rel="prev" href="../section-02/">
+      
+      
+        <link rel="next" href="../section-04/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Section 03 - Modern Python DevOps Engineering</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/python-palette.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dependency-caching-with-uv" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Modern Python DevOps Engineering" class="md-header__button md-logo" aria-label="Modern Python DevOps Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Modern Python DevOps Engineering
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Section 03
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-01/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 01
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-02/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 02
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 03
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-04/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Chapter 04
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../chapter-bonus/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Bonus
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Modern Python DevOps Engineering" class="md-nav__button md-logo" aria-label="Modern Python DevOps Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Modern Python DevOps Engineering
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-01/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 01
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 01
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-01/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-02/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 02
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 02
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bonus
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-02/bonus-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 03
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 03
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#applied-lab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applied Lab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building Blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables-that-influence-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables That Influence Cache Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands-that-populate-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands That Populate the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-configuration-and-wheel-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Configuration and Wheel Reuse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#populate-and-inspect-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate and Inspect the Cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reuse-cached-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse Cached Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reuse Cached Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#offline-synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Offline Synchronization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare-uv_link_mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare UV_LINK_MODE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-cleanup-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache Cleanup Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../section-05/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 05
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-04/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapter 04
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Chapter 04
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-04/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../chapter-bonus/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bonus
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bonus
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sections
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sections
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 01
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-02/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 02
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-03/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 03
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-04/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 04
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-05/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 05
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chapter-bonus/section-06/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Section 06
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#applied-lab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applied Lab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Blocks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building Blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables-that-influence-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables That Influence Cache Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands-that-populate-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands That Populate the Cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-configuration-and-wheel-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Configuration and Wheel Reuse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#populate-and-inspect-the-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate and Inspect the Cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reuse-cached-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse Cached Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reuse Cached Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#offline-synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Offline Synchronization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare-uv_link_mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare UV_LINK_MODE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-cleanup-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache Cleanup Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="dependency-caching-with-uv">Dependency Caching with uv<a class="headerlink" href="#dependency-caching-with-uv" title="Permanent link">&para;</a></h1>
+<p><code>uv</code> caches package metadata, downloaded wheels, and wheels built from source. A project environment (<code>.venv</code>) is normally beside <code>pyproject.toml</code>; it is <strong>not</strong> the package cache. The <a href="https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/uv_cache_lab.ipynb">Bob Follows the Cache notebook</a> runs the same experiments as this section. Run the commands below from <code>/workspace</code> in the <a href="https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/README.md">lab's Dev Container</a>, in order. A first run needs network access.</p>
+<h2 id="applied-lab">Applied Lab<a class="headerlink" href="#applied-lab" title="Permanent link">&para;</a></h2>
+<p>The lab locks NumPy, SciPy, and Matplotlib and builds a local <code>uv-cache-demo</code> wheel containing a generated 16 MiB synthetic matrix. Its fixture is deterministic and not a trained model. Downloaded numerical-library wheels make cache growth visible; the locally built wheel makes CI pruning visible. The container supplies <code>uv</code> 0.13.3 (for the centralized-environment preview), Python 3.12, and Jupyter, but does not install the project or populate its <code>uv</code> cache at startup. The separate CI workflow pins <code>uv</code> 0.11.1. The lab's <code>UV_LINK_MODE=copy</code> keeps installed files independent of the cache. The container's cache is separate from your host's.</p>
+<h2 id="building-blocks">Building Blocks<a class="headerlink" href="#building-blocks" title="Permanent link">&para;</a></h2>
+<h3 id="environment-variables-that-influence-cache-behavior">Environment Variables That Influence Cache Behavior<a class="headerlink" href="#environment-variables-that-influence-cache-behavior" title="Permanent link">&para;</a></h3>
+<p>These variables configure where <code>uv</code> caches data, whether it can reuse it, and how it installs files from the cache. See the <a href="https://docs.astral.sh/uv/reference/environment/"><code>uv</code> environment variable reference</a> for the complete list.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Cache behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UV_CACHE_DIR</code></td>
+<td>Selects the shared cache directory instead of the system default; equivalent to <code>--cache-dir</code>.</td>
+</tr>
+<tr>
+<td><code>UV_NO_CACHE</code></td>
+<td>Uses a temporary cache for that invocation rather than the persistent cache; equivalent to <code>--no-cache</code>.</td>
+</tr>
+<tr>
+<td><code>UV_OFFLINE</code></td>
+<td>Disables network access, requiring cached or local packages; equivalent to <code>--offline</code>.</td>
+</tr>
+<tr>
+<td><code>UV_LINK_MODE</code></td>
+<td>Chooses <code>clone</code> (copy-on-write when supported), <code>hardlink</code> (shared files on one filesystem), <code>copy</code> (independent files), or <code>symlink</code> (depends on the cache). Defaults to <code>clone</code> on Linux/macOS and <code>hardlink</code> on Windows.</td>
+</tr>
+<tr>
+<td><code>UV_LOCK_TIMEOUT</code></td>
+<td>Sets how long <code>uv</code> waits for a cache lock, including when other <code>uv</code> processes are using the cache.</td>
+</tr>
+<tr>
+<td><code>UV_CONCURRENT_CACHE_READS</code></td>
+<td>Controls threads reading cached HTTP responses; defaults to <code>4</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="commands-that-populate-the-cache">Commands That Populate the Cache<a class="headerlink" href="#commands-that-populate-the-cache" title="Permanent link">&para;</a></h3>
+<p>Package operations populate or reuse cache entries; cleanup commands remove them. For project locking and syncing, see <a href="../section-02/">Dependency Management with <code>uv</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Effect on the cache</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv pip install {pkg}</code></td>
+<td>Reuses or adds package metadata and wheels. <code>--refresh</code> revalidates cached data; <code>--refresh-package {pkg}</code> limits that to one package.</td>
+</tr>
+<tr>
+<td><code>uv add {pkg}</code></td>
+<td>Adds a dependency, resolves and synchronizes the project, and reuses or adds cached packages.</td>
+</tr>
+<tr>
+<td><code>uv sync</code></td>
+<td>Synchronizes a project from its lockfile, using or adding cached packages.</td>
+</tr>
+<tr>
+<td><code>uv tool install {tool}</code></td>
+<td>Installs a tool in its own environment while sharing <code>uv</code>'s package cache.</td>
+</tr>
+<tr>
+<td><code>uv cache prune</code></td>
+<td>Removes unused entries and centralized project environments. With <code>--ci</code>, also removes prebuilt wheels and unzipped source distributions while retaining source-built wheels.</td>
+</tr>
+<tr>
+<td><code>uv cache clean [package]</code></td>
+<td>Removes all cache entries, or entries for only the named package.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="build-configuration-and-wheel-reuse">Build Configuration and Wheel Reuse<a class="headerlink" href="#build-configuration-and-wheel-reuse" title="Permanent link">&para;</a></h3>
+<p>For a local package, <code>tool.uv.cache-keys</code> in <code>pyproject.toml</code> defines which build inputs invalidate a cached wheel. Keys replace <code>uv</code>'s default checks: include every input that affects the build. A key containing only <code>pyproject.toml</code>, for example, may miss source-only changes. These configurations illustrate three ways to track inputs:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Files</label><label for="__tabbed_1_2">Git Commit</label><label for="__tabbed_1_3">Environment Variable</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Track the manifest and an additional dependency file used by the build.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">[tool.uv]</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">cache-keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;pyproject.toml&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;requirements.txt&quot;</span><span class="w"> </span><span class="p">}]</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Track the manifest and Git commit when the build depends on version control; add <code>tags = true</code> if tags affect it too. A commit key alone will not detect uncommitted source edits.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[tool.uv]</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">cache-keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;pyproject.toml&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}]</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Track the manifest and a build-setting variable, whose changed value forces a rebuild.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[tool.uv]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">cache-keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;pyproject.toml&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">env</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;MY_BUILD_SETTING&quot;</span><span class="w"> </span><span class="p">}]</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition info">
+<p class="admonition-title">The lab's content fingerprint</p>
+<p>This lab uses <code>cache-keys = [{ env = "CACHE_DEMO_KEY" }]</code>. After generating the fixture, <code>scripts/build_key.py</code> hashes <code>pyproject.toml</code>, Python source, JSON, and bundled data. Supply its result to every sync that installs the local package. Identical content can reuse a wheel across fresh CI checkouts even when file timestamps differ. <code>--no-editable</code> installs that wheel instead of linking the source tree.</p>
+</div>
+<h2 id="populate-and-inspect-the-cache">Populate and Inspect the Cache<a class="headerlink" href="#populate-and-inspect-the-cache" title="Permanent link">&para;</a></h2>
+<p><code>uv</code> organizes cached data into distinct target types. These include <em>Prebuilt Wheels</em> downloaded from package indexes, <em>Source-built Wheels</em> built locally, and <em>Unpacked Source Distributions</em> used during builds. When enabled, <em>Centralized Project Environments</em> are also cached so a project can reuse its installed packages.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:5"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><input id="__tabbed_2_4" name="__tabbed_2" type="radio" /><input id="__tabbed_2_5" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Downloaded wheels</label><label for="__tabbed_2_2">Locally built wheel</label><label for="__tabbed_2_3">Unzipped source distribution</label><label for="__tabbed_2_4">Centralized project environment</label><label for="__tabbed_2_5">Other Unused Cache Entries</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><em>Prebuilt Wheels</em> are downloaded from package indexes and can be installed without building the package from source. <code>uv</code> caches them so later installs can reuse them instead of downloading them again.</p>
+<p>Create an ignored directory for the disposable experiments in later tabs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>lab
+</code></pre></div>
+<p>Create the project environment for the following experiments.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>venv<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Install a small numerical-computing stack directly with <code>uv pip install</code>. <code>--only-binary :all:</code> selects prebuilt wheels when available.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--python<span class="w"> </span>.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--only-binary<span class="w"> </span>:all:<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>numpy<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>scipy<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>matplotlib
+</code></pre></div>
+<p>Measure the populated cache; <code>cache-size</code> is a preview feature in this <code>uv</code> version.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>size<span class="w"> </span>--human<span class="w"> </span>--preview-features<span class="w"> </span>cache-size
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><em>Source-built Wheels</em> are built locally from source packages and stored in the cache. Reusing a cached wheel avoids repeating the build when its inputs have not changed.</p>
+<p>Generate the deterministic 16 MiB fixture before building the local package.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>.venv/bin/python<span class="w"> </span>scripts/generate_fixture.py
+</code></pre></div>
+<p>Install the project as a regular wheel; the content fingerprint determines when <code>uv</code> rebuilds it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">CACHE_DEMO_KEY</span><span class="o">=</span><span class="k">$(</span>.venv/bin/python<span class="w"> </span>scripts/build_key.py<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--no-editable<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Run the installed package and write a PNG report.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>.venv/bin/python<span class="w"> </span>-m<span class="w"> </span>uv_cache_demo.main<span class="w"> </span>--output<span class="w"> </span>reports/embeddings.png
+</code></pre></div>
+<p>Locate the locally built wheel; its path is the checkpoint for later pruning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;uv_cache_demo-*.whl&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><em>Unpacked Source Distributions</em> are extracted source trees that <code>uv</code> uses to build wheels. <code>uv</code> can cache both the unpacked source and the wheel produced from it.</p>
+<p>Force a source build of small <code>idna</code> into an ignored target, without changing the project's lockfile.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--python<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>python<span class="w"> </span>find<span class="w"> </span><span class="m">3</span>.12<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--target<span class="w"> </span>lab/sdist-target<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--no-deps<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span>--no-binary<span class="w"> </span>idna<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span><span class="s1">&#39;idna==3.10&#39;</span>
+</code></pre></div>
+<p>Inspect source-cache buckets; their version suffixes are internal details and may change.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;sdists-v*&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+<p>Locate <code>uv</code>'s unpacked <code>idna</code> source (<code>src/idna</code>) while it is still present.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/sdists-v*/pypi/idna/3.10/*/src/idna&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+<p>Find the <code>idna</code> wheel built from that source, distinct from the downloaded numerical-library wheels.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;idna-*.whl&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><em>Centralized Project Environments</em> store a project's installed packages in <code>uv</code>'s cache instead of beside <code>pyproject.toml</code>. The opt-in <code>centralized-project-envs</code> preview feature connects <code>.venv</code> to the cached environment, usually with a link.</p>
+<p>Create an ignored, disposable project to keep the main <code>.venv</code> separate.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>lab/centralized
+</code></pre></div>
+<p>Copy the locked project declarations into that directory; the project itself will not be installed there.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>cp<span class="w"> </span>pyproject.toml<span class="w"> </span>uv.lock<span class="w"> </span>lab/centralized/
+</code></pre></div>
+<p>Populate the cached environment without specifying <code>UV_PROJECT_ENVIRONMENT</code> or <code>--active</code>: explicit environment paths bypass centralization.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>uv<span class="w"> </span>--preview-features<span class="w"> </span>centralized-project-envs<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>--directory<span class="w"> </span>lab/centralized<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>--no-install-project<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Inspect the <code>.venv</code> link pointing into <code>uv</code>'s cache (<code>uv</code> may use a path file if linking is unavailable).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>ls<span class="w"> </span>-ld<span class="w"> </span>lab/centralized/.venv
+</code></pre></div>
+<p>Check that dependencies import from the new environment rather than the main project's <code>.venv</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>lab/centralized/.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy; print(numpy.__version__)&#39;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><em>Other Unused Cache Entries</em> are classified by cache metadata and references, not installation status. An older <code>uv</code> may create cache entries in a format a newer version does not recognize; those entries can be removed while the installed package remains in <code>.venv</code> or <code>--target</code>. Unreferenced unpacked wheel archives may also be considered unused, but a current-format wheel is not unused just because its package is uninstalled.</p>
+<p>Create a directory for the disposable package installs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>lab/prune-probe
+</code></pre></div>
+<p>Use <code>uv</code> 0.4.12 through <code>uvx</code> to install a prebuilt <code>packaging</code> wheel into an ignored target.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nv">UV_CACHE_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cache/uvx-prune-bootstrap&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span>uvx<span class="w"> </span>--from<span class="w"> </span><span class="s1">&#39;uv==0.4.12&#39;</span><span class="w"> </span>uv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">  </span>--cache-dir<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">  </span>pip<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">  </span>--python<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>python<span class="w"> </span>find<span class="w"> </span><span class="m">3</span>.12<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="w">  </span>--target<span class="w"> </span>lab/prune-probe/old-wheel<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="w">  </span>--reinstall<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="w">  </span>--no-deps<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a><span class="w">  </span>--only-binary<span class="w"> </span>packaging<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="w">  </span><span class="s1">&#39;packaging==24.2&#39;</span>
+</code></pre></div>
+<p>Use the same old <code>uv</code> version to build a wheel from the <code>idna</code> source distribution.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nv">UV_CACHE_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cache/uvx-prune-bootstrap&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span>uvx<span class="w"> </span>--from<span class="w"> </span><span class="s1">&#39;uv==0.4.12&#39;</span><span class="w"> </span>uv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span>--cache-dir<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">  </span>pip<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">  </span>--python<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>python<span class="w"> </span>find<span class="w"> </span><span class="m">3</span>.12<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="w">  </span>--target<span class="w"> </span>lab/prune-probe/old-sdist<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="w">  </span>--reinstall<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="w">  </span>--no-deps<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a><span class="w">  </span>--no-binary<span class="w"> </span>idna<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a><span class="w">  </span><span class="s1">&#39;idna==3.10&#39;</span>
+</code></pre></div>
+<p>Inspect the cache buckets created by both the current and older <code>uv</code> versions; bucket names and versions are implementation details and may change.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-mindepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-printf<span class="w"> </span><span class="s1">&#39;%f\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="reuse-cached-packages">Reuse Cached Packages<a class="headerlink" href="#reuse-cached-packages" title="Permanent link">&para;</a></h2>
+<h3 id="offline-synchronization">Offline Synchronization<a class="headerlink" href="#offline-synchronization" title="Permanent link">&para;</a></h3>
+<p>Remove just the installed environment, leaving <code>uv</code>'s cache available.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>rm<span class="w"> </span>-rf<span class="w"> </span>.venv
+</code></pre></div>
+<p>Restore it without network access; the fixture and build fingerprint are still available.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nv">CACHE_DEMO_KEY</span><span class="o">=</span><span class="k">$(</span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>python<span class="w"> </span>find<span class="w"> </span><span class="m">3</span>.12<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>scripts/build_key.py<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">  </span>--no-editable<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">  </span>--offline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Confirm that NumPy and the local wheel import from <code>.venv</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy, uv_cache_demo; print(numpy.__file__, uv_cache_demo.__file__)&#39;</span>
+</code></pre></div>
+<h3 id="compare-uv_link_mode">Compare UV_LINK_MODE<a class="headerlink" href="#compare-uv_link_mode" title="Permanent link">&para;</a></h3>
+<p>Use four disposable environments to compare installation modes without changing the main <code>.venv</code>. Each tab synchronizes the locked dependencies into a separate environment; <code>--offline</code> ensures these trials reuse the cached wheels. On a bind-mounted workspace, <code>hardlink</code> or <code>clone</code> may fall back to copying if the cache and environment are on different filesystems.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:4"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><input id="__tabbed_3_4" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Clone</label><label for="__tabbed_3_2">Copy</label><label for="__tabbed_3_3">Hardlink</label><label for="__tabbed_3_4">Symlink</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Sync into a disposable environment with <code>clone</code>, <code>uv</code>'s normal Linux/macOS mode. Where supported, the environment initially shares disk blocks with the cache, then gets separate blocks when files change. This can use less disk space than making full copies.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nv">UV_PROJECT_ENVIRONMENT</span><span class="o">=</span>lab/clone<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">  </span><span class="nv">UV_LINK_MODE</span><span class="o">=</span>clone<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">  </span>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="w">  </span>--no-install-project<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="w">  </span>--offline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Inspect the installed file and its hard-link count; <code>stat</code> alone cannot prove whether copy-on-write cloning occurred.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;%F; hard links: %h&#39;</span><span class="w"> </span>lab/clone/lib/python3.12/site-packages/numpy/__init__.py
+</code></pre></div>
+<p>Verify the installed NumPy version.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>lab/clone/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy; print(numpy.__version__)&#39;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Sync using <code>copy</code> to make independent files in the environment. This uses more disk space than shared-block modes, but changes to installed files do not change the cached files.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nv">UV_PROJECT_ENVIRONMENT</span><span class="o">=</span>lab/copy<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="w">  </span><span class="nv">UV_LINK_MODE</span><span class="o">=</span>copy<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="w">  </span>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="w">  </span>--no-install-project<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="w">  </span>--offline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Inspect the installed file's type and link count.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;%F; hard links: %h&#39;</span><span class="w"> </span>lab/copy/lib/python3.12/site-packages/numpy/__init__.py
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Use <code>hardlink</code> to let the environment and cache share the same file on one filesystem, which saves disk space. Editing a hardlinked file also changes the cached file. If they are on different filesystems, <code>uv</code> falls back to making a copy.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nv">UV_PROJECT_ENVIRONMENT</span><span class="o">=</span>lab/hardlink<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="w">  </span><span class="nv">UV_LINK_MODE</span><span class="o">=</span>hardlink<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="w">  </span>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="w">  </span>--no-install-project<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="w">  </span>--offline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Check whether the installed file has multiple hard links (<code>%h</code> greater than one).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;%F; hard links: %h&#39;</span><span class="w"> </span>lab/hardlink/lib/python3.12/site-packages/numpy/__init__.py
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Use <code>symlink</code> to make the environment's files point to files in the cache, avoiding separate copies. The environment depends on those cache paths, so cleaning or moving the cache can break it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="nv">UV_PROJECT_ENVIRONMENT</span><span class="o">=</span>lab/symlink<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="w">  </span><span class="nv">UV_LINK_MODE</span><span class="o">=</span>symlink<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="w">  </span>uv<span class="w"> </span>sync<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="w">  </span>--locked<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="w">  </span>--no-install-project<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a><span class="w">  </span>--offline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="w">  </span>--python<span class="w"> </span><span class="m">3</span>.12
+</code></pre></div>
+<p>Inspect a link target to see why cleaning the cache would break this installation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>readlink<span class="w"> </span>lab/symlink/lib/python3.12/site-packages/numpy/__init__.py
+</code></pre></div>
+<p>Remove this disposable environment before the cleanup stages; retain the copy-mode <code>.venv</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>rm<span class="w"> </span>-rf<span class="w"> </span>lab/symlink
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="cache-cleanup-operations">Cache Cleanup Operations<a class="headerlink" href="#cache-cleanup-operations" title="Permanent link">&para;</a></h2>
+<p><code>uv</code> provides different <em>Cleanup Operations</em>, each with its own rules for deciding what to remove from the cache. Depending on the command, cleanup may affect <em>Prebuilt Wheels</em>, <em>Source-built Wheels</em>, <em>Unpacked Source Distributions</em>, and <em>Centralized Project Environments</em>, as well as other <em>Unused Cache Entries</em>. The disk space reclaimed by each operation depends on the cache contents and artifact sizes, so a broader cleanup does not necessarily reclaim more space in a particular run.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:3"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><input id="__tabbed_4_3" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Normal prune</label><label for="__tabbed_4_2">CI prune</label><label for="__tabbed_4_3">Complete Clean</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>The <code>uv cache prune</code> command performs the standard cleanup by removing <em>Unused Cache Entries</em> and all <em>Centralized Project Environments</em>. Unused entries may include <em>Prebuilt Wheels</em>, <em>Unpacked Source Distributions</em>, and <em>Source-built Wheels</em>. It retains entries that <code>uv</code> still considers in use, unlike <code>uv cache clean</code>, which removes every cache entry. Run the ordinary prune command:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>prune
+</code></pre></div>
+<p>Confirm that the obsolete cache buckets created by <code>uv</code> 0.4.12 are gone. They contained the old <code>packaging</code> wheel and old <code>idna</code> built wheel.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;wheels-v1&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;built-wheels-v3&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the current prebuilt wheel entries for NumPy, SciPy, and Matplotlib remain.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/numpy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/scipy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/matplotlib&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the current-format wheels built from the local project and <code>idna</code> source remain.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;uv_cache_demo-*.whl&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;idna-*.whl&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the unpacked <code>idna</code> source remains after ordinary pruning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="w">  </span>-path<span class="w"> </span><span class="s1">&#39;*/sdists-v*/pypi/idna/3.10/*/src/idna&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that pruning has not removed the packages installed into <code>--target</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-wheel/packaging
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-sdist/idna
+</code></pre></div>
+<p>Confirm the main, non-centralized <code>.venv</code> remains usable.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy; print(numpy.__version__)&#39;</span>
+</code></pre></div>
+<p>Measure the cache size after pruning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>size<span class="w"> </span>--human<span class="w"> </span>--preview-features<span class="w"> </span>cache-size
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>The <code>uv cache prune --ci</code> command is designed for CI environments. To support this strategy, it retains <em>current-format Source-built Wheels</em>, which can take significant time and computing resources to build and can save time in later CI runs. It removes <em>Prebuilt Wheels</em> and <em>Unpacked Source Distributions</em> to reduce cache size as those are generally quick to download again. The command also performs ordinary pruning, so it can remove obsolete source-built wheels. Run the CI-specific prune command:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>prune<span class="w"> </span>--ci
+</code></pre></div>
+<p>Confirm that the obsolete cache buckets created by <code>uv</code> 0.4.12 are gone. They contained the old <code>packaging</code> wheel and old <code>idna</code> built wheel.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-46-2" name="__codelineno-46-2" href="#__codelineno-46-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;wheels-v1&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;built-wheels-v3&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-46-3" name="__codelineno-46-3" href="#__codelineno-46-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the prebuilt wheel entries for NumPy, SciPy, and Matplotlib are gone (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/numpy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/scipy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/matplotlib&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the current-format wheels built from the local project and <code>idna</code> source remain.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;uv_cache_demo-*.whl&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;idna-*.whl&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Check that the unzipped <code>idna</code> source is gone (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/sdists-v*/pypi/idna/3.10/*/src/idna&#39;</span><span class="w"> </span>-print
+</code></pre></div>
+<p>Verify the saved centralized environment target is gone; its <code>.venv</code> link may be dangling.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a><span class="nb">test</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>lab/centralized-target<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Confirm that pruning has not removed the packages installed into <code>--target</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-wheel/packaging
+<a id="__codelineno-51-2" name="__codelineno-51-2" href="#__codelineno-51-2"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-sdist/idna
+</code></pre></div>
+<p>Measure the cache size after pruning.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>size<span class="w"> </span>--human<span class="w"> </span>--preview-features<span class="w"> </span>cache-size
+</code></pre></div>
+<p>Confirm that installed packages in the main copy-mode <code>.venv</code> still import.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy; from uv_cache_demo.main import cache_message; print(cache_message())&#39;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>The <code>uv cache clean</code> command removes <em>All Cache Entries</em>, including <em>Prebuilt Wheels</em>, <em>Unpacked Source Distributions</em>, <em>Source-built Wheels</em>, and <em>Centralized Project Environments</em>. Since every cache target is in scope, this is the most aggressive cleanup command. Run the complete cleanup:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>clean
+</code></pre></div>
+<p>Confirm that the old cache buckets are gone (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-55-2" name="__codelineno-55-2" href="#__codelineno-55-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;wheels-v1&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;built-wheels-v3&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-55-3" name="__codelineno-55-3" href="#__codelineno-55-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Confirm that the NumPy, SciPy, and Matplotlib prebuilt wheel entries are gone (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-56-2" name="__codelineno-56-2" href="#__codelineno-56-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/numpy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-56-3" name="__codelineno-56-3" href="#__codelineno-56-3"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/scipy&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-56-4" name="__codelineno-56-4" href="#__codelineno-56-4"></a><span class="w">    </span>-o<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/wheels-v*/pypi/matplotlib&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-56-5" name="__codelineno-56-5" href="#__codelineno-56-5"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Measure the emptied cache; <code>uv</code> may retain housekeeping files.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-57-1" name="__codelineno-57-1" href="#__codelineno-57-1"></a>uv<span class="w"> </span>cache<span class="w"> </span>size<span class="w"> </span>--human<span class="w"> </span>--preview-features<span class="w"> </span>cache-size
+</code></pre></div>
+<p>Verify that the local and <code>idna</code> source-built wheels are no longer cached (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-58-2" name="__codelineno-58-2" href="#__codelineno-58-2"></a><span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;uv_cache_demo-*.whl&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;idna-*.whl&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-58-3" name="__codelineno-58-3" href="#__codelineno-58-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Verify that the unpacked <code>idna</code> source is no longer cached (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>find<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uv<span class="w"> </span>cache<span class="w"> </span>dir<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-59-2" name="__codelineno-59-2" href="#__codelineno-59-2"></a><span class="w">  </span>-path<span class="w"> </span><span class="s1">&#39;*/sdists-v*/pypi/idna/3.10/*/src/idna&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-59-3" name="__codelineno-59-3" href="#__codelineno-59-3"></a><span class="w">  </span>-print
+</code></pre></div>
+<p>Verify that the centralized environment target is gone (no output expected).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a><span class="nb">test</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="w"> </span>lab/centralized-target<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Confirm that cleanup has not removed the packages installed into <code>--target</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-wheel/packaging
+<a id="__codelineno-61-2" name="__codelineno-61-2" href="#__codelineno-61-2"></a><span class="nb">test</span><span class="w"> </span>-d<span class="w"> </span>lab/prune-probe/old-sdist/idna
+</code></pre></div>
+<p>Confirm installed copies still work. A symlink-mode environment would instead depend on the removed cache paths.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a>.venv/bin/python<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import numpy; from uv_cache_demo.main import cache_message; print(cache_message())&#39;</span>
+</code></pre></div>
+<p>Check that the previously generated report also remains in the workspace.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a><span class="nb">test</span><span class="w"> </span>-f<span class="w"> </span>reports/embeddings.png
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>The table compares five deliberately populated cache targets after each operation runs with <code>uv</code> 0.13.3. A check mark means the target was removed; a dash means it was retained. The obsolete-format entries were created with <code>uv</code> 0.4.12. Ordinary pruning can also remove orphaned current-format archives that are no longer referenced by current wheel or source buckets. <code>uv cache clean</code> removes other cache entries, such as metadata and index responses; in this probe, the cache root and lock file remain.</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th style="text-align: center;"><code>uv cache prune</code></th>
+<th style="text-align: center;"><code>uv cache prune --ci</code></th>
+<th style="text-align: center;"><code>uv cache clean</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Current-format prebuilt/downloaded wheel (<code>wheels-v7</code>)</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Current-format source-built wheel (<code>sdists-v10</code>, <code>.whl</code>)</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Unpacked source distribution (<code>sdists-v10</code>, <code>src/</code>)</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Centralized project environment (<code>environments-v2</code>)</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td>Obsolete-format entries from uv 0.4.12 (<code>wheels-v1</code>, <code>built-wheels-v3</code>, including its built wheel and sdist)</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.instant", "navigation.indexes", "navigation.top", "content.code.copy", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid.js"></script>
+      
+    
+  </body>
+</html>
