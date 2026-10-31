@@ -1,22 +1,22 @@
 # Python `venv` Environments — The Isolation Awakens
 
-Alice shows Bob how project-local virtual environments share a base Python but
-isolate installed packages. The technical companion is
-[Chapter 01, Section 02](../../docs/chapter-01/section-02.md); the story starts
-in [The Raise of Python](../python_system_lab/python_system_lab.ipynb).
+After Alice's chocolate-fueled visit to Bob's office, her request for a remote Ubuntu environment has led them to inspect the shared system Python. Her IrisLab project will eventually expose iris-color analysis through a REST API, protected by middleware and accessible from a CLI. Bob hopes that a single user-level package installation will serve every project, but Alice points out that different projects may require incompatible versions. Together, they give two projects their own virtual environments and explore what remains shared.
 
 ![Python venv project logo](./project_logo.png)
 
-## Run the lab
+## Overview
 
-1. Install Docker and the VS Code Dev Containers extension.
-2. Open `notebooks/python_venv_lab` as the workspace and select **Dev Containers: Reopen in Container**.
-3. Open `python_venv_lab.ipynb`, select **Python 3 - venv Lab**, and run the cells in order.
+- Creating project-local environments with Python's standard-library `venv` module.
+- Virtual environment layout, interpreter links, and `pyvenv.cfg`.
+- Base and environment prefixes, the shared standard library, and package visibility.
+- Installing different dependency versions into separate environments.
+- Activation, `PATH`, import resolution, and the disposable nature of virtual environments.
 
-The Ubuntu 24.04 container provides system Python, `venv`, pip, and Jupyter.
-The notebook creates two environments under the ignored `lab/` directory. Its
-first setup cell removes that directory on reruns, so keep unrelated work
-elsewhere. Downloading the demonstration packages requires network access.
-The notebook kernel stays in `/opt/jupyter`; the cells explicitly invoke each
-environment's interpreter. Documentation links are accessible when browsing the
-repository; the workspace mount contains only this lab directory.
+## Documentation
+
+- [Chapter 01, Section 02: Python `venv` Environments](../../docs/chapter-01/section-02.md)
+- [Open the notebook](./python_venv_lab.ipynb); start with [The Raise of Python](../python_system_lab/python_system_lab.ipynb).
+
+## Getting Started
+
+To run the lab, open `notebooks/python_venv_lab` in VS Code with Docker and the Dev Containers extension, then select **Dev Containers: Reopen in Container**. Open the notebook, select **Python 3 - venv Lab**, and run the cells in order. The first setup cell resets the ignored `lab/` directory, where the notebook creates its two environments; package downloads require network access. The Jupyter kernel stays separate while the cells invoke each environment's interpreter explicitly.

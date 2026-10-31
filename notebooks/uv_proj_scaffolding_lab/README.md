@@ -1,22 +1,21 @@
 # Project Scaffolding with uv — A New Hope for Bob
 
-Bob scaffolds a backend and frontend in one modern Python workspace, one visible step at a time. This lab accompanies [Chapter 03, Section 01](../../docs/chapter-03/section-01.md). Its Dev Container supplies uv and a Jupyter kernel; the notebook creates projects and manages their Python environments.
+After Alice implements the components of her IrisLab project, Bob feels overlooked and foolish beside the young engineer's expertise. The grumpy administrator decides to prove to himself that he can master modern Python workflows, starting with `uv`. He begins by assembling a workspace for a backend and frontend, curious whether one tool can replace pages of his old setup checklist. As the projects take shape, Bob follows them from Python selection through packaging and discovers a new hope for his runbook.
 
-| Stage | What Bob explores |
-| --- | --- |
-| Getting started | Install options and the uv version in the container |
-| Set up | A workspace root, backend and frontend members, matching Python 3.12 pins, and one root lockfile |
-| Initialize | Packaged application scaffolding for Bottle backend and Streamlit frontend |
-| Configure and run | `uv add`, shared resolution, and `[tool.*]` settings |
-| Distribute | `uv_build`, wheels, source archives, and publication guidance |
-| Grow | A shared library as a workspace member and a local workspace dependency |
+![uv Project Scaffolding Lab project logo](./project_logo.png)
 
-## Run the lab
+## Overview
 
-1. Install Docker and the VS Code Dev Containers extension.
-2. Open the `notebooks/uv_proj_scaffolding_lab` folder in a Dev Container.
-3. Select the **Python 3 - uv Project Scaffolding** kernel and run `uv_proj_scaffolding_lab.ipynb` from top to bottom.
+- Installing and selecting Python interpreters with `uv`.
+- Creating a workspace with a shared lockfile and compatible Python pins.
+- Scaffolding packaged Bottle backend and Streamlit frontend projects.
+- Adding project and development dependencies and configuring tools in `pyproject.toml`.
+- Adding a shared library as a workspace dependency.
+- Building wheels and source distributions with `uv_build` and reviewing publication commands.
 
-The notebook creates examples in `lab/` within this folder. Its first executable setup cell resets **only** `lab/` so the lab can be rerun. This directory is git-ignored. A network connection is needed for the first interpreter, dependency, and build-backend downloads. Publishing is explained but never executed.
+## Documentation
 
-Continue with [Bob's dependency lab](../uv_dependency_lab/uv_dependency_lab.ipynb) for locking, syncing, and upgrading dependencies.
+- [Chapter 03, Section 01: Project Scaffolding with uv](../../docs/chapter-03/section-01.md)
+- [Open the notebook](./uv_proj_scaffolding_lab.ipynb); continue with [Bob Discovers the Force of uv](../uv_dependency_lab/uv_dependency_lab.ipynb).
+
+To run the lab, open `notebooks/uv_proj_scaffolding_lab` in VS Code with Docker and the Dev Containers extension, then select **Dev Containers: Reopen in Container**. Open the notebook, select **Python 3 - uv Project Scaffolding**, and run the cells in order. The first setup cell resets the ignored `lab/` directory containing the generated workspace; interpreter, dependency, and build-backend downloads require network access. Publishing is explained but not executed.
