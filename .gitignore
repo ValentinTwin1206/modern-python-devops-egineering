@@ -56,7 +56,7 @@ htmlcov/
 !/notebooks/uv_proj_scaffolding_lab/
 !/notebooks/python_system_lab/
 !/notebooks/python_venv_lab/
-!/projects/proj3_irislab/
+!/projects/proj2_irislab/
 
 # IDE settings
 .idea/

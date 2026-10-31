@@ -1,53 +1,42 @@
 # PyGuard
 
-**PyGuard** is a small Python security library that blocks suspicious web requests before they reach application handlers. It currently provides **path traversal** and **brute-force protection for configurable protected endpoints**.
+PyGuard is a Python library that blocks suspicious requests, including path traversal attempts and repeated requests to protected endpoints.
 
-## Project Components
+## Installation
 
-| Component              | Description                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `pyproject.toml`       | Package metadata and build configuration.                                              |
-| `src/pyguard/`         | Reusable middleware, scanner, models, and security rules.                              |
-| `src/pyguard/rules.py` | Contains the `SecurityRule` base class, `PathTraversalRule`, and `AuthBruteForceRule`. |
+### Configure Cloudsmith Repository
 
-## End-User Guide
+Replace `<CLOUDSMITH_REPOSITORY>` with your Cloudsmith repository slug. Add the package index to your consumer project's `pyproject.toml`:
 
-### Requirements
+```toml
+[[tool.uv.index]]
+name = "cloudsmith"
+url = "https://dl.cloudsmith.io/public/<CLOUDSMITH_REPOSITORY>/python/simple/"
+```
 
-* Python 3.9+
-* `uv` or `pip`
+### Install PyGuard
 
-### Installation
-
-With `uv`:
+Add PyGuard to your project's dependencies:
 
 ```toml
 [project]
-
-dependencies = [
-    "pyguard==0.1.0",
-]
+dependencies = ["pyguard"]
 ```
+
+Install it with `uv`:
 
 ```bash
 uv sync
 ```
 
-Or with `pip`:
-
-```bash
-python -m pip install pyguard==0.1.0
-```
-
 ## Usage
 
-### Path Traversal Protection
+### Block a Suspicious Request
 
 ```python
 from pyguard import PyGuardMiddleware, Request, RequestBlocked
 
 guard = PyGuardMiddleware()
-
 request = Request(
     method="GET",
     path="/download",
@@ -56,98 +45,22 @@ request = Request(
 
 try:
     guard.before_request(request)
-except RequestBlocked as exc:
-    print(exc)
+except RequestBlocked as error:
+    print(error)
 ```
 
-### Brute-Force Protection
-
-Protected endpoints are configured by the application:
+### Protect an Endpoint from Repeated Requests
 
 ```python
 from pyguard import PyGuardMiddleware
 
 guard = PyGuardMiddleware(
-    protected_paths={
-        ("POST", "/licenses"),
-    },
+    protected_paths={("POST", "/login")},
 )
 ```
 
-By default, the brute-force rule:
+By default, the brute-force rule blocks a source after five requests to a protected endpoint within the configured time window.
 
-* Allows 4 requests within the configured window.
-* Blocks on the 5th request.
-* Blocks the source for 5 minutes.
-* Tracks requests per source.
+### Integrate with FastAPI
 
-### FastAPI Integration
-
-```python
-from fastapi import FastAPI, HTTPException, responses, Request as FastAPIRequest
-from pyguard import PyGuardMiddleware, Request, RequestBlocked
-
-app = FastAPI()
-
-guard = PyGuardMiddleware(
-    protected_paths={
-        ("POST", "/licenses"),
-    },
-)
-
-
-@app.middleware("http")
-async def security_middleware(
-    request: FastAPIRequest,
-    call_next,
-):
-    guard_request = Request(
-        method=request.method,
-        path=request.url.path,
-        query=request.url.query,
-        source=request.client.host,
-    )
-
-    try:
-        guard.before_request(guard_request)
-    except RequestBlocked as exc:
-        return responses.JSONResponse(
-            status_code=429,
-            content={"detail": str(exc)},
-        )
-
-    return await call_next(request)
-```
-
-## Developer Guide
-
-### Setup
-
-```bash
-./build.sh build --path proj1_pyguard/Dockerfile.devEnv
-```
-
-```bash
-uv sync --all-groups
-source .venv/bin/activate
-```
-
-### Lint
-
-```bash
-ruff check .
-```
-
-### Build
-
-```bash
-uv build --wheel --out-dir /build
-```
-
-### Publish
-
-```bash
-uv publish
-```
-
-PyGuard is distributed as a pure-Python wheel and can be installed directly from PyPI.
+Call `guard.before_request()` from a FastAPI HTTP middleware and return an HTTP 429 response when it raises `RequestBlocked`. Set `protected_paths` to the method and path pairs that should be rate-limited.

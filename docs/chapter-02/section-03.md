@@ -19,7 +19,7 @@ The recipe produces two Conda packages:
 
 ### Run the Project
 
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md).
 
 ## Building Blocks
 
@@ -210,7 +210,7 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 
 For the Conda environment and C++ extension build, see [Python Conda Environments](../chapter-01/section-03.md).
 Its `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge`, and includes the compiler toolchain,
-MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj3_irislab` image:
+MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj2_irislab` image:
 
 === "Image does not exist"
 
@@ -220,7 +220,7 @@ MediaPipe model, and project files. Choose the workflow that matches the local `
 
     ```bash
     ./build.sh build \
-      --path proj3_irislab/Dockerfile.devEnv \
+      --path proj2_irislab/Dockerfile.devEnv \
       --gpus all \
       --cloudsmith-workspace "<cloudsmith-repo>" \
       --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
@@ -232,13 +232,13 @@ MediaPipe model, and project files. Choose the workflow that matches the local `
     artifacts and run the existing image:
 
     ```bash
-    mkdir -p proj3_irislab/.build
+    mkdir -p proj2_irislab/.build
     docker run -it \
-      -v "$PWD/proj3_irislab:/app" \
-      -v "$PWD/proj3_irislab/.build:/opt/conda/conda-bld" \
+      -v "$PWD/proj2_irislab:/app" \
+      -v "$PWD/proj2_irislab/.build:/opt/conda/conda-bld" \
       -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
       -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-      mpe/proj3_irislab \
+      mpe/proj2_irislab \
       /bin/bash
     ```
 

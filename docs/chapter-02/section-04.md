@@ -6,11 +6,11 @@ Python containers package an application together with the runtime files it need
 
 ### Project Setup
 
-The applied project is the `IrisLab API`, a FastAPI service exposing the [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md) iris-color analysis application over HTTP. Its container image delivers the API together with Python, the scientific libraries, the native extension, and the local MediaPipe model needed for inference.
+The applied project is the `IrisLab API`, a FastAPI service exposing the [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md) iris-color analysis application over HTTP. Its container image delivers the API together with Python, the scientific libraries, the native extension, and the local MediaPipe model needed for inference.
 
 ### Run the Project
 
-Application, build, and test commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab_api/README.md).
+Application, build, and test commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/README.md).
 
 ## Building Blocks
 
@@ -39,7 +39,7 @@ At a high level, container distribution consists of five building blocks: a **bu
 The API layout separates HTTP routes, response schemas, application services, and container configuration:
 
 ```text
-proj2_irislab_api/
+proj3_irislab_api/
 ├── Dockerfile
 ├── pyproject.toml
 ├── uv.lock
@@ -59,7 +59,7 @@ proj2_irislab_api/
 
 ### Build Recipe
 
-An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration. The [IrisLab API Dockerfile](../../projects/proj2_irislab_api/Dockerfile) is the source of truth for this example.
+An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration. The [IrisLab API Dockerfile](../../projects/proj3_irislab_api/Dockerfile) is the source of truth for this example.
 
 The recipe combines two common techniques: selecting a **base image** with the tools the project needs and using a **multi-stage build** to separate preparation from the final runtime. The runtime stage copies the prepared environments and model from the build stage, leaving build-only tools behind. Both stages start from `mambaorg/micromamba:2.3.3`, which provides `micromamba`, a Conda-compatible package manager, without requiring a separate installation. The build stage follows a **Conda-first** approach, then installs `mediapipe` with `pip` as in the [Conda consumer workflow](section-03.md#consumer-workflow). Micromamba installs `irislab-tools` using the provided `IRISLAB_CHANNEL`:
 
@@ -245,7 +245,7 @@ docker version
 Move into the API directory, which provides the build context:
 
 ```bash
-cd projects/proj2_irislab_api
+cd projects/proj3_irislab_api
 ```
 
 Set the Cloudsmith repository that will receive the published image:

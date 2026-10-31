@@ -36,7 +36,7 @@ ${BLUE}${BOLD}COMMANDS${RESET}
 
 ${BLUE}${BOLD}BUILD OPTIONS${RESET}
     ${YELLOW}-p${RESET}, ${YELLOW}--path${RESET} ${CYAN}<DOCKERFILE>${RESET}   Path to a Dockerfile inside this projects directory
-                               ${DIM}(e.g. proj3_irislab/Dockerfile.devEnv).${RESET}
+                               ${DIM}(e.g. proj2_irislab/Dockerfile.devEnv).${RESET}
         ${YELLOW}--port${RESET} ${CYAN}<HOST:CONT>${RESET}    Port mapping. Defaults to ${CYAN}8080:8080${RESET}.
         ${YELLOW}--gpus${RESET} ${CYAN}<GPU_REQUEST>${RESET}       GPU access passed to the container runtime, such as ${CYAN}all${RESET}.
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
