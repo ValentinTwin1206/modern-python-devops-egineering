@@ -76,12 +76,12 @@ outputs:
         - ninja
 
       host:
-        - python >=3.12
+        - python 3.12.*
         - pybind11 >=2.12
         - {{ pin_subpackage('libirislab', exact=True) }}
 
       run:
-        - python >=3.12
+        - python >=3.12,<3.13
         - click
         - pillow
         - rich

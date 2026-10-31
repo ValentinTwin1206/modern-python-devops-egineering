@@ -12,7 +12,7 @@ IrisLab combines:
 - **pybind11** to connect Python and C++
 - **CIE ΔE** for comparing measured colors with reference profiles
 
-The project uses a **Conda-first workflow** based on `environment.yml` and Conda recipes. No `pyproject.toml` is required.
+The project uses a **Conda-only packaging workflow** based on `environment.yml` and Conda recipes. The [IrisLab API](../proj2_irislab_api/README.md) consumes the published Conda packages.
 
 ## Architecture
 
@@ -99,6 +99,10 @@ environment:
 ```bash
 python -m pip install mediapipe
 ```
+
+The model defaults to `models/face_landmarker.task` in the source checkout.
+When IrisLab is installed as a Conda package, set `IRISLAB_MODEL_PATH` to the model
+file; the API container supplies this path and downloads the model at build time.
 
 ## Build the Native Extension
 

@@ -247,17 +247,39 @@ Comparing both timings shows whether faster installation offsets the time spent 
 
 > Cache sizes describe the uncompressed local cache before `uv sync`, not the compressed archives transferred by GitHub Actions.
 
-The chart compares *Total Job (duration)* (blue) and *`uv sync` (duration)* time (orange) for one run per *Cache Strategy*. The orange bar overlays part of the blue bar because *`uv sync` (duration)* is included in the *Total Job (duration)*. *Total Job (duration)* includes all steps and post-actions but excludes queue time; lower values are better.
+The charts show one run per cache strategy. Total job duration includes all steps and post-actions but excludes queue time; lower durations are better.
 
-```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#3569a8, #e98a15"}}}}%%
-xychart-beta
-    title "Observed Job and Installation Duration (Lower Is Better)"
-    x-axis ["CI-Pruned Cache", "Complete Cache", "Empty Cache"]
-    y-axis "Total Job (duration) in s" 0 --> 35
-    bar [16, 30, 23]
-    bar [1.241, 0.100, 6.507]
-```
+=== "Job and Installation Duration"
+
+    The orange `uv sync` bar overlays part of the blue total-job bar because installation is included in the job duration.
+
+    ```mermaid
+    %%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#3569a8, #e98a15"}}}}%%
+    xychart-beta
+        title "Observed Job and Installation Duration (Lower Is Better)"
+        x-axis ["CI-Pruned Cache", "Complete Cache", "Empty Cache"]
+        y-axis "Duration (seconds)" 0 --> 35
+        bar [16, 30, 23]
+        bar [1.241, 0.100, 6.507]
+    ```
+
+=== "Cache Size and Duration"
+
+    The horizontal axis ranges from 0 to 7 seconds for `uv sync`; the vertical axis ranges from 0 to 35 seconds for the total job. Bubble area is approximately proportional to cache size, except the empty cache uses a minimum visible radius.
+
+    ```mermaid
+    quadrantChart
+        title Cache Size vs. Duration
+        x-axis "Fast uv sync" --> "Slow uv sync"
+        y-axis "Short job" --> "Long job"
+        quadrant-1 "Slow install, slow job"
+        quadrant-2 "Fast install, slow job"
+        quadrant-3 "Fast install, fast job"
+        quadrant-4 "Slow install, fast job"
+        "Complete Cache (925 MiB)": [0.0143, 0.8571] radius: 30, color: #e98a15
+        "CI-Pruned Cache (257 MiB)": [0.1773, 0.4571] radius: 16, color: #3569a8
+        "Empty Cache (1.4 KiB)": [0.9296, 0.6571] radius: 2, color: #888888
+    ```
 
 !!! tip "Takeaways"
 

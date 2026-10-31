@@ -309,7 +309,7 @@ Choose the workflow that matches the state of the local `mpe/proj3_irislab` imag
 
 ### Create the Environment
 
-The `irislab` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. In a real-world Python project, use a `pyproject.toml` file to define the Python project's metadata, dependencies, and build configuration, while keeping Conda-specific requirements such as the Python version, native libraries, and external build tools in `environment.yml`.
+The `irislab` sample project uses Conda to create and manage a complete development environment, including the Python interpreter, Python packages, native libraries, and build tools listed in `environment.yml`. CMake then uses the installed compiler and pybind11 tools to build the project's native extension. The project is distributed using Conda recipes rather than `pyproject.toml`.
     
 === "Create from `environment.yml`"
 
@@ -466,7 +466,7 @@ PYTHONPATH=src python -m irislab.cli --image samples/blue-eyes.png --gpu
     Conda package from `meta.yaml`. Conda-build automatically builds `libirislab`
     and the `_native` extension; manual CMake is only needed for the local
     development loop. Its generated console entry point then becomes available
-    in the active environment (see [Conda Packages](../chapter-02/section-04.md)).
+    in the active environment (see [Conda Packages](../chapter-02/section-03.md)).
 
 ### Inspect the Environment
 

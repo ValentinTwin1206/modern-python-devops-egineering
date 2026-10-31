@@ -1,265 +1,473 @@
-# Python Containers
+# Conda Packages
 
-Python containers package an application together with the runtime files it needs to run. They help teams deploy the same application image across local machines, CI pipelines, and controlled runtime platforms in production.
+Conda packages distribute Python projects together with managed dependencies from the Conda ecosystem. Unlike Python wheels, which primarily distribute Python packages, Conda packages can bundle Python modules, native libraries, command-line tools, and software from multiple language ecosystems.
+
+The Conda workflow connects project definition, multi-language dependency resolution, package building, package hosting, and local installation. A recipe declares Python modules and native libraries; the built `.conda` artifacts carry that dependency graph; a channel exposes package metadata through platform-specific indexes; and a local environment installs the Python and native components into one prefix.
 
 ## Applied Project
 
 ### Project Setup
 
-The applied project is a small FastAPI service called `License Service`. It generates and validates license keys, stores them in a local SQLite database, and rate-limits its write endpoint with [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) middleware installed from a Cloudsmith package index. This makes it a good fit for containers because the application, its Python runtime, and its dependencies can be packaged into one image that behaves the same on every host with a container engine.
+The applied project is `IrisLab`, a small image-based iris color analysis application. It uses MediaPipe Face Landmarker with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to determine perceptual color features and classify the eye color. The resulting color profile is compared with reference colors using a native C++ library that calculates CIE ΔE color distances and is exposed to Python through `pybind11`. This makes `IrisLab` a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local machine-learning dependencies together.
+
+The recipe produces two Conda packages:
+
+| Conda package | Contents |
+| ------------- | -------- |
+| `libirislab` | Standalone C++ shared library (`libirislab.so`, `.dylib`, or `.dll`) and the public `irislab.hpp` header. |
+| `irislab-tools` | Python package, `irislab` CLI, and pybind11 extension. It depends on the matching `libirislab` build. |
 
 ### Run the Project
 
-Application, install, and test commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_license_service/README.md).
+Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab/README.md).
 
 ## Building Blocks
 
 ### Overview
 
-In contrast to Python wheels, operating-system packages, or Conda packages, OCI container images are not primarily package archives but complete runtime environments. They package an application together with everything required to execute it, including the operating system components, language runtime, libraries, configuration, and application code. In addition, **container managers** are more comprehensive than classical package managers, as they do not only build and install images, but also  pull, push, store, inspect, create, and run containers, and manage their lifecycle on the host.
+Conda packages are built distributions for multi-language software. Modern Conda packages use the `.conda` format, while older releases may use `.tar.bz2`; both contain a pre-built payload and package metadata so installation does not require compiling software on the target machine. Conda is commonly used for data science, scientific computing, native extensions, and environments that combine Python with C, C++, R, CUDA, or other runtimes.
 
-The [Open Container Initiative (OCI)](https://github.com/opencontainers) defines open standards that make container images portable across different tools and environments. The three core specifications cover different parts of the container lifecycle:
-
-- **OCI Image Format Specification**: Defines the structure of a container image, including its manifest, image configuration, and immutable filesystem layers.
-- **OCI Distribution Specification**: Defines how container images are stored and exchanged through registries, including operations such as pushing and pulling manifests and layers.
-- **OCI Runtime Specification**: Defines how a container is configured and executed, including the runtime bundle and settings such as the process, environment, mounts, and isolation.
-
-At a high level, container distribution consists of five building blocks: a **build recipe** (`Dockerfile` or `Containerfile`) that describes how an image is assembled, an **OCI image** that packages the application and its runtime environment, a **container registry** that stores and distributes images, a **container manager** that builds, stores, pulls, and runs images on a host, and an **OCI runtime** that creates and executes containers. Because these building blocks follow OCI standards, different tools can participate in the same workflow while remaining interoperable across development, CI/CD, and production environments.
+Conda distribution has four primary building blocks. A **package format** stores the payload and generated metadata, a **recipe** describes how the package is built and which dependencies it requires, a **package manager** resolves dependencies and creates isolated environments, and a **channel** stores packages with searchable indexes. Build tools such as `conda-build` transform a recipe into platform-specific Conda packages before they are published to a channel.
 
 | Building Block | Role | Common Examples |
 |----------------|------|-----------------|
-| Container Format | Packages an application as immutable filesystem layers together with OCI image metadata. | OCI image, Docker image |
-| Build Recipe | Describes how the image is assembled. | `Dockerfile`, `Containerfile` |
-| Maintainer / Metadata File | OCI metadata generated during the image build. Package maintainers typically do **not** edit these files directly. | OCI image manifest, OCI image configuration (`config.json`), image index |
-| Container Manager | Builds, stores, pulls, pushes, inspects, and runs OCI images on a host. | Docker, Podman |
-| Remote Repository | Stores and distributes OCI images using repositories and tags. | Docker Hub, GitHub Container Registry, Amazon ECR, Cloudsmith, Quay.io |
+| Package Format | Stores the built payload together with generated package metadata. | `.conda`, `.tar.bz2` |
+| Build Recipe | Defines package metadata, build instructions, dependencies, and tests. | `recipe/meta.yaml`, `recipe/recipe.yaml` |
+| Package Manager | Resolves dependencies and creates or updates isolated environments. | `conda`, `mamba`, `micromamba`, `pixi` |
+| Remote Repository | Publishes packages and channel indexes for supported platforms and architectures. | conda-forge, Anaconda.org, Cloudsmith |
 
 ### Project Layout
 
-A typical Python container project is structured to separate application code, dependency metadata, and build configuration:
+A Conda package is built with a dedicated recipe directory alongside the project source code.
 
 ```text
 {project_root}/
-├── main.py
-├── database.py
-├── helpers.py
-├── Dockerfile
-├── pyproject.toml
-├── uv.lock
+├── cpp/
+│   ├── CMakeLists.txt
+│   ├── bindings.cpp
+│   ├── irislab.cpp
+│   └── irislab.hpp
+├── recipe/
+│   ├── build-irislab-tools.bat
+│   ├── build-irislab-tools.sh
+│   ├── build-libirislab.bat
+│   ├── build-libirislab.sh
+│   └── meta.yaml
+├── samples/
+├── src/
+│   └── irislab/
+├── tests/
+├── environment.yml
 └── README.md
 ```
 
-- `main.py`: The FastAPI application, its routes, the PyGuard middleware wiring, and the `uvicorn` entrypoint that the container runs on startup.
-- `database.py` and `helpers.py`: Supporting application modules copied into the image alongside `main.py`.
-- `Dockerfile`: The **central build recipe** that defines how the container image is constructed. It describes the full build and deployment pipeline inside the image itself, including dependencies, build steps, and runtime configuration. It can also implement multi-stage builds, where the application is first built (for example as a Python wheel) and then packaged into a minimal runtime image that contains only the installed artifact and its runtime dependencies.
-- `pyproject.toml` and `uv.lock`: The dependency metadata and lockfile that `uv sync` reads to install `fastapi`, `uvicorn`, and `pyguard` inside the image.
+- `recipe/meta.yaml`: Defines the two Conda outputs, their dependencies, build steps, entry point, and package tests.
+- `cpp/`: Contains the native C++ scoring library, public header, pybind11 bindings, and CMake configuration.
+- `src/`: Contains the Python package and CLI.
+- `environment.yml`: Defines the development environment, including runtime, native, and testing dependencies, plus the pip-only `mediapipe` package.
 
-### Build Recipe
+### Package Recipe
 
-An OCI image is defined by a build recipe, commonly `Dockerfile` or `Containerfile`. In this project, the `Dockerfile` is the maintainer-edited source of truth. During the build, the container manager reads that recipe and turns it into image layers, runtime configuration, and manifest data such as `manifest.json`.
+A Conda package is defined by a YAML recipe that declares package identity, source, build behavior, dependencies, tests, and descriptive metadata. `IrisLab` uses a multi-output recipe so the standalone native library and Python package remain separately reusable.
 
-```dockerfile
-FROM python:3.12-slim
+```yaml
+outputs:
+  # -------------------------------------------------------------------------
+  # libirislab: standalone C++ shared library and headers.
+  # -------------------------------------------------------------------------
+  - name: libirislab
+    script: build-libirislab.sh
 
-WORKDIR /app
+    build:
+      run_exports:
+        - {{ pin_subpackage('libirislab', max_pin='x.x') }}
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
 
-# Copy dependency metadata
-COPY pyproject.toml uv.lock ./
+  # -------------------------------------------------------------------------
+  # irislab-tools: Python package, CLI, and pybind11 extension.
+  #
+  # The extension is built directly with CMake and links against libirislab.
+  # -------------------------------------------------------------------------
+  - name: irislab-tools
 
-# Install dependencies into a project-local virtual environment
-RUN uv sync --frozen --no-dev
-ENV PATH="/app/.venv/bin:${PATH}"
+    script: build-irislab-tools.sh   # [unix]
+    script: build-irislab-tools.bat  # [win]
 
-# Copy application source
-COPY main.py database.py helpers.py ./
+    build:
+      entry_points:
+        - irislab = irislab.cli:main
 
-EXPOSE 8080
+    requirements:
+      build:
+        - "{{ compiler('cxx') }}"
+        - cmake
+        - ninja
 
-CMD ["python", "main.py"]
+      host:
+        - python 3.12.*
+        - pybind11 >=2.12
+        - {{ pin_subpackage('libirislab', exact=True) }}
+
+      run:
+        - python >=3.12,<3.13
+        - click
+        - pillow
+        - rich
+        - numpy
+        - glib
+        - libgl
+        - libegl
+        - libgles
+        - {{ pin_subpackage('libirislab', exact=True) }}
+
+    test:
+      requires:
+        - pip
+
+      imports:
+        - irislab
+        - irislab._native
+
+      commands:
+        - python -m pip install mediapipe
+        - irislab --help
 ```
 
-- `FROM`: Selects the base image and its version.
-- `WORKDIR`: Sets the default directory for later build steps and container startup.
-- `COPY`: Adds dependency metadata and application source to the image filesystem.
-- `RUN`: Executes the `uv sync` install step, which resolves `pyguard` from the Cloudsmith package index declared in `pyproject.toml` and creates a project-local virtual environment at `/app/.venv`.
-- `ENV`: Puts that virtual environment's `bin/` directory first on `PATH`, so the plain `python` command used by `CMD` resolves the packages `uv sync` installed.
-- `CMD`: Defines the default command used at runtime. This Dockerfile has no separate `ENTRYPOINT`.
+- `libirislab`: Builds the standalone C++ shared library and public header. Its `run_exports` entry provides a compatible library pin to downstream packages.
+- `irislab-tools`: Builds the Python package and pybind11 extension. Its exact `pin_subpackage` dependency ensures the extension uses the matching native library.
+- `requirements.host`: Supplies Python 3.12 and native build dependencies while the package is compiled. The extension is Python-version-specific, so the runtime requirement also restricts Python to 3.12.
+- `requirements.run`: Records the dependencies needed by the installed application.
+- `test`: Installs the PyPI-only MediaPipe dependency, then verifies that the extension imports and the generated CLI is available.
 
 ### Package Layout
 
-OCI container images follow the [OCI Image Format Specification](https://github.com/opencontainers/image-spec/blob/main/spec.md), which defines how image manifests, metadata, configuration, and filesystem layers are structured and exchanged. Because they follow an open standard, OCI images can be created, stored, and consumed by different container tools such as *Docker*, *Podman*, etc.
+A `.conda` file is a ZIP container with separate compressed metadata and payload archives. `IrisLab` produces two packages from one recipe, allowing C/C++ consumers to install `libirislab` without the Python stack while Python consumers install `irislab-tools` and receive the native library automatically.
 
-On a host machine, an OCI image is not stored as one ordinary project file. It is persisted through the container manager's internal storage logic, which manages image metadata, shared filesystem layers, and writable container layers. To inspect or move that content as a file, use a dedicated export format such as the [**OCI image-layout TAR archive**](#inspect-the-package), [**Docker image TAR archive**](#inspect-the-package) or as a flat filesystem archive from a container (`docker export`).
+=== "`libirislab` — C/C++ payload"
+
+    ```text
+    libirislab-1.0.0-<build>.conda
+    ├── metadata.json
+    ├── info-*.tar.zst
+    │   └── info/
+    │       ├── about.json
+    │       ├── index.json                 # depends: compiler runtimes and run_exports
+    │       └── recipe/meta.yaml
+    └── pkg-*.tar.zst
+        ├── include/
+        │   └── irislab.hpp
+        └── lib/
+            └── libirislab.so
+    ```
+
+=== "`irislab-tools` — Python payload"
+
+    ```text
+    irislab-tools-1.0.0-<build>.conda
+    ├── metadata.json
+    ├── info-*.tar.zst
+    │   └── info/index.json              # depends: libirislab, pillow, rich
+    └── pkg-*.tar.zst
+        ├── bin/
+        │   └── irislab
+        └── site-packages/
+            ├── irislab/
+            │   ├── __init__.py
+            │   ├── cli.py
+            │   ├── eye_color.py
+            │   ├── iris.py
+            │   ├── analyze.py
+            │   └── _native.<platform>.so
+    ```
 
 ## Tradeoffs
 
 ### Pros
 
-- ✅ Bundles the application and runtime
-- ✅ Isolates dependencies from the host
-- ✅ Runs consistently across container platforms
-- ✅ Supports reliable rollbacks
+- ✅ Manages Python and native dependencies
+- ✅ Supports compiled libraries
+- ✅ Creates isolated environments
+- ✅ Provides platform-specific channels
 
 ### Cons
 
-- ⚠️ Requires container infrastructure
-- ⚠️ Images can be large
-- ⚠️ Base images require regular patching
-- ⚠️ Data and secrets need separate management
+- ⚠️ Dependency solving can be slow
+- ⚠️ Requires platform-specific builds
+- ⚠️ Mixing pip can reduce reproducibility
+- ⚠️ Channel priorities add complexity
 
 ## Packaging Workflow
 
 !!! info
-    This workflow assumes that you have a valid Cloudsmith repository and access to its Docker registry. Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`, before you publish.
+    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
 ### Create the Environment
 
-License Service uses a runtime `Dockerfile`, not a Dev Container. The image
-build installs `uv` and the application dependencies as part of the image
-creation, so the host only needs Docker and the project source tree.
+For the Conda environment and C++ extension build, see [Python Conda Environments](../chapter-01/section-03.md).
+Its `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge`, and includes the compiler toolchain,
+MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj3_irislab` image:
 
-First, confirm that Docker is installed and running on the host machine:
+=== "Image does not exist"
+
+    From the `projects/` directory, use `build.sh` to build and open the
+    interactive packaging container. The command enables GPU access and
+    forwards the Cloudsmith configuration:
+
+    ```bash
+    ./build.sh build \
+      --path proj3_irislab/Dockerfile.devEnv \
+      --gpus all \
+      --cloudsmith-workspace "<cloudsmith-repo>" \
+      --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+    ```
+
+=== "Image already exists"
+
+    From the `projects/` directory, create the host directory for package
+    artifacts and run the existing image:
+
+    ```bash
+    mkdir -p proj3_irislab/.build
+    docker run -it \
+      -v "$PWD/proj3_irislab:/app" \
+      -v "$PWD/proj3_irislab/.build:/opt/conda/conda-bld" \
+      -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
+      -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
+      mpe/proj3_irislab \
+      /bin/bash
+    ```
+
+Install the packaging tools in Conda's `base` environment rather than in the
+project's `irislab` environment. This separation keeps the *Packaging Workflow*
+independent from the *Development Workflow*.
 
 ```bash
-docker version
+conda install \
+    --name base \
+    --channel conda-forge \
+    conda-build \
+    conda-package-handling
 ```
 
-Move into the License Service project directory:
+- `conda-build`: Builds Conda packages from recipes.
+- `conda-package-handling`: Provides `cph` for listing package archives and inspecting their metadata and contents.
+
+The following command runs `pip` in Conda's `base` environment. It downloads
+the `cloudsmith-cli` package from PyPI and installs it for uploading packages
+to the configured Cloudsmith repository.
 
 ```bash
-cd projects/proj2_license_service
-```
-
-Set the Cloudsmith repository that will receive the published image:
-
-```bash
-export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+conda run --name base python -m pip install cloudsmith-cli==1.26.0
 ```
 
 ### Create the Package
 
-The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
+Activate the `base` environment before running the packaging command:
 
-=== "Classical container image"
+```bash
+conda activate base
+```
 
-    This command builds the image from the `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `license-service:1.0.0`. The image can then be inspected, run, tagged for a registry, or pushed from the local Docker host.
+Clear previous (Conda) build artifacts from the default artifact output
+directory:
 
-    ```bash
-    docker build -t license-service:1.0.0 .
-    ```
+```bash
+find "/opt/conda/conda-bld" -mindepth 1 -delete
+```
 
-    
-    List local container images to confirm that the build produced the tagged image:
+From the project root, build both packages with `conda build`. The `--channel conda-forge` option
+provides the public compilers, CMake, Python, Pillow, and other dependencies required by the recipe.
+The recipe targets Python 3.12 so the published extension is compatible with the IrisLab API container.
 
-    ```bash
-    docker image ls
-    ```
+```bash
+conda build recipe/ --channel conda-forge
+```
 
-=== "OCI image archive"
+`conda-build` invokes the recipe scripts automatically. It first builds `libirislab`, then builds
+the `_native` Python extension against that package. You do not need to run CMake separately
+for the packaging workflow. `conda-build` writes packages to `/opt/conda/conda-bld` inside the
+container. The project `.build` directory is bind-mounted there, so the package artifacts remain
+available on the host.
 
-    This command uses BuildKit through `docker buildx` to build the image and write it directly to `image.tar` as an OCI image layout archive. The archive contains OCI metadata and content-addressed blobs, but it is not loaded into Docker's local image store unless you import it later.
-
-    ```bash
-    docker buildx build \
-      --output type=oci,dest=license-service-1.0.0.tar \
-      .
-    ```
+- `libirislab`: Provides the standalone native C++ library and public header.
+- `irislab-tools`: Provides the Python package, CLI, and pybind11 extension.
 
 ### Inspect the Package
 
-The inspection command depends on the output format created in the previous step. A local Docker image is inspected through the container manager's image store, while an OCI image archive is inspected as files inside the TAR archive.
+The two archives have different payloads and dependency metadata, so inspect them separately. The native package should declare compiler runtime dependencies such as `libgcc` and `libstdcxx`, together with a `run_exports` entry. The Python package should declare an exact dependency on the matching `libirislab` build.
 
-=== "Classical container image"
+=== "libirislab"
 
-    Inspect the metadata that Docker stores for the local image tag:
-
-    ```bash
-    docker inspect license-service:1.0.0
-    ```
-
-    The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
-
-    Show the image layer history and the Dockerfile instruction associated with each layer:
+    Resolve the native package created in the previous step:
 
     ```bash
-    docker history license-service:1.0.0
+    LIBIRISLAB_PKG="$(find "/opt/conda/conda-bld" -type f -name 'libirislab-*.conda' -print -quit)"
     ```
 
-=== "OCI image archive"
-
-    Inspect the archive created by `docker buildx build --output type=oci` by listing the files inside the TAR archive:
+    List the package contents:
 
     ```bash
-    tar -tf license-service-1.0.0.tar
+    cph list "$LIBIRISLAB_PKG"
     ```
 
-    The exported OCI archive has a structure similar to this:
+    Extract and inspect its metadata:
 
-    ```text
-    license-service-1.0.0.tar
-    ├── blobs/
-    │   └── sha256/
-    │       ├── <digest> (manifest JSON)
-    │       ├── <digest> (configuration JSON)
-    │       ├── <digest> (filesystem layer)
-    │       └── ...
-    ├── index.json
-    └── oci-layout
+    ```bash
+    cph extract --info --dest /tmp/libirislab-info "$LIBIRISLAB_PKG"
+    cat /tmp/libirislab-info/info/index.json
     ```
 
-    - `oci-layout`: Identifies the archive as an OCI image layout and records the layout version.
-    - `index.json`: Acts as the archive entry point. It points to the image manifest stored under `blobs/sha256/` and can associate that manifest with a tag.
-    - `blobs/sha256/<digest>`: Stores all content-addressed image objects. Some blobs are JSON documents, such as the image manifest and image configuration, while other blobs are compressed filesystem layers.
+=== "irislab-tools"
+
+    Resolve the Python package created in the previous step:
+
+    ```bash
+    IRISLAB_TOOLS_PKG="$(find "/opt/conda/conda-bld" -type f -name 'irislab-tools-*.conda' -print -quit)"
+    ```
+
+    List the package contents:
+
+    ```bash
+    cph list "$IRISLAB_TOOLS_PKG"
+    ```
+
+    Extract and inspect its metadata:
+
+    ```bash
+    cph extract --info --dest /tmp/irislab-tools-info "$IRISLAB_TOOLS_PKG"
+    cat /tmp/irislab-tools-info/info/index.json
+    ```
 
 ### Publish the Package
 
-Published images are addressed by a repository and tag, such as `python:3.12-slim`, while registries resolve that tag to an immutable digest such as `sha256:<digest>`. Tags are readable and convenient, but they can be reassigned; pulling by digest, for example `docker pull python@sha256:<digest>`, guarantees the same image content across environments.
+A compiled Conda package is built for a target platform. The channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. Because this recipe emits two outputs, each platform receives both a `libirislab-*.conda` and a `irislab-tools-*.conda` artifact.
 
-To publish the image, set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
-
-```bash
-export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+```text
+repository-root/
+├── linux-64/
+│   ├── repodata.json
+│   ├── libirislab-1.0.0-<build>.conda
+│   └── irislab-tools-1.0.0-<build>.conda
+├── osx-arm64/
+│   ├── repodata.json
+│   ├── libirislab-1.0.0-<build>.conda
+│   └── irislab-tools-1.0.0-<build>.conda
+└── win-64/
+    ├── repodata.json
+    ├── libirislab-1.0.0-<build>.conda
+    └── irislab-tools-1.0.0-<build>.conda
 ```
 
-Then authenticate with Cloudsmith's Docker registry:
+Upload the two archives created in the previous step so the exact native-library pin can be satisfied at install time:
 
 ```bash
-docker login docker.cloudsmith.io
+mapfile -t PACKAGES < <(find "/opt/conda/conda-bld" -type f \( \
+  -name 'libirislab-*.conda' -o -name 'irislab-tools-*.conda' \
+\) -print)
+for PACKAGE in "${PACKAGES[@]}"; do
+    cloudsmith push conda "${CLOUDSMITH_REPOSITORY}" "$PACKAGE"
+done
 ```
 
-Tag the local image with the Cloudsmith registry path:
+Verify that Cloudsmith received both artifacts:
 
 ```bash
-docker tag license-service:1.0.0 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libirislab OR irislab-tools"
 ```
 
-Then upload the tagged image:
-
-```bash
-docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
-```
+!!! info "Python Wheels"
+    A wheel workflow can publish platform-specific files under one Python project name, but a Python index does not solve the native `libirislab` dependency as a separate environment package. Conda keeps the native library, Python extension, and their dependency metadata visible to the solver.
 
 ## Consumer Workflow
 
-### Install the Container
+### Configure the Package Manager
 
-Once published, the image can be downloaded from Cloudsmith:
+Configure `.condarc` before creating the environment. Replace `<cloudsmith-repo>` with the repository slug. Conda creates `.condarc` automatically when the first command writes to it.
+
+Expose the Cloudsmith channel URL to your local environment:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
+CLOUDSMITH_CHANNEL="https://token:${CLOUDSMITH_API_KEY}@conda.cloudsmith.io/<cloudsmith-repo>/"
 ```
 
-To run the packaged service, you can leverage the `run` command:
+Clear existing channels:
 
 ```bash
-docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/license-service:1.0.0"
+conda config --remove-key channels
 ```
 
-Confirm that the service responds:
+Add the required channels:
 
 ```bash
-curl http://127.0.0.1:8080/
+conda config --add channels nodefaults
+conda config --add channels conda-forge
+conda config --add channels "$CLOUDSMITH_CHANNEL"
+```
+
+Set strict channel priority:
+
+```bash
+conda config --set channel_priority strict
+```
+
+### Install the Package
+
+Create a small consumer project:
+
+```bash
+mkdir irislab-consumer && cd irislab-consumer
+```
+
+Record the `irislab-tools` package as an environment dependency:
+
+```yaml
+name: irislab-demo
+dependencies:
+  - python=3.12
+  - irislab-tools
+```
+
+Then, create the environment:
+
+```bash
+conda env create --file environment.yml
+```
+
+> Both `irislab-tools` and its exact `libirislab` dependency get installed.
+
+Activate the consumer environment:
+
+```bash
+conda activate irislab-demo
+```
+
+Since `mediapipe` is not available from `conda-forge`, install it from PyPI:
+
+```bash
+conda run --name "irislab-demo" python -m pip install mediapipe
+```
+
+The CLI accepts a portrait image and analyzes the detected iris color:
+
+```bash
+irislab --image samples/blue-eyes.png
+```
+
+The project also exposes a Python API:
+
+```python
+from pathlib import Path
+from irislab import analyze
+
+result = analyze(Path("samples/blue-eyes.png"))
+
+print(result.eye_color)
+print(result.lab)
+print(result.closest_profile)
+print(result.delta_e)
 ```
