@@ -15,8 +15,10 @@ RUN micromamba config prepend channels conda-forge \
     && micromamba config prepend channels "${IRISLAB_CHANNEL}" \
     && micromamba config set channel_priority strict
 
-# Install IrisLab and its declared runtime dependencies, including the exact
-# libirislab build. libglib is required by MediaPipe's PyPI OpenCV wheel.
+# Install IrisLab and MediaPipe:
+#   - creates a Conda environment with the exact libirislab build
+#   - includes libglib for MediaPipe's PyPI OpenCV wheel
+#   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
@@ -24,12 +26,9 @@ RUN micromamba create \
         irislab-tools=1.0.0 \
         libglib \
         pip \
+    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+        mediapipe==0.10.35 \
     && micromamba clean --all --yes
-
-# The Conda recipe does not depend on MediaPipe, which is distributed on PyPI.
-# Let pip resolve its Python dependencies, as in the consumer workflow.
-RUN /opt/conda/envs/irislab-api/bin/python -m pip install \
-        mediapipe==0.10.35
 
 # Install curl via conda:
 #   - adds curl to the build stage's base Conda environment

@@ -1,6 +1,6 @@
 # Python `venv` Environments — The Isolation Awakens
 
-After Alice's chocolate-fueled visit to Bob's office, her request for a remote Ubuntu environment has led them to inspect the shared system Python. Her IrisLab project will eventually expose iris-color analysis through a REST API, protected by middleware and accessible from a CLI. Bob hopes that a single user-level package installation will serve every project, but Alice points out that different projects may require incompatible versions. Together, they give two projects their own virtual environments and explore what remains shared.
+Picking up after their inspection of Ubuntu's system Python, Alice shows Bob how Python's built-in `venv` creates separate package spaces for projects while reusing the base interpreter. The *IrisLab* project will leverage several different Python environments for the distinct components. As Alice grows more enthusiastic about virtual environments, Bob grows more offended but increasingly calm. After every explanation, he silently repeats her words in a childish imitation, then answers aloud with only “Aha,” “Yes,” or “No.” Together, they give two projects separate environments and explore what remains shared.
 
 ![Python venv project logo](./project_logo.png)
 

@@ -1,6 +1,6 @@
 # Python Containers
 
-Python containers package an application together with the runtime files it needs to run. They help teams deploy the same application image across local machines, CI pipelines, and controlled runtime platforms in production.
+Python containers package an application with its code, dependencies, and the operating-system components it needs, creating a portable unit that can run across development machines, CI pipelines, and production platforms. Most containers use a Linux-based image, though Windows containers are also available. Once an application is containerized, running it generally requires an OCI-compliant container manager rather than a separately installed Python environment and application dependencies.
 
 ## Applied Project
 
@@ -16,7 +16,7 @@ Application, build, and test commands are documented in the [project README](htt
 
 ### Overview
 
-In contrast to Python wheels, operating-system packages, or Conda packages, OCI container images are not primarily package archives but complete runtime environments. They package an application together with everything required to execute it, including the operating system components, language runtime, libraries, configuration, and application code. In addition, **container managers** are more comprehensive than classical package managers, as they do not only build and install images, but also  pull, push, store, inspect, create, and run containers, and manage their lifecycle on the host.
+Unlike Python wheels, operating-system packages, or Conda packages, OCI container images package an application with the environment it needs to run, including operating-system components, language runtimes, libraries, and configuration. Container managers such as *Docker*, *Podman*, *Kubernetes*, etc. are sophisticated tools that simplify working with images and containers through streamlined command-line interfaces. Beyond building and installing images, they can pull, push, store, inspect, create, and run containers, and manage their lifecycle on the host.
 
 The [Open Container Initiative (OCI)](https://github.com/opencontainers) defines open standards that make container images portable across different tools and environments. The three core specifications cover different parts of the container lifecycle:
 
@@ -59,22 +59,34 @@ proj3_irislab_api/
 
 ### Build Recipe
 
-An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration. The [IrisLab API Dockerfile](../../projects/proj3_irislab_api/Dockerfile) is the source of truth for this example.
+An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration.
 
-The recipe combines two common techniques: selecting a **base image** with the tools the project needs and using a **multi-stage build** to separate preparation from the final runtime. The runtime stage copies the prepared environments and model from the build stage, leaving build-only tools behind. Both stages start from `mambaorg/micromamba:2.3.3`, which provides `micromamba`, a Conda-compatible package manager, without requiring a separate installation. The build stage follows a **Conda-first** approach, then installs `mediapipe` with `pip` as in the [Conda consumer workflow](section-03.md#consumer-workflow). Micromamba installs `irislab-tools` using the provided `IRISLAB_CHANNEL`:
+The [project's `Dockerfile`](../../projects/proj3_irislab_api/Dockerfile) provides the complete workflow for combining `irislab` with `irislab-api` in one container image. It uses a **multi-stage build**, with a `BUILD STAGE` to prepare the application and a `RUNTIME STAGE` containing only the components needed to run it. This keeps build-only tools out of the final image. Both stages use `mambaorg/micromamba:2.3.3` as the **base image**, which comes with `micromamba`, a modern Conda package manager. In the `BUILD STAGE`, Micromamba installs `irislab-tools` into a Conda environment, and `pip` installs `mediapipe` as described in the [Conda consumer workflow](section-03.md#consumer-workflow):
 
-```bash
-micromamba create --yes --prefix /opt/conda/envs/irislab-api \
-    python=3.12 irislab-tools=1.0.0 libglib pip
+```dockerfile
+RUN micromamba create \
+    --yes \
+    --prefix /opt/conda/envs/irislab-api \
+        python=3.12 \
+        irislab-tools=1.0.0 \
+        libglib \
+        pip \
+    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+        mediapipe==0.10.35 \
+    && micromamba clean --all --yes
 ```
 
-The build stage also installs `curl` with `micromamba` and uses it to download and verify the `face_landmarker.task` model. It then installs `irislab-api` as a regular Python package (`--no-editable`) from the committed lockfile (`--locked`) in a separate `uv` environment that can access the Conda packages. The lockfile does not cover the Conda solve, MediaPipe's transitive dependencies, or the model. The API installation uses the following command (see [Chapter 03, Section 02](../chapter-03/section-02.md#synchronizing)):
+The build stage next installs `curl` with Micromamba to download and verify the `face_landmarker.task` model. It uses `uv` to install `irislab-api` from `pyproject.toml` as a regular Python package (`--no-editable`), using the committed lockfile (`--locked`) in a separate environment that can access the Conda packages (see [Chapter 03, Section 02](../chapter-03/section-02.md#synchronizing)).
 
-```bash
-uv sync --locked --no-dev --no-editable
+```dockerfile
+RUN uv sync \
+    --locked \
+    --no-dev \
+    --no-editable \
+    && /opt/irislab-api-venv/bin/python -m pip check
 ```
 
-The following `Dockerfile` contains the complete build and installation steps for running the IrisLab API alongside IrisLab in one portable container environment:
+The complete `Dockerfile` is shown below:
 
 ```dockerfile
 # 
@@ -94,8 +106,10 @@ RUN micromamba config prepend channels conda-forge \
     && micromamba config prepend channels "${IRISLAB_CHANNEL}" \
     && micromamba config set channel_priority strict
 
-# Install IrisLab and its declared runtime dependencies, including the exact
-# libirislab build. libglib is required by MediaPipe's PyPI OpenCV wheel.
+# Install IrisLab and MediaPipe:
+#   - creates a Conda environment with the exact libirislab build
+#   - includes libglib for MediaPipe's PyPI OpenCV wheel
+#   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
@@ -103,12 +117,9 @@ RUN micromamba create \
         irislab-tools=1.0.0 \
         libglib \
         pip \
+    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+        mediapipe==0.10.35 \
     && micromamba clean --all --yes
-
-# The Conda recipe does not depend on MediaPipe, which is distributed on PyPI.
-# Let pip resolve its Python dependencies, as in the consumer workflow.
-RUN /opt/conda/envs/irislab-api/bin/python -m pip install \
-        mediapipe==0.10.35
 
 # Install curl via conda:
 #   - adds curl to the build stage's base Conda environment
