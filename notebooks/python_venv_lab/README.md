@@ -4,6 +4,12 @@ Picking up after their inspection of Ubuntu's system Python, Alice shows Bob how
 
 ![Python venv project logo](./project_logo.png)
 
+## Learning Objectives
+
+- Create project-local virtual environments with Python's built-in `venv` module.
+- Explain what virtual environments isolate and what they share with the base Python installation.
+- Use separate dependency versions and understand activation, import resolution, and environment recreation.
+
 ## Overview
 
 - Creating project-local environments with Python's standard-library `venv` module.
@@ -15,8 +21,12 @@ Picking up after their inspection of Ubuntu's system Python, Alice shows Bob how
 ## Documentation
 
 - [Chapter 01, Section 02: Python `venv` Environments](../../docs/chapter-01/section-02.md)
-- [Open the notebook](./python_venv_lab.ipynb); start with [The Raise of Python](../python_system_lab/python_system_lab.ipynb).
+- [Open the notebook](./python_venv_lab.ipynb); start with [The Raise of Python](../python_system_lab/python_system_lab.ipynb) and continue with [A New Hope for Bob](../uv_proj_scaffolding_lab/uv_proj_scaffolding_lab.ipynb).
 
-## Getting Started
+## Run The Lab
 
-To run the lab, open `notebooks/python_venv_lab` in VS Code with Docker and the Dev Containers extension, then select **Dev Containers: Reopen in Container**. Open the notebook, select **Python 3 - venv Lab**, and run the cells in order. The first setup cell resets the ignored `lab/` directory, where the notebook creates its two environments; package downloads require network access. The Jupyter kernel stays separate while the cells invoke each environment's interpreter explicitly.
+1. Install Docker, VS Code, and the VS Code Dev Containers extension.
+2. Open `notebooks/python_venv_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
+3. Open `python_venv_lab.ipynb`, select the **Python 3 - venv Lab** kernel, and run the cells in order.
+
+The first setup cell resets the ignored `lab/` directory, where the notebook creates its two environments. Package downloads require network access. The Jupyter kernel stays separate while the cells invoke each environment's interpreter explicitly.

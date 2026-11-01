@@ -4,6 +4,12 @@ Having scaffolded his first `uv` workspace, Bob is determined to understand how 
 
 ![uv Dependency Lab project logo](./project_logo.png)
 
+## Learning Objectives
+
+- Distinguish declared requirements, the lockfile, and the installed environment.
+- Manage dependencies, groups, sources, and markers with `uv`.
+- Control lockfile updates and synchronization, and inspect or export the resolved dependency graph.
+
 ## Overview
 
 - The roles of `pyproject.toml`, `uv.lock`, and `.venv`.
@@ -16,6 +22,12 @@ Having scaffolded his first `uv` workspace, Bob is determined to understand how 
 ## Documentation
 
 - [Chapter 03, Section 02: Dependency Management with uv](../../docs/chapter-03/section-02.md)
-- [Open the notebook](./uv_dependency_lab.ipynb); continue with [Bob Follows the Cache](../uv_cache_lab/uv_cache_lab.ipynb).
+- [Open the notebook](./uv_dependency_lab.ipynb); follow [A New Hope for Bob](../uv_proj_scaffolding_lab/uv_proj_scaffolding_lab.ipynb) and continue with [Bob Follows the Cache](../uv_cache_lab/uv_cache_lab.ipynb).
 
-To run the lab, open `notebooks/uv_dependency_lab` in VS Code with Docker and the Dev Containers extension, then select **Dev Containers: Reopen in Container**. Open the notebook, select **Python 3 - uv Dependency Resolution**, and run the cells in order. The first reset cell removes lab-generated `pyproject.toml`, `uv.lock`, `.venv`, `requirements.txt`, `installed-demo/`, `resolution-demo/`, and `local-helper/` from this workspace; keep unrelated work elsewhere. Dependency downloads require network access.
+## Run The Lab
+
+1. Install Docker, VS Code, and the VS Code Dev Containers extension.
+2. Open `notebooks/uv_dependency_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
+3. Open `uv_dependency_lab.ipynb`, select the **Python 3 - uv Dependency Resolution** kernel, and run the cells in order.
+
+The first reset cell removes lab-generated `pyproject.toml`, `uv.lock`, `.venv`, `requirements.txt`, `installed-demo/`, `resolution-demo/`, and `local-helper/` from this workspace; keep unrelated work elsewhere. Dependency downloads, including a GitHub dependency, require network access.
