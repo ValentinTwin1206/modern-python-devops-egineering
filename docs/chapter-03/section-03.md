@@ -1,6 +1,6 @@
 # Dependency Caching with uv
 
-`uv` caches package metadata, downloaded wheels, and wheels built from source. A project environment (`.venv`) is normally beside `pyproject.toml`; it is **not** the package cache. The [Bob Follows the Cache notebook](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/uv_cache_lab.ipynb) runs the same experiments as this section. Run the commands below from `/workspace` in the [lab's Dev Container](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/README.md), in order. A first run needs network access.
+`uv` caches package metadata, downloaded wheels, and wheels built from source. A project environment (`.venv`) is normally beside `pyproject.toml`; it is **not** the package cache. The [Bob Follows the Cache notebook](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/uv_cache_lab.ipynb) runs the same experiments as this section. Run the commands below from `/workspace` in the [lab's Dev Container](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/README.md), in order. A first run needs network access.
 
 ## Applied Lab
 

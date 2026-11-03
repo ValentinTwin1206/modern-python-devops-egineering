@@ -7,7 +7,7 @@ on:
     branches:
       - main
     paths:
-      - "notebooks/uv_cache_lab/**"
+      - "notebooks/nb5_uv_cache_lab/**"
       - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
@@ -15,6 +15,16 @@ on:
         description: "Skip uv cache restoration for a cold installation"
         type: boolean
         default: false
+      fixture_size_mib:
+        description: "Embedding matrix size (MiB)"
+        type: choice
+        default: "256"
+        options:
+          - "16"
+          - "64"
+          - "256"
+          - "512"
+          - "1024"
 
 permissions:
   contents: read
@@ -24,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.cold_cache }}
+      FIXTURE_SIZE_MIB: ${{ inputs.fixture_size_mib || '256' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,11 +47,9 @@ jobs:
       # Generate before hashing: both the metadata and binary enter both keys.
       # Keep the project's content fingerprint for uv's local wheel cache.
       - name: Generate fixture and fingerprint build inputs
-        env:
-          FIXTURE_SIZE_MIB: "256"
         run: |
-          python notebooks/uv_cache_lab/scripts/generate_fixture.py --size "$FIXTURE_SIZE_MIB"
-          build_key=$(python notebooks/uv_cache_lab/scripts/build_key.py)
+          python notebooks/nb5_uv_cache_lab/scripts/generate_fixture.py --size "$FIXTURE_SIZE_MIB"
+          build_key=$(python notebooks/nb5_uv_cache_lab/scripts/build_key.py)
           echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
       - name: Set up uv and optionally restore its package cache
@@ -53,12 +62,12 @@ jobs:
           save-cache: ${{ env.COLD_CACHE == 'true' && 'false' || 'auto' }}
           prune-cache: true
           cache-dependency-glob: |
-            notebooks/uv_cache_lab/pyproject.toml
-            notebooks/uv_cache_lab/uv.lock
-            notebooks/uv_cache_lab/scripts/*.py
-            notebooks/uv_cache_lab/src/**/*.py
-            notebooks/uv_cache_lab/src/**/*.json
-            notebooks/uv_cache_lab/src/**/*.bin
+            notebooks/nb5_uv_cache_lab/pyproject.toml
+            notebooks/nb5_uv_cache_lab/uv.lock
+            notebooks/nb5_uv_cache_lab/scripts/*.py
+            notebooks/nb5_uv_cache_lab/src/**/*.py
+            notebooks/nb5_uv_cache_lab/src/**/*.json
+            notebooks/nb5_uv_cache_lab/src/**/*.bin
 
       - name: Measure restored package cache size
         run: |
@@ -75,7 +84,7 @@ jobs:
         run: |
           start_ms=$(date +%s%3N)
           uv sync \
-            --directory notebooks/uv_cache_lab \
+            --directory notebooks/nb5_uv_cache_lab \
             --locked \
             --no-editable \
             --python 3.12
@@ -84,7 +93,7 @@ jobs:
 
       - name: Analyze the installed embeddings and generate a report
         run: |
-          notebooks/uv_cache_lab/.venv/bin/python -m uv_cache_demo.main \
+          notebooks/nb5_uv_cache_lab/.venv/bin/python -m uv_cache_demo.main \
             --output "${{ runner.temp }}/embeddings.png"
 
       - name: Show cache and installation time
@@ -101,6 +110,7 @@ jobs:
             echo ''
             echo '| Measurement | Result |'
             echo '| --- | --- |'
+            echo "| Embedding matrix size | ${FIXTURE_SIZE_MIB} MiB |"
             echo "| setup-uv cache restoration | $RESTORE_STATUS |"
             echo "| Cold-cache experiment requested | $COLD_CACHE |"
             echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"

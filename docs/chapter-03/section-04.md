@@ -10,7 +10,7 @@ This table lists the workflow and project files used in the examples.
 | --- | --- |
 | [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) | GitHub Actions workflow that compares an *empty cache* against a *CI-pruned cache* and records install time and local cache size. |
 | [`.github/workflows/uv-cache-compare.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache-compare.yml) | Manually run comparison workflow that retains downloaded prebuilt wheels and records install time and local cache size. |
-| [`notebooks/uv_cache_lab/pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/pyproject.toml) and [`uv.lock`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/uv_cache_lab/uv.lock) | Define the package build configuration and locked dependencies installed by the workflow. |
+| [`notebooks/nb5_uv_cache_lab/pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/pyproject.toml) and [`uv.lock`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/uv.lock) | Define the package build configuration and locked dependencies installed by the workflow. |
 
 ## GitHub Actions Caching Pattern
 
@@ -81,7 +81,7 @@ on:
     branches:
       - main
     paths:
-      - "notebooks/uv_cache_lab/**"
+      - "notebooks/nb5_uv_cache_lab/**"
       - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
@@ -117,12 +117,12 @@ After a successful job, the [post-action](https://github.com/astral-sh/setup-uv/
     save-cache: ${{ env.COLD_CACHE == 'true' && 'false' || 'auto' }}
     prune-cache: true
     cache-dependency-glob: |
-      notebooks/uv_cache_lab/pyproject.toml
-      notebooks/uv_cache_lab/uv.lock
-      notebooks/uv_cache_lab/scripts/*.py
-      notebooks/uv_cache_lab/src/**/*.py
-      notebooks/uv_cache_lab/src/**/*.json
-      notebooks/uv_cache_lab/src/**/*.bin
+      notebooks/nb5_uv_cache_lab/pyproject.toml
+      notebooks/nb5_uv_cache_lab/uv.lock
+      notebooks/nb5_uv_cache_lab/scripts/*.py
+      notebooks/nb5_uv_cache_lab/src/**/*.py
+      notebooks/nb5_uv_cache_lab/src/**/*.json
+      notebooks/nb5_uv_cache_lab/src/**/*.bin
 ```
 
 **Inputs**: (*excerpt*)
@@ -178,7 +178,7 @@ Earlier, the workflow generates a 0.25 GiB (256 MiB) synthetic embedding matrix 
   run: |
     start_ms=$(date +%s%3N)
     uv sync \
-      --directory notebooks/uv_cache_lab \
+      --directory notebooks/nb5_uv_cache_lab \
       --locked \
       --no-editable \
       --python 3.12

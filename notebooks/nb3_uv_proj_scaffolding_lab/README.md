@@ -21,12 +21,12 @@ After Alice implements the components of her IrisLab project, Bob feels overlook
 ## Documentation
 
 - [Chapter 03, Section 01: Project Scaffolding with uv](../../docs/chapter-03/section-01.md)
-- [Open the notebook](./uv_proj_scaffolding_lab.ipynb); follow [The Isolation Awakens](../python_venv_lab/python_venv_lab.ipynb) and continue with [Bob Discovers the Force of uv](../uv_dependency_lab/uv_dependency_lab.ipynb).
+- [Open the notebook](./uv_proj_scaffolding_lab.ipynb); follow [The Isolation Awakens](../nb2_python_venv_lab/python_venv_lab.ipynb) and continue with [Bob Discovers the Force of uv](../nb4_uv_dependency_lab/uv_dependency_lab.ipynb).
 
 ## Run The Lab
 
 1. Install Docker, VS Code, and the VS Code Dev Containers extension.
-2. Open `notebooks/uv_proj_scaffolding_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
+2. Open `notebooks/nb3_uv_proj_scaffolding_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
 3. Open `uv_proj_scaffolding_lab.ipynb`, select the **Python 3 - uv Project Scaffolding** kernel, and run the cells in order.
 
 The first setup cell resets the ignored `lab/` directory containing the generated workspace. Interpreter, dependency, and build-backend downloads require network access. Publishing is explained but not executed.

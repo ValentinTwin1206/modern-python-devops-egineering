@@ -21,12 +21,12 @@ Alice and Bob work together at the same company. Alice is a young and smart soft
 ## Documentation
 
 - [Chapter 01, Section 01: Python System Environment](../../docs/chapter-01/section-01.md)
-- [Open the notebook](./python_system_lab.ipynb); continue with [The Isolation Awakens](../python_venv_lab/python_venv_lab.ipynb).
+- [Open the notebook](./python_system_lab.ipynb); continue with [The Isolation Awakens](../nb2_python_venv_lab/python_venv_lab.ipynb).
 
 ## Run The Lab
 
 1. Install Docker, VS Code, and the VS Code Dev Containers extension.
-2. Open `notebooks/python_system_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
+2. Open `notebooks/nb1_python_system_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
 3. Open `python_system_lab.ipynb`, select the **Python 3 - System Lab** kernel, and run the cells in order.
 
 Use a fresh container for the full experiment. Ubuntu 24.04 supplies Python 3.12, Jupyter, and both user accounts; package installations require network access. The system and user stages use `--break-system-packages` to override Ubuntu's externally managed Python protection inside this disposable container.
