@@ -15,7 +15,7 @@ on:
         description: "Skip uv cache restoration for a cold installation"
         type: boolean
         default: false
-      fixture_size_mib:
+      fixture_size:
         description: "Embedding matrix size (MiB)"
         type: choice
         default: "256"
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.cold_cache }}
-      FIXTURE_SIZE_MIB: ${{ inputs.fixture_size_mib || '256' }}
+      fixture_size: ${{ inputs.fixture_size || '256' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
       # Keep the project's content fingerprint for uv's local wheel cache.
       - name: Generate fixture and fingerprint build inputs
         run: |
-          python notebooks/nb5_uv_cache_lab/scripts/generate_fixture.py --size "$FIXTURE_SIZE_MIB"
+          python notebooks/nb5_uv_cache_lab/scripts/generate_fixture.py --size "$fixture_size"
           build_key=$(python notebooks/nb5_uv_cache_lab/scripts/build_key.py)
           echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
@@ -110,7 +110,7 @@ jobs:
             echo ''
             echo '| Measurement | Result |'
             echo '| --- | --- |'
-            echo "| Embedding matrix size | ${FIXTURE_SIZE_MIB} MiB |"
+            echo "| Embedding matrix size | ${fixture_size} MiB |"
             echo "| setup-uv cache restoration | $RESTORE_STATUS |"
             echo "| Cold-cache experiment requested | $COLD_CACHE |"
             echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"

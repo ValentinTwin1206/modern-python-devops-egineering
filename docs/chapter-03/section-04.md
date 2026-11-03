@@ -24,19 +24,20 @@ GitHub Actions provides an [***Integrated Cache Service***](https://docs.github.
 
 ### Hosted Runner Cache Lifecycle
 
-GitHub Actions offers long-lived self-hosted ***Persistent Runners*** and temporary ***(GitHub) Hosted Runners***. Hosted runners can reuse remote caches by restoring an archive at job start, using it during installs or builds, and saving an updated archive after success. Cache keys combine environment and project inputs; exact-key hits need no save because entries are immutable. Caches expire after seven days without access or sooner under storage pressure, and runs can generally restore caches only from their current or default branch ([retention](https://docs.github.com/en/actions/reference/dependency-caching-reference#usage-limits-and-eviction-policy) and [access rules](https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache)). Use the same branch and revision for manual comparisons. After a cache miss, prune local data before saving. To test a cold cache, clear the runner's restored copy without deleting the remote archive. The chart shows this workflow.
+GitHub Actions offers long-lived self-hosted ***Persistent Runners*** and temporary ***(GitHub) Hosted Runners***. Hosted runners can reuse remote caches by restoring an archive at job start, using it during installs or builds, and saving an updated archive after success. Cache keys combine environment and project inputs; exact-key hits need no save because entries are immutable. Caches expire after seven days without access or sooner under storage pressure, and runs can generally restore caches only from their current or default branch ([retention](https://docs.github.com/en/actions/reference/dependency-caching-reference#usage-limits-and-eviction-policy) and [access rules](https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache)). Use the same branch and revision for manual comparisons. After a cache miss, optionally prune local data before saving. A cold test skips restoration and saving without deleting the remote archive. The chart shows this workflow.
 
 ```mermaid
 flowchart TD
-    setup["Prepare hosted runner and project"] --> restore["Restore cache or start without one"]
-    restore --> cold{"Cold-cache test requested?"}
-    cold -->|Yes| clear["Clear only the restored local cache"]
-    cold -->|No| install["Install dependencies and build project"]
-    clear --> install
+    setup["Prepare hosted runner and project"] --> cold{"Cold-cache test requested?"}
+    cold -->|Yes| install["Install dependencies and build project"]
+    cold -->|No| restore["Restore cache or start without one"]
+    restore --> install
     install --> run["Run workflow tasks and collect results"]
     run --> success{"Job successful?"}
     success -->|No| done["Finish without saving cache"]
-    success -->|Yes| hit{"Exact cache-key hit?"}
+    success -->|Yes| saveenabled{"Saving enabled?"}
+    saveenabled -->|No| done
+    saveenabled -->|Yes| hit{"Exact cache-key hit?"}
     hit -->|Yes| skip["Keep existing archive; skip saving"]
     hit -->|No| prune["Optionally prune local cache data"]
     prune --> save["Save archive for a future run"]
@@ -71,7 +72,7 @@ flowchart LR
 
 #### Analysis Job and Steps
 
-The `analyze-embeddings` job checks out the repository and sets up Python 3.12. It then generates a synthetic embedding matrix, fingerprints the project's build inputs, and installs `uv` with optional package-cache restoration. After recording the pre-install cache size, it creates a fresh environment from the lockfile and times `uv sync`. Finally, it analyzes the installed embeddings and summarizes cache sizes, restoration status, and installation time. The YAML below shows the workflow triggers and job configuration.
+The `analyze-embeddings` job checks out the repository and sets up Python 3.12. The manual `fixture_size` choice selects a 16, 64, 256, 512, or 1024 MiB synthetic embedding matrix; it defaults to 256 MiB, as do push-triggered runs. The job generates the matrix, fingerprints the project's build inputs, and installs `uv` with optional package-cache restoration. After recording the pre-install cache size, it creates a fresh environment from the lockfile and times `uv sync`. Finally, it analyzes the installed embeddings and summarizes the selected size, cache sizes, restoration status, and installation time. The YAML below shows the workflow triggers and job configuration.
 
 ```yaml
 name: uv cache demo
@@ -86,9 +87,19 @@ on:
   workflow_dispatch:
     inputs:
       cold_cache:
-        description: "Skip uv cache restoration and saving for a cold installation"
+        description: "Skip uv cache restoration for a cold installation"
         type: boolean
         default: false
+      fixture_size:
+        description: "Embedding matrix size (MiB)"
+        type: choice
+        default: "256"
+        options:
+          - "16"
+          - "64"
+          - "256"
+          - "512"
+          - "1024"
 
 permissions:
   contents: read
@@ -98,6 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.cold_cache }}
+      fixture_size: ${{ inputs.fixture_size || '256' }}
 ```
 
 ### Step: Set up uv and Optionally Restore its Package Cache
@@ -149,7 +161,7 @@ After a successful job, the [post-action](https://github.com/astral-sh/setup-uv/
 
 ### Step: Measure Restored Package Cache Size
 
-Before installing dependencies, the workflow measures the package cache available on the runner so the report shows what was ready for reuse. It records the size in bytes and a readable unit such as MiB or GiB. It then exposes both values to *GitHub Outputs* so [final step](#step-show-cache-and-installation-time) can reuse them.
+Before installing dependencies, the workflow measures the package cache available on the runner so the report shows what was ready for reuse. It records the size in bytes and a readable unit such as MiB or GiB. It then exposes both values through `GITHUB_ENV` so the [final step](#step-show-cache-and-installation-time) can reuse them.
 
 ```yaml
 - name: Measure restored package cache size
@@ -169,7 +181,7 @@ As explained above, *GitHub Actions* can restore a remote package cache on a fre
 cache-keys = [{ env = "CACHE_DEMO_KEY" }]
 ```
 
-Earlier, the workflow generates a 0.25 GiB (256 MiB) synthetic embedding matrix and exposes a fingerprint of the build inputs as `CACHE_DEMO_KEY`. With Python 3.12, `uv sync` creates the `.venv` and uses `--locked` to follow the committed `uv.lock` (and fail if it needs updating). The `--no-editable` option installs a regular project wheel containing the matrix rather than linking the source; the fingerprint lets `uv` reuse a cached wheel or rebuild it when inputs change. The step exposes the `uv sync` duration in milliseconds as `milliseconds` through *GitHub Outputs*, excluding fixture generation, cache transfers, pruning, and report execution.
+Earlier, the workflow generates a synthetic embedding matrix of the selected size (256 MiB by default) and exposes a fingerprint of the build inputs as `CACHE_DEMO_KEY`. With Python 3.12, `uv sync` creates the `.venv` and uses `--locked` to follow the committed `uv.lock` (and fail if it needs updating). The `--no-editable` option installs a regular project wheel containing the matrix rather than linking the source; the fingerprint lets `uv` reuse a cached wheel or rebuild it when inputs change. The step exposes the `uv sync` duration in milliseconds as `milliseconds` through *GitHub Outputs*, excluding fixture generation, cache transfers, pruning, and report execution.
 
 ```yaml
 - name: Create a fresh environment from locked dependencies
@@ -203,8 +215,9 @@ The final job summary shows whether a cache was restored, whether a cold-cache e
     {
       echo '## uv cache demo'
       echo ''
-      echo '| Measurement | Result |'
-      echo '| --- | --- |'
+            echo '| Measurement | Result |'
+            echo '| --- | --- |'
+            echo "| Embedding matrix size | ${fixture_size} MiB |"
       echo "| setup-uv cache restoration | $RESTORE_STATUS |"
       echo "| Cold-cache experiment requested | $COLD_CACHE |"
       echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"
@@ -227,62 +240,47 @@ To test `uv`'s caching guidance in a CI environment, the workflows `uv-cache.yml
 - ***Complete Cache***: Retains (downloaded) *Prebuilt Wheels*.
 - ***Empty Cache***: Starts without a restored package cache. 
 
-Comparing both timings shows whether faster installation offsets the time spent transferring the cache. Run the workflows from the **Actions** tab on the same `main` revision, waiting for each run to succeed before starting the next. Confirm that both warm measurement runs report a restored cache, and repeat measurements with unchanged inputs before generalizing:
+Comparing both timings shows whether faster installation offsets the time spent transferring the cache. For each of the five matrix size choices, run the workflows from the **Actions** tab on the same `main` revision, waiting for each run to finish before starting the next. The input is named `fixture_size` in **uv cache demo** and `fixture_size_mib` in **uv full cache demo**:
 
-1. Run **uv cache demo** with `cold_cache` set to `false` to populate the CI-pruned cache.
-2. Run **uv full cache demo** to populate the complete cache.
-3. Run **uv cache demo** again with `cold_cache` set to `false` to measure the CI-pruned cache.
-4. Run **uv full cache demo** again to measure the complete cache.
-5. Run **uv cache demo** with `cold_cache` set to `true` to measure the empty-cache baseline.
+1. Run **uv cache demo** with `cold_cache: false` to populate the CI-pruned cache for that size.
+2. Run **uv full cache demo** to populate the complete cache for that size. The same size choice is available in both workflows.
+3. Measure three runs for each strategy: **uv cache demo** with `cold_cache: true` for the empty baseline, **uv cache demo** with `cold_cache: false` for the CI-pruned cache, and **uv full cache demo** for the complete cache. Interleave the strategies and rotate their order between repetitions.
+4. Confirm that each measured warm run reports `Restored`, that its `uv sync` log does not rebuild `uv-cache-demo`, and that each cold run reports `Skipped`. Exclude failed, missed-cache, or rebuilt-project warm runs, repopulate if needed, and repeat them. Verify the same revision and size for every run.
+
+This gives 45 measurement runs, plus up to 10 cache-population runs. Each matrix size changes the generated build inputs and therefore the cache key. Cache entries can be evicted under storage pressure, so verify restoration for every warm measurement.
+
+Record each run link, total job duration, `uv sync` duration, and restored local cache size. Total job duration runs from the job's start to completion, including post-actions but excluding queue time; `uv sync` excludes cache transfers and the rest of the job. The matrix is intentionally difficult to compress, so its size is a useful proxy for the source-built wheel's size, but it is not a measurement of the wheel itself. Generation and analysis also grow with matrix size and are included in total duration.
+
+### Results
+
+The following measurements were taken on GitHub-hosted Ubuntu runners using Python 3.12 and `uv` 0.11.1 at revision [`83cd32e`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/commit/83cd32ea44bffdecd298463261b457af570d772d), where both workflows named the size input `fixture_size_mib`. Each point is the median of three successful runs; error bars show the minimum and maximum. Lines connect the observed sizes and are not predictions for other sizes.
+
+![Total job duration versus embedding matrix size for the cold, CI-pruned, and complete cache strategies, showing medians and ranges](../assets/images/chapter-03/uv-cache-job-duration.svg)
+
+The table gives median job duration with its range, median `uv sync` duration, and median restored local cache size. Job durations use the GitHub jobs API's start and completion timestamps, with one-second resolution. Cache sizes are uncompressed local files before `uv sync`, not the compressed remote archives; the cold cache contained approximately 1.4 KiB and rounds to 0.00 MiB. The numbered links lead to the individual measured runs.
+
+| Matrix (MiB) | Cache strategy | Job, median (range), s | `uv sync`, median, s | Restored cache, median, MiB | Runs |
+| ---: | --- | ---: | ---: | ---: | --- |
+| 16 | Cold | 17 (16–19) | 1.784 | 0.00 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587076794), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587301976), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587396124) |
+| 16 | CI-pruned | 17 (16–19) | 1.759 | 16.01 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587117843), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587208503), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587443787) |
+| 16 | Complete | 16 (15–22) | 0.102 | 444.31 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587161932), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587256827), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587343861) |
+| 64 | Cold | 19 (16–20) | 1.736 | 0.00 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587588912), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587863268), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587984503) |
+| 64 | CI-pruned | 22 (16–25) | 1.727 | 64.03 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587638482), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587753548), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588026558) |
+| 64 | Complete | 20 (17–21) | 0.109 | 540.32 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587700856), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587815095), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41587915906) |
+| 256 | Cold | 22 (22–25) | 6.684 | 0.00 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588197126), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588488965), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588810339) |
+| 256 | CI-pruned | 24 (17–24) | 1.578 | 256.09 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588547744), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588676917), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588934152) |
+| 256 | Complete | 26 (18–28) | 0.096 | 924.38 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588607935), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588743582), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41588870322) |
+| 512 | Cold | 33 (25–34) | 10.883 | 0.00 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589180424), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589521904), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589678232) |
+| 512 | CI-pruned | 24 (23–31) | 1.791 | 512.16 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589262117), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589387869), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589753895) |
+| 512 | Complete | 30 (28–34) | 0.116 | 1436.46 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589319569), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589448088), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41589604213) |
+| 1024 | Cold | 53 (44–53) | 26.213 | 0.00 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41590062409), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592790887), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592996341) |
+| 1024 | CI-pruned | 35 (34–40) | 2.996 | 1024.32 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592412779), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592604202), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41593095918) |
+| 1024 | Complete | 46 (41–46) | 0.259 | 2460.61 | [1](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592493754), [2](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592694522), [3](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/41592902726) |
+
+The two pre-existing 256 MiB cache archives were populated before the project directory was renamed. Although GitHub restored them, `uv` rebuilt the local project. They were refreshed before the warm measurements; the warm run logs were checked for project rebuilds as well as cache restoration. Cache-population runs are excluded from the table. At 256 MiB, one valid cold measurement was taken before the refresh and two afterward.
 
 ### Conclusion
 
-**The CI-optimized warm cache had the shortest job duration in these runs.** It completed in 16 s, compared with 30 s for full cache and 23 s for the cold baseline. Its restored local cache was 257 MiB rather than 925 MiB, approximately 72% smaller than full cache. It also reduced `uv sync` time from 6.507 s for cold to 1.241 s, an 81% reduction. Full cache achieved the fastest installation at 0.100 s, but that advantage did not translate into the shortest overall job.
+At 1024 MiB, the CI-pruned cache had the lowest median job duration: **35 s**, compared with **46 s** for the complete cache and **53 s** cold. Although the complete cache had the fastest median `uv sync` at **0.259 s**, it restored roughly **2,461 MiB** of local cache versus **1,024 MiB** for the CI-pruned cache. At 512 MiB, the CI-pruned median was also lowest; at smaller sizes the rankings varied and the observed ranges overlapped.
 
-| Cache Strategy | Workflow | Run | Cache Size (before sync) | `uv sync` (duration) | Total Job (duration) |
-| --- | --- | --- | --- | --- | --- |
-| CI-Pruned Cache | `uv-cache.yml` | [40477587054](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477587054) | 257 MiB | 1.241 s | 16 s |
-| Complete Cache | `uv-cache-compare.yml` | [40477673592](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477673592) | 925 MiB | 0.100 s | 30 s |
-| Empty Cache | `uv-cache.yml` | [40477788176](https://github.com/ValentinTwin1206/modern-python-devops-egineering/actions/runs/40477788176) | 1.4 KiB | 6.507 s | 23 s |
-
-> Cache sizes describe the uncompressed local cache before `uv sync`, not the compressed archives transferred by GitHub Actions.
-
-The charts show one run per cache strategy. Total job duration includes all steps and post-actions but excludes queue time; lower durations are better.
-
-=== "Job and Installation Duration"
-
-    The orange `uv sync` bar overlays part of the blue total-job bar because installation is included in the job duration.
-
-    ```mermaid
-    %%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#3569a8, #e98a15"}}}}%%
-    xychart-beta
-        title "Observed Job and Installation Duration (Lower Is Better)"
-        x-axis ["CI-Pruned Cache", "Complete Cache", "Empty Cache"]
-        y-axis "Duration (seconds)" 0 --> 35
-        bar [16, 30, 23]
-        bar [1.241, 0.100, 6.507]
-    ```
-
-=== "Cache Size and Duration"
-
-    The horizontal axis ranges from 0 to 7 seconds for `uv sync`; the vertical axis ranges from 0 to 35 seconds for the total job. Bubble area is approximately proportional to cache size, except the empty cache uses a minimum visible radius.
-
-    ```mermaid
-    quadrantChart
-        title Cache Size vs. Duration
-        x-axis "Fast uv sync" --> "Slow uv sync"
-        y-axis "Short job" --> "Long job"
-        quadrant-1 "Slow install, slow job"
-        quadrant-2 "Fast install, slow job"
-        quadrant-3 "Fast install, fast job"
-        quadrant-4 "Slow install, fast job"
-        "Complete Cache (925 MiB)": [0.0143, 0.8571] radius: 30, color: #e98a15
-        "CI-Pruned Cache (257 MiB)": [0.1773, 0.4571] radius: 16, color: #3569a8
-        "Empty Cache (1.4 KiB)": [0.9296, 0.6571] radius: 2, color: #888888
-    ```
-
-!!! tip "Takeaways"
-
-    - Faster installation does not guarantee a faster job: Full cache saved another 1.141 s during `uv sync` but restored 668 MiB more local cache data.
-    - These observations align with [Astral's CI caching strategy](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration): Retain costly source-built wheels rather than prebuilt wheels that download quickly.
-    - These measurements come from one run per condition, not a rigorous study, so they do not prove which strategy is best for every project. Results depend on the project's dependencies and build costs. Setup and report-generation times also varied, and neither warm run saved a cache. Repeat the comparison for your own project before drawing conclusions.
+These results illustrate the trade-off in [Astral's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration): avoiding builds can help, but restoring more cache can offset a faster install. Three runs per condition are a small sample, and runner, download, cache-transfer, generation, and analysis times vary. Warm measurements used existing archives and did not save new ones; the cold baseline skips both restoration and saving. Repeat the experiment with your own dependencies and CI workload before generalizing.
