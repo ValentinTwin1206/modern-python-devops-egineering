@@ -157,9 +157,8 @@ def get_license() -> LicenseResponse:
         raise HTTPException(status_code=404, detail="No active license token")
     
     logger.info(
-        "Returning stored license: user=%s slug_perm=%s expires_at=%s",
+        "Returning stored license: user=%s expires_at=%s",
         license_row["user"],
-        license_row["cloudsmith_token_slug_perm"],
         license_row["expires_at"],
     )
     
@@ -257,6 +256,7 @@ def main():
         app,
         host="0.0.0.0",
         port=8080,
+        access_log=False,
     )
 
 

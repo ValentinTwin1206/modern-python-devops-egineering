@@ -3,13 +3,16 @@
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
+  "postCreateCommand": "npm ci",
   "runServices": [
     "backend",
     "frontend",
     "devcontainer",
     "keycloak",
     "influxdb",
-    "grafana"
+    "grafana",
+    "alloy",
+    "loki"
   ],
   "customizations": {
     "vscode": {

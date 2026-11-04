@@ -2,11 +2,15 @@
 
 import os
 import logging
+import time
 
 from fastapi import Request as FastAPIRequest, responses
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
-from pyguard import PyGuardMiddleware, Request, RequestBlocked
+
+# PyGuard integration for request security and brute-force protection
+from pyguard       import PyGuard, RequestBlocked
+from pyguard.rules import PathTraversal, BruteForce
 
 from .helpers import TokenError, validate_bearer_token
 
@@ -21,21 +25,14 @@ def is_jwt_protected(request: FastAPIRequest) -> bool:
     )
 
 
+def _safe_request_path(path: str) -> str:
+    prefix = "/licenses/"
+    token = path[len(prefix):] if path.startswith(prefix) else ""
+    return f"{prefix}{{token}}" if token and "/" not in token else path
+
+
 # ========================================
-# Create PyGuardMiddleware and InfluxDB metrics writer for the FastAPI application.
-
-def _create_guard() -> PyGuardMiddleware:
-    """Creates the PyGuardMiddleware instance with the specified configuration."""
-    return PyGuardMiddleware(
-        protected_paths=PROTECTED_PATHS, 
-        brute_force_config={
-            "max_attempts": int(os.getenv("PYGUARD_MAX_ATTEMPTS", 5)),
-            "window_seconds": int(os.getenv("PYGUARD_WINDOW_SECONDS", 60)),
-            "block_seconds": int(os.getenv("PYGUARD_BLOCK_SECONDS", 300)),
-        },
-    )
-
-
+# Create InfluxDB metrics writer for the FastAPI application.
 def _create_metrics_writer() -> tuple[InfluxDBClient, any] | None:
     """Create the InfluxDB writer when monitoring is configured."""
 
@@ -63,49 +60,76 @@ def configure_middleware(app) -> None:
     """
     
     # instantiate the PyGuardMiddleware and InfluxDB metrics writer
-    guard = _create_guard()
-    metrics = _create_metrics_writer()
+    guard = PyGuard(
+        rules=[
+            PathTraversal(),
+            BruteForce(
+                paths=["/licenses"],
+                max_attempts=5,
+                window=60,
+                block_duration=300
+            )
+        ]
+    )
+
     app.state.guard = guard
+
+    metrics = _create_metrics_writer()
     app.state.metrics = metrics
+
 
     @app.middleware("http")
     async def security_middleware(request: FastAPIRequest, call_next):
         """
-        Security middleware that runs PyGuard before the request reaches the API endpoint.
-        
-        :param request: The incoming HTTP request.
-        :type request: FastAPIRequest
-        :param call_next: The next request handler in the middleware chain.
-        :type call_next: Callable[[FastAPIRequest], Response]
+        Security middleware that runs PyGuard before the request
+        reaches the API endpoint.
         """
 
-        # Run PyGuard before the request reaches the API endpoint.
         guard = request.app.state.guard
-        guard_request = Request(
+
+        client_ip = request.client.host if request.client else "unknown"
+        safe_path = _safe_request_path(request.url.path)
+
+        guard_request = PyGuard.Request(
             method=request.method,
             path=request.url.path,
             query=request.url.query,
-            source=request.client.host,
+            source=client_ip,
         )
+
         logger.info(
             "Request: %s %s from %s",
             request.method,
-            request.url.path,
-            request.client.host,
+            safe_path,
+            client_ip,
         )
+
         try:
-            guard.before_request(guard_request)
+            guard.check(guard_request)
+
         except RequestBlocked as exc:
-            logger.warning("Request blocked: %s | reason=%s", request.url.path, str(exc))
-            return responses.JSONResponse(status_code=429, content={"detail": str(exc)})
+            logger.warning(
+                "Request blocked: %s | reason=%s",
+                safe_path,
+                str(exc),
+            )
+
+            return responses.JSONResponse(
+                status_code=429,
+                content={"detail": str(exc)},
+            )
+
         response = await call_next(request)
+
         logger.info(
             "Response: %s %s -> %s",
             request.method,
-            request.url.path,
+            safe_path,
             response.status_code,
         )
+
         return response
+
 
     @app.middleware("http")
     async def jwt_auth_middleware(request: FastAPIRequest, call_next):
@@ -136,20 +160,25 @@ def configure_middleware(app) -> None:
 
     @app.middleware("http")
     async def metrics_middleware(request: FastAPIRequest, call_next):
-        """Record each API path and its HTTP status in InfluxDB."""
+        """Record request status and latency in InfluxDB."""
+        started_at = time.perf_counter()
         try:
             response = await call_next(request)
         except Exception:
             # Exceptions do not produce a Response object, so record them as
             # failed requests before allowing the exception to propagate.
-            await _write_metric(request, 500)
+            duration_ms = (time.perf_counter() - started_at) * 1000
+            await _write_metric(request, 500, duration_ms)
             raise
 
         # Write after the endpoint completes to capture its actual status code.
-        await _write_metric(request, response.status_code)
+        duration_ms = (time.perf_counter() - started_at) * 1000
+        await _write_metric(request, response.status_code, duration_ms)
         return response
 
-    async def _write_metric(request: FastAPIRequest, status_code: int) -> None:
+    async def _write_metric(
+        request: FastAPIRequest, status_code: int, duration_ms: float
+    ) -> None:
         """Write one API request metric to InfluxDB."""
         if app.state.metrics is None:
             return
@@ -163,21 +192,24 @@ def configure_middleware(app) -> None:
         # The service is accessed directly, so the peer address is the
         # requester address available to FastAPI.
         client_ip = request.client.host if request.client is not None else "unknown"
+        safe_path = _safe_request_path(request.url.path)
 
         point = (
             Point("api_requests")
             .tag("method", request.method)
-            .tag("endpoint", request.url.path)
+            .tag("endpoint", safe_path)
             .tag("client_ip", client_ip)
             .field("status_code", status_code)
+            .field("duration_ms", duration_ms)
         )
         try:
             logger.info(
-                "Writing API metric: method=%s endpoint=%s client_ip=%s status_code=%s",
+                "Writing API metric: method=%s endpoint=%s client_ip=%s status_code=%s duration_ms=%.2f",
                 request.method,
-                request.url.path,
+                safe_path,
                 client_ip,
                 status_code,
+                duration_ms,
             )
             write_api.write(
                 bucket=os.getenv("INFLUXDB_BUCKET", "api_metrics"),

@@ -225,7 +225,7 @@ class CloudsmithClient:
         )
 
         if not isinstance(response, dict):
-            logger.warning("Cloudsmith entitlement request returned an invalid response: %s", response)
+            logger.warning("Cloudsmith entitlement request returned an invalid response")
             raise CloudsmithConfigurationError(
                 "Cloudsmith returned an invalid entitlement response"
             )
@@ -246,7 +246,7 @@ class CloudsmithClient:
 
     def _request(self, method: str, url: str, **kwargs) -> dict:
         """Make a request to the Cloudsmith API and return the JSON response."""
-        logger.info("Cloudsmith request started: method=%s url=%s", method, url)
+        logger.info("Cloudsmith request started: method=%s", method)
         try:
             response = requests.request(
                 method,
@@ -277,11 +277,10 @@ class CloudsmithClient:
         except (requests.RequestException, ValueError) as exc:
             status = getattr(locals().get("response"), "status_code", None)
             logger.error(
-                "Cloudsmith %s request failed: url=%s status=%s error=%s",
+                "Cloudsmith %s request failed: status=%s error_type=%s",
                 method,
-                url,
                 status or "n/a",
-                exc,
+                type(exc).__name__,
             )
             raise CloudsmithConfigurationError("Cloudsmith request failed") from exc
 

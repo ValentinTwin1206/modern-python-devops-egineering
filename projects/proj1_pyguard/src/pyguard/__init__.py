@@ -6,12 +6,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pyguard")
 
-from .middleware import PyGuardMiddleware
-from .models     import Request, ScanResult
-from .exceptions import RequestBlocked
+# must be imported after logger is configured because rules.py uses logger
+from .engine import PyGuard, RequestBlocked
 
-__all__ = ["PyGuardMiddleware",
-           "Request",
-           "ScanResult",
-           "RequestBlocked",
-           ]
+# Define the public API of the package
+__all__ = ["PyGuard", "RequestBlocked"]
