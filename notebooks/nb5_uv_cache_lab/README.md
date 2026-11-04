@@ -23,7 +23,7 @@ After learning to scaffold projects and manage their dependencies with `uv`, Bob
 
 - [Chapter 03, Section 03: Dependency Caching with uv](../../docs/chapter-03/section-03.md)
 - [Chapter 03, Section 04: Using uv's cache in CI](../../docs/chapter-03/section-04.md) and the [CI workflow](../../.github/workflows/uv-cache.yml).
-- [Open the notebook](./uv_cache_lab.ipynb); follow [Bob Discovers the Force of uv](../nb4_uv_dependency_lab/uv_dependency_lab.ipynb).
+- [Open the notebook](./uv_cache_lab.ipynb); follow [Bob Discovers the Force of uv](../nb4_uv_dependency_lab/uv_dependency_lab.ipynb) and continue with [Return of the Admin: Bob Brings Balance to uv](../nb6_uv_extra_features/uv_extra_features.ipynb).
 
 ## Run The Lab
 
