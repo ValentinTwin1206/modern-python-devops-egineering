@@ -4,8 +4,8 @@ from pydantic import BaseModel
 class Request(BaseModel):
     method: str
     path: str
-    query: str = ""
-    body: str = ""
+    query: str  = ""
+    body: str   = ""
     source: str = ""
 
 

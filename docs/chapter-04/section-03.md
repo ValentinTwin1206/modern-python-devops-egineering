@@ -11,8 +11,9 @@ flowchart LR
 		F --> A["Backend"]
 		A --> INFLUXDB["InfluxDB"]
 		INFLUXDB --> GRAFANA["Grafana"]
-		A --> C["Cloudsmith API"]
-		A --> D["Database"]
+    A -->|logs| ALLOY["Grafana Alloy"]
+    ALLOY --> LOKI["Loki"]
+    LOKI --> GRAFANA
 		subgraph DEVCONTAINER["Dev Container"]
 			PW["Playwright"]
 			ART["Artillery"]

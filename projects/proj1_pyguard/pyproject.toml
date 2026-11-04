@@ -7,7 +7,7 @@ name = "pyguard"
 version = "0.1.0"
 description = "Lightweight security middleware for Python web applications."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     { name = "Julius Pravtchev" },

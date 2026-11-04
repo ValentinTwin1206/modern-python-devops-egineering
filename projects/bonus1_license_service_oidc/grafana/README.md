@@ -4,7 +4,10 @@ Grafana is used to visualize the collected API metrics of the used Influx Databa
 
 ## Table of contents
 - [Configure Grafana](#configure-grafana)
+  - [Connect InfluxDB](#connect-influxdb)
+  - [Connect Loki](#connect-loki)
   - [Dashboards](#dashboards)
+  - [Logs](#logs)
   - [Alerts](#alerts)
 - [Reuse Grafana configurations](#reuse-grafana-configurations)
   - [Export Configurations](#export-configurations)
@@ -29,6 +32,14 @@ At first, define and connect the InfluxDB datasource for Grafana
   * Bucket: `api_metrics`
   * Token: `INFLUXDB_TOKEN` from `.env`
 
+### Connect Loki
+
+Add Loki manually in Grafana:
+
+1. Open **Connections > Data sources > Add data source** and select **Loki**.
+2. Set the URL to `http://loki:3100` when Grafana and Loki share the Compose
+  network. Otherwise, enter Loki's address reachable from the Grafana server.
+3. Choose **Server** access if prompted, then select **Save & test**.
 
 ### Dashboards
 
@@ -62,6 +73,7 @@ Follow these steps to recreate the **OIDC License Service** dashboard in the
 
    - Under **Standard options**, set the unit to **milliseconds (ms)**. In
      **Axis**, set the label to **Latency (ms)**, then apply/save the panel.
+
 4. Add a second visualization using the same **influxdb** data source and
    configure it as follows:
    - Set the title to **Request Counts by HTTP Status** and use **Time series**.
@@ -107,6 +119,22 @@ Grafana supplies `v.timeRangeStart`, `v.timeRangeStop`, and `v.windowPeriod`
 when it runs these queries in a dashboard. For Time series panels, Grafana
 uses timestamps on the x-axis and formats them automatically for the selected
 dashboard time range and timezone; there is no separate time unit to set.
+
+### Logs
+
+1. Open **Explore**, select **Loki**, and run `{service="backend"}`.
+2. Set the time range to cover the event, then select **Run query**.
+3. Expand a log entry to inspect its details. Click a label or value to filter further, then adjust the time range or query to trace related entries.
+
+> NOTE: Alloy forwards only backend container logs to Loki; the `service` and `container` labels help narrow results.
+
+#### Show backend logs on a dashboard
+
+1. Open the dashboard and select **Add > Visualization**.
+2. Choose **Loki** as the data source, set the visualization to **Logs**, and
+  enter `{service="backend"}` as the query.
+3. Apply the panel, then save the dashboard. Its time picker controls which logs
+  appear.
 
 ### Alerts
 

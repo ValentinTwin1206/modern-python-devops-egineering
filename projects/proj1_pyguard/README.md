@@ -1,153 +1,107 @@
 # PyGuard
 
-**PyGuard** is a small Python security library that blocks suspicious web requests before they reach application handlers. It currently provides **path traversal** and **brute-force protection for configurable protected endpoints**.
+**PyGuard** is a lightweight, framework-independent Python security engine for inspecting incoming web requests before they reach application handlers.
 
-## Project Components
+It currently provides:
 
-| Component              | Description                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `pyproject.toml`       | Package metadata and build configuration.                                              |
-| `src/pyguard/`         | Reusable middleware, scanner, models, and security rules.                              |
-| `src/pyguard/rules.py` | Contains the `SecurityRule` base class, `PathTraversalRule`, and `AuthBruteForceRule`. |
+-   **Path traversal protection**
+-   **Brute-force protection** for configured endpoints
 
-## End-User Guide
+PyGuard separates its security engine and rules from framework integration. This lets applications use the same security rules with their own middleware.
+
+## Installation
 
 ### Requirements
 
-* Python 3.9+
-* `uv` or `pip`
+-   Python 3.9+
+-   `uv` or `pip`
 
 ### Installation
 
-With `uv`:
-
-```toml
-[project]
-
-dependencies = [
-    "pyguard==0.1.0",
-]
-```
+With `uv`, add PyGuard to your project dependencies:
 
 ```bash
+uv add pyguard==0.1.0
+```
+
+Then install the dependencies:
+
+``` bash
 uv sync
-```
-
-Or with `pip`:
-
-```bash
-python -m pip install pyguard==0.1.0
 ```
 
 ## Usage
 
-### Path Traversal Protection
+### Create a `PyGuard` instance
 
-```python
-from pyguard import PyGuardMiddleware, Request, RequestBlocked
+Create a `PyGuard` instance and pass the security rules you want to enable. `PyGuard` runs the configured rules when a request is checked:
 
-guard = PyGuardMiddleware()
+``` python
+from pyguard import PyGuard
+from pyguard.rules import PathTraversal, BruteForce
 
-request = Request(
+guard = PyGuard(
+    rules=[
+        PathTraversal(),
+        BruteForce(
+            paths=["/login", "/auth"],
+            max_attempts=5,
+            window=60,
+            block_duration=300,
+        ),
+    ]
+)
+
+# PyGuard provides a framework-independent request model through `PyGuard.Request`:
+request = PyGuard.Request(
     method="GET",
     path="/download",
     query="file=../../etc/passwd",
+    source="203.0.113.10",
+    body=body.decode("utf-8", errors="replace"),
 )
 
 try:
-    guard.before_request(request)
+    guard.check(request)
 except RequestBlocked as exc:
-    print(exc)
+    print(f"Request blocked: {exc}")
 ```
+
+`guard.check(request)` returns the request when no rule blocks it. It raises `RequestBlocked` when a configured rule identifies the request as blocked.
 
 ### Brute-Force Protection
 
-Protected endpoints are configured by the application:
+Configure the endpoints that should be monitored:
 
-```python
-from pyguard import PyGuardMiddleware
+``` python
+from pyguard import PyGuard
+from pyguard.rules import BruteForce
 
-guard = PyGuardMiddleware(
-    protected_paths={
-        ("POST", "/licenses"),
-    },
-)
-```
-
-By default, the brute-force rule:
-
-* Allows 4 requests within the configured window.
-* Blocks on the 5th request.
-* Blocks the source for 5 minutes.
-* Tracks requests per source.
-
-### FastAPI Integration
-
-```python
-from fastapi import FastAPI, HTTPException, responses, Request as FastAPIRequest
-from pyguard import PyGuardMiddleware, Request, RequestBlocked
-
-app = FastAPI()
-
-guard = PyGuardMiddleware(
-    protected_paths={
-        ("POST", "/licenses"),
-    },
-)
-
-
-@app.middleware("http")
-async def security_middleware(
-    request: FastAPIRequest,
-    call_next,
-):
-    guard_request = Request(
-        method=request.method,
-        path=request.url.path,
-        query=request.url.query,
-        source=request.client.host,
-    )
-
-    try:
-        guard.before_request(guard_request)
-    except RequestBlocked as exc:
-        return responses.JSONResponse(
-            status_code=429,
-            content={"detail": str(exc)},
+guard = PyGuard(
+    rules=[
+        BruteForce(
+            paths=["/login", "/auth"],
+            max_attempts=5,
+            window=60,
+            block_duration=300,
         )
-
-    return await call_next(request)
+    ]
+)
 ```
 
-## Developer Guide
+Parameters:
 
-### Setup
+  Parameter          Description
+  ------------------ --------------------------------------------------
+  `paths`            Request paths monitored by the rule.
+  `max_attempts`     Number of requests that trigger a block.
+  `window`           Time window, in seconds, used to count requests.
+  `block_duration`   How long a source remains blocked, in seconds.
 
-```bash
-./build.sh build --path proj1_pyguard/Dockerfile.devEnv
-```
+> Note: The current implementation counts requests to configured paths. It does not yet distinguish successful requests from failed authentication attempts.
 
-```bash
-uv sync --all-groups
-source .venv/bin/activate
-```
+## Drawbacks
 
-### Lint
+- **Brute-force detection:** PyGuard currently counts all requests to configured protected paths, regardless of whether authentication succeeds or fails. Successful authentication attempts do not reset the counter. This may lead to false positives.
 
-```bash
-ruff check .
-```
-
-### Build
-
-```bash
-uv build --wheel --out-dir /build
-```
-
-### Publish
-
-```bash
-uv publish
-```
-
-PyGuard is distributed as a pure-Python wheel and can be installed directly from PyPI.
+- **Multi-worker support:** PyGuard currently stores brute-force tracking data in local memory. Consequently, request counters and temporary blocks are not shared between multiple worker processes or server instances. Support for a shared storage backend such as Redis may be considered in the future.

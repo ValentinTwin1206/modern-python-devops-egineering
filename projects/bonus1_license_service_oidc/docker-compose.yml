@@ -78,6 +78,33 @@ services:
       license_service_network:
         ipv4_address: ${KEYCLOAK_IP}
 
+  loki:
+    image: grafana/loki:3.4.2
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./logging/loki/config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    networks:
+      license_service_network:
+        ipv4_address: ${LOKI_IP}
+
+  alloy:
+    image: grafana/alloy:v1.8.3
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    depends_on:
+      - loki
+    volumes:
+      - ./logging/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    networks:
+      license_service_network:
+        ipv4_address: ${ALLOY_IP}
+
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
@@ -104,6 +131,8 @@ services:
     depends_on:
       influxdb:
         condition: service_healthy
+      loki:
+        condition: service_started
     networks:
       license_service_network:
         ipv4_address: ${GRAFANA_IP}
@@ -122,3 +151,5 @@ volumes:
   license_service_data:
   influxdb_data:
   grafana_data:
+  loki_data:
+  alloy_data:

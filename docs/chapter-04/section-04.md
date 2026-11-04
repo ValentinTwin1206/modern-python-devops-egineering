@@ -31,11 +31,16 @@ flowchart LR
         A["Backend"]
         I["InfluxDB"]
         G["Grafana"]
+        ALLOY["Grafana Alloy"]
+        LOKI["Loki"]
 
         F <--> K
         F --> A
         A --> I
         I --> G
+        A -->|logs| ALLOY
+        ALLOY --> LOKI
+        LOKI --> G
     end
 
     CP <-->|"MCP"| GW

@@ -10,7 +10,9 @@
     "devcontainer",
     "keycloak",
     "influxdb",
-    "grafana"
+    "grafana",
+    "alloy",
+    "loki"
   ],
   "customizations": {
     "vscode": {
