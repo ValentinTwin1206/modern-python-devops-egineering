@@ -1,0 +1,10 @@
+# Build contexts rooted at projects/ should not include local environments,
+# compiled artifacts, downloaded models, or generated test and build output.
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/build
+**/build-dev
+**/.build
+**/*.so
+**/*.task

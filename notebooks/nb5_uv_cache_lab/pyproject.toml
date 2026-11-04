@@ -1,0 +1,22 @@
+[project]
+name = "uv-cache-demo"
+version = "0.1.0"
+description = "Analyze bundled synthetic embeddings while demonstrating uv's CI cache."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.4,<3",
+    "scipy>=1.17,<2",
+    "matplotlib>=3.10,<4",
+    "scikit-learn>=1.7,<2",
+    "pyarrow>=20,<25",
+    "threadpoolctl>=3.6,<4",
+]
+
+[build-system]
+requires = ["uv_build==0.11.1"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Compute this fingerprint before syncing; see scripts/build_key.py and README.md.
+# File timestamps change on fresh CI checkouts, even when the contents do not.
+cache-keys = [{ env = "CACHE_DEMO_KEY" }]

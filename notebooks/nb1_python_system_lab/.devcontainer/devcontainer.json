@@ -1,0 +1,35 @@
+{
+    "name": "Python System Lab",
+    "build": {
+        "context": "..",
+        "dockerfile": "Dockerfile"
+    },
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "remoteUser": "bob",
+    "containerUser": "bob",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "ms-toolsai.jupyter-renderers"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/opt/jupyter/bin/python",
+                "jupyter.kernels.filter": [],
+                "notebook.defaultKernel": "system-lab-python3",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "forwardPorts": [
+        8888
+    ],
+    "portsAttributes": {
+        "8888": {
+            "label": "JupyterLab",
+            "onAutoForward": "notify"
+        }
+    }
+}

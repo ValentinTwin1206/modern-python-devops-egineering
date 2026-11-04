@@ -16,7 +16,7 @@ PyGuard separates its security engine and rules from framework integration. This
 -   Python 3.9+
 -   `uv` or `pip`
 
-### Installation
+### Install PyGuard
 
 With `uv`, add PyGuard to your project dependencies:
 

@@ -1,0 +1,35 @@
+{
+    "name": "IrisLab API",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "IRISLAB_CHANNEL": "${localEnv:IRISLAB_CHANNEL}"
+        }
+    },
+    "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspaces/modern-python-engineering,type=bind",
+    "workspaceFolder": "/workspaces/modern-python-engineering/projects/proj3_irislab_api",
+    "runArgs": [
+        "--name",
+        "mpe-proj3_irislab_api"
+    ],
+    "forwardPorts": [
+        8080
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+                "python.terminal.activateEnvironment": true,
+                "ruff.nativeServer": "on"
+            }
+        }
+    },
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+    "remoteUser": "bob"
+}
