@@ -7,17 +7,19 @@ Having scaffolded his first `uv` workspace, Bob is determined to understand how 
 ## Learning Objectives
 
 - Distinguish declared requirements, the lockfile, and the installed environment.
-- Manage dependencies, groups, sources, and markers with `uv`.
+- Manage dependencies, private and Git sources, groups, markers, and optional extras with `uv`.
 - Control lockfile updates and synchronization, and inspect or export the resolved dependency graph.
+- Explore conflicting extras and optional experiments with editable paths, constraints, and release cutoffs.
 
 ## Overview
 
 - The roles of `pyproject.toml`, `uv.lock`, and `.venv`.
-- Adding and removing dependencies from package indexes and Git repositories.
-- Version constraints, dependency groups, and platform markers.
+- Adding dependencies from package indexes and Git repositories, including private-index configuration.
+- Version constraints, dependency groups, platform markers, optional extras, and dependency removal.
 - Lockfile creation, broken pins, upgrades, and freshness checks.
 - Default, frozen, and locked synchronization, including non-editable installs.
-- Resolution strategies, dependency trees, and exporting requirements.
+- Resolution strategies, conflicting extras, dependency trees, and exporting requirements.
+- Optional independent experiments with editable paths, Git references, constraints, and release-date cutoffs.
 
 ## Documentation
 
@@ -30,4 +32,4 @@ Having scaffolded his first `uv` workspace, Bob is determined to understand how 
 2. Open `notebooks/nb4_uv_dependency_lab` as the folder in VS Code and select **Dev Containers: Reopen in Container**.
 3. Open `uv_dependency_lab.ipynb`, select the **Python 3 - uv Dependency Resolution** kernel, and run the cells in order.
 
-The first reset cell removes lab-generated `pyproject.toml`, `uv.lock`, `.venv`, `requirements.txt`, `installed-demo/`, `resolution-demo/`, and `local-helper/` from this workspace; keep unrelated work elsewhere. Dependency downloads, including a GitHub dependency, require network access.
+The first reset cell removes lab-generated `pyproject.toml`, `uv.lock`, `.venv`, `requirements.txt`, `installed-demo/`, `resolution-demo/`, `local-helper/`, and `advanced-demo/` from this workspace; keep unrelated work elsewhere. Dependency downloads, including a GitHub dependency, require network access. The private-index example is illustrative: Bob leaves PyGuard and its placeholder index out of the runnable project, so its project file otherwise follows the section apart from automatically selected version bounds.

@@ -56,15 +56,79 @@ dependencies = [
 !!! info "Choosing version constraints"
     **Prefer version ranges for applications and libraries, such as `fastapi>=0.115,<0.116`.** The lockfile records exact resolved versions for reproducible installs, so use exact pins in `pyproject.toml` only when a specific version is required.
 
-#### Add a Dependency from a Git Repository
+#### Add a Dependency from a Private Package Index
 
-`uv` can add a package directly from a Git repository:
+A project may depend on packages hosted on a private package index. This example uses the course's `pyguard` package to show how to configure an index and map a package to it. When resolving across multiple indexes, `uv` uses the first index containing a package by default; see [uv's package index documentation](https://docs.astral.sh/uv/concepts/indexes/). To add PyGuard 0.1.0 from the private index, provide its name and URL:
 
 ```bash
-uv add "flask @ git+https://github.com/pallets/flask"
+uv add "pyguard==0.1.0" --index "<repo>=https://dl.cloudsmith.io/basic/<owner>/<repo>/python/simple/"
 ```
 
-Instead of putting the Git URL directly in `[project].dependencies`, `uv` adds the package name there and records the repository location under `[tool.uv.sources]`. After this command, the complete project file looks like this:
+> Replace `<owner>` and `<repo>` with your Cloudsmith values.
+
+The command records the dependency, index, and package-to-index mapping in `pyproject.toml`. Add `explicit = true` to restrict the index to packages explicitly mapped to it; the complete project file looks like this:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
+    "requests>=2.32.3", # Set a minimum version
+]
+
+[tool.uv.sources]
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
+```
+
+!!! info "Authentication"
+    Private indexes usually require authentication; use your provider's supported credential method instead of storing credentials in `pyproject.toml`.
+
+#### Add a Dependency from a Git Repository
+
+Add a package from a Git repository and select the revision to use. Choose one of these alternatives:
+
+=== "Default revision"
+
+    Use the repository's default revision:
+
+    ```bash
+    uv add "flask @ git+https://github.com/pallets/flask"
+    ```
+
+=== "Tag"
+
+    Pin the dependency to a named release:
+
+    ```bash
+    uv add "flask @ git+https://github.com/pallets/flask" --tag 3.1.1
+    ```
+
+=== "Branch"
+
+    Track a branch; refreshing the lockfile can select a newer commit:
+
+    ```bash
+    uv add "flask @ git+https://github.com/pallets/flask" --branch main
+    ```
+
+=== "Commit"
+
+    Pin the dependency to a specific commit:
+
+    ```bash
+    uv add "flask @ git+https://github.com/pallets/flask" --rev <commit-hash>
+    ```
+
+`uv` adds the package name to `[project].dependencies` and records the repository and selected reference under `[tool.uv.sources]`; the lockfile records the resolved commit. This source configuration is specific to `uv`, while other packaging tools use standard project metadata. With the default revision, the project file looks like this:
 
 ```toml
 [project]
@@ -75,11 +139,18 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
     "requests>=2.32.3", # Set a minimum version
 ]
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
 #### Dependency Groups
@@ -103,7 +174,7 @@ Development tools, test frameworks, and documentation generators are not needed 
     uv add --group docs "mkdocs>=1.6.1,<2.0"
     ```
 
-After these commands, the complete project file looks like this:
+After these commands, the complete project file looks like this. The automatically selected `pytest` and `ruff` lower bounds may vary:
 
 ```toml
 [project]
@@ -114,6 +185,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
     "requests>=2.32.3", # Set a minimum version
 ]
 
@@ -128,6 +200,12 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
 #### Dependency Markers
@@ -149,6 +227,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
     "pywin32>=310; sys_platform == 'win32'", # Windows-only
     "requests>=2.32.3", # Set a minimum version
 ]
@@ -164,7 +243,67 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
+
+#### Optional Dependencies
+
+An *optional dependency* lets users install packages for a feature only when they need it, such as `rich` for reporting. Use optional dependencies for user-selectable features, and [dependency groups](#dependency-groups) for local development tools. Add `rich` to an optional `report` feature:
+
+```bash
+uv add --optional report rich
+```
+
+After this command, the complete project file looks like this. The automatically selected `rich` lower bound may vary:
+
+```toml
+[project]
+name = "license-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
+    "flask",
+    "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
+    "pywin32>=310; sys_platform == 'win32'", # Windows-only
+    "requests>=2.32.3", # Set a minimum version
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0",
+]
+
+[tool.uv.sources]
+flask = { git = "https://github.com/pallets/flask" }
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
+
+[project.optional-dependencies]
+report = ["rich>=13"]
+```
+
+To synchronize the project with its runtime dependencies, default groups, and the optional `report` feature, run:
+
+```bash
+uv sync --extra report
+```
+
+This adds the extra to a normal project sync; it does not install only the extra.
 
 ### Remove Dependencies
 
@@ -186,7 +325,7 @@ Use `uv remove` to remove a dependency. Choose the matching command for a normal
     uv remove --group dev pytest
     ```
 
-If you run both commands, the complete project file looks like this:
+If you run both commands, the complete project file looks like this. The `report` extra remains declared:
 
 ```toml
 [project]
@@ -197,8 +336,12 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
+    "pyguard==0.1.0",
     "pywin32>=310; sys_platform == 'win32'", # Windows-only
 ]
+
+[project.optional-dependencies]
+report = ["rich>=13"]
 
 [dependency-groups]
 dev = [
@@ -210,6 +353,12 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
+pyguard = { index = "moder-python-engineering" }
+
+[[tool.uv.index]]
+name = "moder-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
 ## Locking
@@ -361,6 +510,8 @@ The `uv sync --locked` command performs *locked installs* that prepare the proje
 
 ### Resolution Strategies
 
+#### Test Compatibility Ranges
+
 Before writing a lockfile, `uv` resolves direct and transitive dependencies to find versions that satisfy all declared constraints. It does this automatically when dependencies are added, updated, or synchronized and, by default, selects the latest compatible version of each dependency.
 
 For libraries, testing only against the latest versions is insufficient: a declaration such as `fastapi>=0.100.0` claims compatibility with *every* version from `0.100.0` upward, not just the newest release.
@@ -381,6 +532,24 @@ For libraries, testing only against the latest versions is insufficient: a decla
     uv sync --resolution lowest-direct
     ```
 
+#### Conflicting Extras
+
+`uv` normally resolves extras together. When two features deliberately need incompatible versions, declare the conflict so they can be resolved separately. This example uses two mutually exclusive `idna` versions to make the behavior visible:
+
+```toml
+[project.optional-dependencies]
+legacy = ["idna==3.9"]
+modern = ["idna==3.10"]
+
+[tool.uv]
+conflicts = [[{ extra = "legacy" }, { extra = "modern" }]]
+```
+
+Synchronize one extra at a time; requesting both produces an error:
+
+```bash
+uv sync --extra legacy
+```
 
 #### Inspect the Graph
 
@@ -391,8 +560,6 @@ uv tree
 ```
 
 ## Export Dependencies
-
-### Share a Requirements File
 
 When another tool expects a `requirements.txt`, export one from the project's lockfile:
 
