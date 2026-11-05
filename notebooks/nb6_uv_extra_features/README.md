@@ -2,7 +2,7 @@
 
 Bob has learned to scaffold projects, resolve dependencies, and make the most of the cache. Proud of his progress, he is ready to help his company: an old requirements-based service needs a repeatable environment, a small report needs to be shared, and the team wants useful tools without disturbing project dependencies. Bob builds a practical runbook for each task.
 
-![uv Extra Features lab logo](./project_logo.svg)
+![uv Extra Features lab logo](./project_logo.png)
 
 ## Learning Objectives
 
