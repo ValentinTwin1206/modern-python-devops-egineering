@@ -57,6 +57,7 @@ htmlcov/
 !/notebooks/nb4_uv_dependency_lab/
 !/notebooks/nb5_uv_cache_lab/
 !/projects/proj2_irislab/
+!/projects/proj2_irislab/src/irislab/
 
 # IDE settings
 .idea/

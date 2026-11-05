@@ -1,4 +1,25 @@
 services:
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     additional_contexts:
+  #       pyguard: ../proj1_pyguard
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     # Keep SQLite license and entitlement records across container replacement.
+  #     - license_service_data:/app/data
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     ADMIN_API_KEY: ${ADMIN_API_KEY}
+  #     OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+  #     OIDC_JWKS_URL: ${OIDC_JWKS_URL}
+  #     DATABASE_PATH: ${DATABASE_PATH}
+  #   networks:
+  #     license_service_network:
+  #       ipv4_address: ${BACKEND_IP}
+
   devcontainer:
     build:
       context: .
@@ -17,33 +38,28 @@ services:
       KEYCLOAK_TEST_USERNAME: ${KEYCLOAK_TEST_USERNAME}
       KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
     networks:
-      license_service_network:
+      irislab_network:
 
   backend:
     build:
-      context: ./backend
-      additional_contexts:
-        pyguard: ../proj1_pyguard
+      context: ../proj3_irislab_api
+      args:
+        IRISLAB_CHANNEL: https://conda.cloudsmith.io/${CLOUDSMITH_OWNER}/${CLOUDSMITH_REPOSITORY}/
+      secrets:
+        - cloudsmith_api_key
     ports:
       - "8080:8080"
-    volumes:
-      # Keep SQLite license and entitlement records across container replacement.
-      - license_service_data:/app/data
-    env_file:
-      - .env
-    environment:
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
-      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
-      OIDC_JWKS_URL: ${OIDC_JWKS_URL}
-      DATABASE_PATH: ${DATABASE_PATH}
     networks:
-      license_service_network:
-        ipv4_address: ${BACKEND_IP}
+      irislab_network:
+        ipv4_address: ${IRIS_API_IP}
 
   frontend:
     build: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     ports:
       - "8501:8501"
     extra_hosts:
@@ -56,16 +72,20 @@ services:
       # on every container start, invalidating browser login cookies from older runs.
       - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${FRONTEND_IP}
     environment:
-      BACKEND_URL: ${BACKEND_URL}
-      # Must match the backend so the admin X-API-Key path keeps working.
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      IRIS_API_URL: http://backend:8080
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
     command: start-dev --import-realm
+    healthcheck:
+      test: ["CMD", "bash", "-c", ":</dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -75,7 +95,7 @@ services:
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${KEYCLOAK_IP}
 
   loki:
@@ -85,7 +105,7 @@ services:
       - ./logging/loki/config.yaml:/etc/loki/config.yaml:ro
       - loki_data:/loki
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${LOKI_IP}
 
   alloy:
@@ -102,7 +122,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy/data
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${ALLOY_IP}
 
   influxdb:
@@ -116,7 +136,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${INFLUXDB_IP}
     ports:
       - "8086:8086"
@@ -134,7 +154,7 @@ services:
       loki:
         condition: service_started
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${GRAFANA_IP}
     ports:
       - "3001:3000"
@@ -142,14 +162,17 @@ services:
       - grafana_data:/var/lib/grafana
 
 networks:
-  license_service_network:
+  irislab_network:
     ipam:
       config:
         - subnet: 172.30.0.0/24
 
 volumes:
-  license_service_data:
   influxdb_data:
   grafana_data:
   loki_data:
   alloy_data:
+
+secrets:
+  cloudsmith_api_key:
+    environment: CLOUDSMITH_API_KEY
