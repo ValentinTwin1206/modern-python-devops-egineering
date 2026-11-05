@@ -11,10 +11,14 @@ on:
       - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
-      cold_cache:
-        description: "Skip uv cache restoration for a cold installation"
-        type: boolean
-        default: false
+      strategy:
+        description: "uv cache strategy"
+        type: choice
+        default: ci-pruned
+        options:
+          - cold
+          - warm
+          - ci-pruned
       fixture_size:
         description: "Embedding matrix size (MiB)"
         type: choice
@@ -33,7 +37,7 @@ jobs:
   analyze-embeddings:
     runs-on: ubuntu-latest
     env:
-      COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs.cold_cache }}
+      CACHE_STRATEGY: ${{ inputs.strategy || 'ci-pruned' }}
       fixture_size: ${{ inputs.fixture_size || '256' }}
     steps:
       - name: Check out repository
@@ -58,9 +62,10 @@ jobs:
         with:
           version: "0.11.1"
           enable-cache: true
-          restore-cache: ${{ env.COLD_CACHE != 'true' }}
-          save-cache: ${{ env.COLD_CACHE == 'true' && 'false' || 'auto' }}
-          prune-cache: true
+          restore-cache: ${{ env.CACHE_STRATEGY != 'cold' }}
+          save-cache: ${{ env.CACHE_STRATEGY == 'cold' && 'false' || 'auto' }}
+          prune-cache: ${{ env.CACHE_STRATEGY == 'ci-pruned' }}
+          cache-suffix: ${{ env.CACHE_STRATEGY == 'warm' && 'full-cache-demo' || '' }}
           cache-dependency-glob: |
             notebooks/nb5_uv_cache_lab/pyproject.toml
             notebooks/nb5_uv_cache_lab/uv.lock
@@ -98,7 +103,7 @@ jobs:
 
       - name: Show cache and installation time
         env:
-          RESTORE_STATUS: ${{ env.COLD_CACHE == 'true' && 'Skipped' || (steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored') }}
+          RESTORE_STATUS: ${{ env.CACHE_STRATEGY == 'cold' && 'Skipped' || (steps.uv.outputs.cache-hit == 'true' && 'Restored' || 'Not restored') }}
           INSTALL_MS: ${{ steps.install.outputs.milliseconds }}
         run: |
           cache_bytes=$(du -sb "$UV_CACHE_DIR" | cut -f1)
@@ -112,12 +117,13 @@ jobs:
             echo '| --- | --- |'
             echo "| Embedding matrix size | ${fixture_size} MiB |"
             echo "| setup-uv cache restoration | $RESTORE_STATUS |"
-            echo "| Cold-cache experiment requested | $COLD_CACHE |"
+            echo "| Cache strategy | $CACHE_STRATEGY |"
             echo "| Restored local uv cache | $RESTORED_CACHE_SIZE |"
             echo "| uv sync duration | ${INSTALL_MS} ms |"
             echo "| Local uv cache after sync, before post-action pruning | $cache_size |"
             echo ''
             echo 'Duration measures only uv sync; it excludes GitHub cache restoration and saving time.'
             echo 'Cold experiments skip cache restoration and saving; remote archives remain unchanged.'
+            echo 'Only runs reporting Restored qualify as warm-cache measurements.'
             echo 'Compare multiple runs with unchanged dependencies and build inputs; no speedup is guaranteed.'
           } >> "$GITHUB_STEP_SUMMARY"
