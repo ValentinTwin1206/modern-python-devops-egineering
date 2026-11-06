@@ -1,6 +1,6 @@
 # Using uv's Cache in CI Environments
 
-Aggressive caching helps make `uv` fast by avoiding repeated downloads and builds of dependencies. In CI, however, transferring a cache between temporary *Hosted Runners* adds overhead, so preserving everything is not always worthwhile. [Astral's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration) favors *Wheels Built from Source*, which can be costly to rebuild, over *Prebuilt Wheels*, which are usually quick to download and install. It does not cite a formal study quantifying these trade-offs; this section explains how to adopt the strategy and measure its benefits in your own CI workflow rather than assume a speedup.
+Aggressive caching helps make `uv` fast by avoiding repeated downloads and builds of dependencies. In CI, however, transferring a cache between temporary *Hosted Runners* adds overhead, so preserving everything is not always worthwhile. [Astral's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration) favors *Wheels Built from Source*, which can be costly to rebuild, over *Prebuilt Wheels*, which are usually quick to download and install. It does not cite a formal study quantifying these trade-offs; this section explains how to adopt the strategy and measure its benefits in your own *GitHub Actions* workflow. For Docker builds, see [Using uv's Cache in Docker Builds](./bonus-05.md#using-uvs-cache-in-docker-builds).
 
 ## Used Project
 
@@ -11,103 +11,29 @@ This table lists the workflow and project files used in the examples.
 | [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) | GitHub Actions workflow that compares cold, complete, and CI-pruned caches and records install time and local cache size. |
 | [`notebooks/nb5_uv_cache_lab/pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/pyproject.toml) and [`uv.lock`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/uv.lock) | Define the package build configuration and locked dependencies installed by the workflow. |
 
-## GitHub Actions Caching Pattern
-
-### Cache Layers
-
-GitHub Actions provides an [***Integrated Cache Service***](https://docs.github.com/en/actions/reference/dependency-caching-reference) for storing and restoring files across workflow runs. It works alongside tools' own caches and the project's environment, so understanding the separate layers helps explain what persists and when it can be reused. Three distinct layers participate in this example.
-
-1. **The GitHub Actions cache** stores a remote archive selected by an action-generated key and GitHub's access rules.
-2. **Language and package-manager caches** hold tool-managed downloads and build artifacts on the runner. This pattern applies to tools such as Python's `uv`, Rust's `cargo`, and Node.js's `npm`
-3. **The project `.venv`** contains installed packages. Each hosted runner creates it fresh, and it is not cached.
-
-### Hosted Runner Cache Lifecycle
-
-GitHub Actions offers long-lived self-hosted ***Persistent Runners*** and temporary ***(GitHub) Hosted Runners***. Hosted runners can reuse remote caches by restoring an archive at job start, using it during installs or builds, and saving an updated archive after success. Cache keys combine environment and project inputs; exact-key hits need no save because entries are immutable. Caches expire after seven days without access or sooner under storage pressure, and runs can generally restore caches only from their current or default branch ([retention](https://docs.github.com/en/actions/reference/dependency-caching-reference#usage-limits-and-eviction-policy) and [access rules](https://docs.github.com/en/actions/reference/dependency-caching-reference#restrictions-for-accessing-a-cache)). Use the same branch and revision for manual comparisons. After a cache miss, optionally prune local data before saving. A cold test skips restoration and saving without deleting the remote archive. The chart shows this workflow.
-
-```mermaid
-flowchart TD
-    setup["Prepare hosted runner and project"] --> cold{"Cold-cache test requested?"}
-    cold -->|Yes| install["Install dependencies and build project"]
-    cold -->|No| restore["Restore cache or start without one"]
-    restore --> install
-    install --> run["Run workflow tasks and collect results"]
-    run --> success{"Job successful?"}
-    success -->|No| done["Finish without saving cache"]
-    success -->|Yes| saveenabled{"Saving enabled?"}
-    saveenabled -->|No| done
-    saveenabled -->|Yes| hit{"Exact cache-key hit?"}
-    hit -->|Yes| skip["Keep existing archive; skip saving"]
-    hit -->|No| prune["Optionally prune local cache data"]
-    prune --> save["Save archive for a future run"]
-    save -. "Next workflow run" .-> setup
-```
-
-## Using uv's Cache in Docker Builds
-
-Docker builds can reuse both **image layers** and a **BuildKit cache mount**. A reusable layer skips a build step entirely; a cache mount helps `uv` reuse downloaded or built packages when the step must run again. These caches are separate from the GitHub Actions cache used in the workflow example below.
-
-### Separate Dependencies from Project Source
-
-The following example assumes a single packaged project with a `pyproject.toml`, a committed `uv.lock`, and dependencies available without local source directories. Save this `Dockerfile` in the project root. It installs dependencies before copying the source, then validates the lockfile and installs the project:
-
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM python:3.12-slim
-
-COPY --from=ghcr.io/astral-sh/uv:0.11.1 /uv /uvx /bin/
-WORKDIR /app
-
-# Copy files from the cache mount into the environment.
-ENV UV_LINK_MODE=copy
-
-# Install locked dependencies in a reusable layer.
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-default-groups
-
-# Add the project and verify its lockfile before installing it.
-COPY . .
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-default-groups --no-editable
-
-# Replace this with the application's entry point.
-CMD ["/app/.venv/bin/python", "--version"]
-```
-
-The first sync uses `--frozen` to skip the freshness check while project source files are unavailable. The final `--locked` sync checks `pyproject.toml` against the lockfile once the full project is present; `--no-editable` installs a regular project package. Both commands omit default dependency groups. See [Frozen Installs](./section-02.md#frozen-installs) for the distinction between frozen and locked syncs.
-
-Add a `.dockerignore` in the project root so a host environment or Git metadata does not overwrite the environment created inside the image:
-
-```text title=".dockerignore"
-.venv/
-.git/
-__pycache__/
-```
-
-Build the image from the project root with BuildKit enabled:
-
-```bash
-DOCKER_BUILDKIT=1 docker build -t my-uv-app .
-```
-
-When only source code changes, Docker can reuse the dependency layer if its earlier inputs are unchanged. If a sync step must run again, BuildKit may reuse its cache mount; `UV_LINK_MODE=copy` handles the cache and environment residing on different filesystems. The cache mount is not included in the resulting image.
-
-!!! info "Cache Persistence in CI"
-
-    Cache mounts belong to the BuildKit builder and are reusable only while its cache is available. A fresh hosted runner does not automatically retain them across jobs; configure persistent builder storage or a supported cache backend when cross-run reuse is needed. Image-layer caching and cache-mount persistence depend on the CI builder and cache backend.
-
-For workspaces or local path dependencies, include the required project metadata and source files in the appropriate build stages; `--no-install-workspace` can omit workspace packages during the initial sync. See [uv's Docker integration guide](https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers) for workspace and multi-stage examples.
-
 ## Using uv's Cache in GitHub Actions
 
-The `uv cache demo` workflow in [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) is a streamlined example of using `uv`'s package cache in CI. It compares cold, complete, and CI-pruned caches to measure the potential installation-time savings from cache reuse.
+### GitHub Actions Remote Cache Service
 
-### Workflow Triggers and Job Configuration
+GitHub Actions provides an [***Integrated Remote Cache Service***](https://docs.github.com/en/actions/reference/dependency-caching-reference) for storing and restoring files across workflow runs; this is particularly useful for ephemeral *(GitHub) Hosted Runners*, where each job starts on a fresh machine. A typical workflow setup consists of three layers:
 
-#### Workflow Triggers
+1. **The GitHub Actions Cache** - Stores cache archives between workflow runs. Cache keys and GitHub's access rules determine which runs can restore an archive.
+2. **The Package-Manager Cache** - A local cache used by tools such as Python's `uv`, Rust's `cargo`, and Node.js's `npm` to reuse downloads and build artifacts. The CI service can archive and restore this local data between runs; it is not a second remote cache.
+3. **The Project Environment** - Contains dependencies installed for running the project's application and tests. Ephemeral runners typically create it fresh for each job; this workflow does not cache it.
 
-GitHub Actions starts workflows from configured events, including *Pushes*, *Pull Requests*, *Manual (Workflow) Dispatches*, *Scheduled Runs*, and *Published Releases*. This workflow runs on pushes to `main` that match either listed path or manual dispatch from the **Actions** tab; both start the same job on a fresh *(GitHub-) Hosted (Ubuntu) Runner*. Manual runs select the `strategy` input: `cold`, `warm`, or `ci-pruned` (the default). Pushes use `ci-pruned`.
+### Cache Lifecycle on Temporary Runners
+
+**Persistent Runners** are typically self-hosted *GitHub Actions* machines that remain available between jobs, allowing local data to persist. **Temporary Runners**, usually GitHub-hosted, start with a clean environment and are discarded after each job, including their local data. While persistent runners can reuse local caches, temporary runners rely on *GitHub Actions*' remote caching service to preserve and restore cached data across jobs. In both cases, remote caches are subject to *GitHub's* retention and eviction policies. Caches expire after seven days without access and may be evicted earlier when storage limits are reached ([retention and eviction policies](https://docs.github.com/en/actions/reference/dependency-caching-reference#usage-limits-and-eviction-policy)). A well-designed caching strategy is particularly important for temporary runners to balance storage costs, cache transfer overhead, and overall job duration.
+
+Astral's `uv` provides a sophisticated caching approach with several strategies:
+
+- **Warm Caching:** Restore the complete existing cache before dependency installation and reuse all cached packages and build artifacts. Unlike CI-pruned caching, retain all cache contents when saving it for subsequent runs.
+- **Cold Caching:** Skip cache restoration and saving, forcing dependencies to be downloaded or built again. Useful as a baseline for measuring caching benefits.
+- **CI-Pruned Caching:** Restore the cache while removing downloaded *Pre-Built Wheels* and *Unpacked Source Distributions* before saving. Retain *Source-Built Wheels* to reduce cache size while preserving potentially expensive build artifacts.
+
+## Benchmarking uv's Cache in GitHub Actions
+
+The `uv cache demo` workflow in [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) demonstrates using `uv`'s package cache in CI by comparing cold, complete, and CI-pruned caches to measure potential installation-time savings. GitHub Actions supports triggers such as pushes, pull requests, manual dispatches, scheduled runs, and published releases; this workflow runs on path-filtered pushes to `main` or manual dispatch from the **Actions** tab, with either event starting a fresh GitHub-hosted Ubuntu runner. Manual runs select `cold`, `warm`, or `ci-pruned` through the `strategy` input (default: `ci-pruned`); pushes use `ci-pruned`.
 
 ```mermaid
 flowchart LR
@@ -125,7 +51,7 @@ flowchart LR
 
 > Grayed-out triggers indicate events not configured in this workflow.
 
-#### Analysis Job and Steps
+#### Triggers: Analysis Job and Steps
 
 The `analyze-embeddings` job checks out the repository and sets up Python 3.12. The manual `fixture_size` choice selects a 16, 64, 256, 512, or 1024 MiB synthetic embedding matrix; it defaults to 256 MiB, as do push-triggered runs. The job generates the matrix, fingerprints the project's build inputs, and installs `uv` with optional package-cache restoration. After recording the pre-install cache size, it creates a fresh environment from the lockfile and times `uv sync`. Finally, it analyzes the installed embeddings and summarizes the selected size, cache sizes, restoration status, and installation time. The YAML below shows the workflow triggers and job configuration.
 
@@ -327,7 +253,7 @@ To test [uv's recommendation for caching in CI](https://docs.astral.sh/uv/concep
 - **Caching strategy:** The `setup-uv` input `prune-cache` controlled which artifacts were saved: `true` retained costly *Source-built Wheels* but removed *Downloaded Prebuilt Wheels* for the ***CI-pruned Cache***, while `false` retained both for the ***Warm (complete) cache***. The ***Cold (empty) cache*** baseline used `restore-cache: false` and `save-cache: false` on a fresh runner, skipping restoration and leaving remote archives unchanged.
 - **Source-built wheel share:** Packaging matrices from 16 to 1,024 MiB into the source-built wheel changed its contribution to the overall cache. Each size used a distinct cache key; larger matrices also increased generation and analysis time.
 
-The following table shows the runs for each estimated *source-built wheel share* and *caching strategy*, for **45 measurements** in total. Each combination was run three times because timings can vary; the middle result (the median) helps reduce the influence of an unusually fast or slow run. The [benchmark CSV](../../notebooks/nb5_uv_cache_lab/cache_benchmark_results.csv) provides the corresponding results and individual run links; cache-population runs are excluded.
+The following table shows the runs for each estimated *source-built wheel share* and *caching strategy*, for **45 measurements** in total. Each combination was run three times because timings can vary; the middle result (the median) helps reduce the influence of an unusually fast or slow run.
 
 | Estimated share of complete cache | Empty cache | CI-pruned cache | Complete cache |
 | ---: | ---: | ---: | ---: |
@@ -339,19 +265,13 @@ The following table shows the runs for each estimated *source-built wheel share*
 
 ### Results
 
-The [benchmark CSV](../../notebooks/nb5_uv_cache_lab/cache_benchmark_results.csv) provides the per-strategy measurements and links to the individual runs. The chart compares total job duration with the estimated source-built wheel share:
+The experiment described above ran on GitHub-hosted `ubuntu-latest` runners using Python 3.12 and `uv` 0.11.1. Results and links to the individual runs were gathered in the [benchmark CSV](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb5_uv_cache_lab/cache_benchmark_results.csv). It records median durations from three successful runs per workload and strategy; total job time includes cache transfers and other workflow steps, while `uv sync` time measures installation alone.
 
-- **X-axis — Estimated CI-pruned share of the complete cache (%):** For each workload, the median restored CI-pruned cache size divided by the median restored complete cache size, multiplied by 100. The CI-pruned cache is largely the source-built project wheel, making this a proxy for its share of the overall cache. It is not an exact wheel-size measurement: the pruned cache can also contain metadata and other retained artifacts, and the complete cache can contain different representations of the project.
-- **Y-axis — Total job duration (seconds):** The time from job start to completion, including post-actions but excluding queue time. Lower values indicate faster jobs. The axis starts at 10 seconds, with 5-second intervals.
-
-The three lines track the *Cold Caching Strategy*, *CI-pruned Strategy*, and *Warm Caching Strategy*. Each workload uses the same estimated reference share for all three lines, including cold runs that do not restore a cache. Each point represents the median of three successful runs, while the error bar spans that strategy's observed minimum and maximum. The separately measured `uv sync` times help distinguish installation time from cache transfers and other work. Comparing these timings with total job duration shows whether a faster installation offsets the cost of restoring a larger cache. Job-duration readings from the GitHub Jobs API have one-second resolution. Cache size is the uncompressed local cache before `uv sync`, not the compressed remote archive; the cold cache was about 1.4 KiB and rounds to 0.00 MiB.
+The graph compares all three caching strategies. Its x-axis shows the median restored CI-pruned cache size as a percentage of the median restored complete cache size, an estimate of the source-built wheel's contribution rather than the matrix's exact share. The same reference percentage applies to every strategy for a given workload. The y-axis shows total job duration in seconds, including post-actions but excluding queue time; lower values mean faster jobs. Lines connect the medians, and error bars show the minimum and maximum durations across the three measured runs.
 
 ![Total job duration versus estimated CI-pruned share of the complete cache for the cold, CI-pruned, and complete cache strategies, showing medians and ranges](../assets/images/chapter-03/uv-cache-job-duration.svg)
 
-!!! hint "Benchmark Environment"
-    The benchmark ran on GitHub-hosted `ubuntu-latest` runners with Python 3.12 and `uv` 0.11.
-
-### Key findings and conclusions
+### Key Findings and Conclusions
 
 These results illustrate the trade-offs described in [Astral's CI caching guidance](https://docs.astral.sh/uv/concepts/cache/#caching-in-continuous-integration). A larger cache can accelerate dependency installation, but its transfer overhead may outweigh the savings in total job duration.
 

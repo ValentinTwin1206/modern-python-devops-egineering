@@ -173,7 +173,7 @@ For a local package, `tool.uv.cache-keys` in `pyproject.toml` defines which buil
 
 === "Centralized project environment"
 
-    *Centralized Project Environments* store a project's installed packages in `uv`'s cache instead of beside `pyproject.toml`. The opt-in `centralized-project-envs` preview feature connects `.venv` to the cached environment, usually with a link.
+    [*Centralized Project Environments*](https://docs.astral.sh/uv/concepts/projects/layout/#centralized-project-environments) store a project's virtual environment in `uv`'s central cache directory instead of alongside its `pyproject.toml`. The opt-in `--centralized-project-envs` preview feature connects `.venv` to the cached environment, usually with a link.
 
     Create an ignored, disposable project to keep the main `.venv` separate.
 
