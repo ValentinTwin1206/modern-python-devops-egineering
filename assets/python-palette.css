@@ -1,0 +1,54 @@
+/* Python blue and yellow palette overrides for MkDocs Material.
+   Primary: Python blue (#3776AB).
+   Accent:  Python yellow (#FFD43B).
+   Contrast tuned for AA readability on both light and dark schemes. */
+
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #3776AB;
+  --md-primary-fg-color--light: #4B8BBF;
+  --md-primary-fg-color--dark:  #2B5B82;
+  --md-primary-bg-color:        #FFFFFF;
+  --md-primary-bg-color--light: #FFFFFFCC;
+
+  --md-accent-fg-color:         #B8860B;
+  --md-accent-fg-color--transparent: rgba(255, 212, 59, 0.15);
+  --md-accent-bg-color:         #FFFFFF;
+  --md-accent-bg-color--light:  #FFFFFFCC;
+
+  --md-typeset-a-color:         #2B5B82;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #4B8BBF;
+  --md-primary-fg-color--light: #6FA8D6;
+  --md-primary-fg-color--dark:  #2B5B82;
+  --md-primary-bg-color:        #0E1116;
+  --md-primary-bg-color--light: #0E1116CC;
+
+  --md-accent-fg-color:         #FFD43B;
+  --md-accent-fg-color--transparent: rgba(255, 212, 59, 0.18);
+  --md-accent-bg-color:         #0E1116;
+  --md-accent-bg-color--light:  #0E1116CC;
+
+  --md-typeset-a-color:         #FFD43B;
+}
+
+.md-header,
+.md-tabs {
+  background-color: var(--md-primary-fg-color);
+}
+
+.md-typeset code {
+  border-radius: 3px;
+}
+
+.md-typeset__table {
+  display: block;
+  width: 100%;
+}
+
+.md-typeset__table table:not([class]) {
+  display: table;
+  width: 100%;
+}
