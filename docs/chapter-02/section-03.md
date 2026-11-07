@@ -129,11 +129,8 @@ outputs:
       requires:
         - pip
 
-      imports:
-        - irislab
-        - irislab._native
-
       commands:
+        - python -c "import irislab, irislab._native"
         - python -m pip install mediapipe
         - irislab --help
 ```
@@ -277,7 +274,7 @@ Clear previous (Conda) build artifacts from the default artifact output
 directory:
 
 ```bash
-find "/opt/conda/conda-bld" -mindepth 1 -delete
+find "/tmp/conda-bld" -mindepth 1 -delete
 ```
 
 From the project root, build both packages with `conda build`. The `--channel conda-forge` option
@@ -285,14 +282,21 @@ provides the public compilers, CMake, Python, Pillow, and other dependencies req
 The recipe targets Python 3.12 so the published extension is compatible with the IrisLab API container.
 
 ```bash
-conda build recipe/ --channel conda-forge
+conda build recipe/ --channel conda-forge --croot /tmp/conda-bld
 ```
 
 `conda-build` invokes the recipe scripts automatically. It first builds `libirislab`, then builds
 the `_native` Python extension against that package. You do not need to run CMake separately
-for the packaging workflow. `conda-build` writes packages to `/opt/conda/conda-bld` inside the
-container. The project `.build` directory is bind-mounted there, so the package artifacts remain
-available on the host.
+for the packaging workflow. This command writes packages to `/tmp/conda-bld` inside the container. Copy the resulting package archives into the bind-mounted directory to make them available on the host:
+
+```bash
+mkdir -p /opt/conda/conda-bld
+find /tmp/conda-bld -type f \( \
+  -name 'libirislab-*.conda' -o -name 'irislab-tools-*.conda' \
+\) -exec cp -t /opt/conda/conda-bld {} +
+```
+
+The host can then access them in the project `.build` directory.
 
 - `libirislab`: Provides the standalone native C++ library and public header.
 - `irislab-tools`: Provides the Python package, CLI, and pybind11 extension.
