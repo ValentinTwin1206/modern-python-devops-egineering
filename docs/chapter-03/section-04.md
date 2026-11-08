@@ -33,11 +33,11 @@ Astral's `uv` provides a sophisticated caching approach with several strategies:
 
 ## Benchmarking uv's Cache in GitHub Actions
 
-The `uv cache demo` workflow in [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) demonstrates using `uv`'s package cache in CI by comparing cold, complete, and CI-pruned caches to measure potential installation-time savings. GitHub Actions supports triggers such as pushes, pull requests, manual dispatches, scheduled runs, and published releases; this workflow runs on path-filtered pushes to `main` or manual dispatch from the **Actions** tab, with either event starting a fresh GitHub-hosted Ubuntu runner. Manual runs select `cold`, `warm`, or `ci-pruned` through the `strategy` input (default: `ci-pruned`); pushes use `ci-pruned`.
+The `uv cache demo` workflow in [`.github/workflows/uv-cache.yml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/.github/workflows/uv-cache.yml) compares cold, complete, and CI-pruned caches. Start it manually from the **Actions** tab using `workflow_dispatch`; each job runs on a fresh GitHub-hosted Ubuntu runner. Select `cold`, `warm`, or `ci-pruned` through the `strategy` input (default: `ci-pruned`).
 
 ```mermaid
 flowchart LR
-    A["Push to main<br>matching paths"] -->|"strategy=ci-pruned"| W["GitHub Actions Workflow<br>(uv cache demo)"]
+    A["Push to main"] --> W["GitHub Actions Workflow<br>(uv cache demo)"]
     B["Pull Request"] --> W
     C["Manual (Workflow) Dispatch"] -->|"strategy input<br>(default: ci-pruned)"| W
     D["Scheduled Run"] --> W
@@ -45,26 +45,20 @@ flowchart LR
     W --> J["analyze-embeddings job<br>CACHE_STRATEGY"]
 
     classDef unused fill:#eee,stroke:#bbb,color:#888
-    class B,D,E unused
-    linkStyle 1,3,4 stroke:#bbb,stroke-dasharray:4 4
+    class A,B,D,E unused
+    linkStyle 0,1,3,4 stroke:#bbb,stroke-dasharray:4 4
 ```
 
 > Grayed-out triggers indicate events not configured in this workflow.
 
-#### Triggers: Analysis Job and Steps
+### Analysis Job and Steps
 
-The `analyze-embeddings` job checks out the repository and sets up Python 3.12. The manual `fixture_size` choice selects a 16, 64, 256, 512, or 1024 MiB synthetic embedding matrix; it defaults to 256 MiB, as do push-triggered runs. The job generates the matrix, fingerprints the project's build inputs, and installs `uv` with optional package-cache restoration. After recording the pre-install cache size, it creates a fresh environment from the lockfile and times `uv sync`. Finally, it analyzes the installed embeddings and summarizes the selected size, cache sizes, restoration status, and installation time. The YAML below shows the workflow triggers and job configuration.
+The `analyze-embeddings` job checks out the repository and sets up Python 3.12. The `fixture_size` choice selects a 16, 64, 256, 512, or 1024 MiB synthetic embedding matrix, defaulting to 256 MiB. The job generates the matrix, fingerprints the project's build inputs, and installs `uv` with optional package-cache restoration. After recording the pre-install cache size, it creates a fresh environment from the lockfile and times `uv sync`. Finally, it analyzes the installed embeddings and summarizes the selected size, cache sizes, restoration status, and installation time. The YAML below shows the workflow trigger and job configuration.
 
 ```yaml
 name: uv cache demo
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "notebooks/nb5_uv_cache_lab/**"
-      - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
       strategy:
@@ -138,7 +132,7 @@ After a successful job, the [post-action](https://github.com/astral-sh/setup-uv/
 
 === "CI-pruned Cache"
 
-    Select `ci-pruned` to enable restoration and automatic saving with pruning. On a cache miss, the action prunes before saving. Run once to populate the CI-pruned cache, then repeat with the same cache key to measure a warm restore.
+    Restore the CI-pruned cache and save it automatically on a miss. Pruning removes downloaded prebuilt wheels before saving while retaining current source-built wheels; the suffix is empty.
 
     ```yaml
     with:
@@ -146,11 +140,12 @@ After a successful job, the [post-action](https://github.com/astral-sh/setup-uv/
       restore-cache: true
       save-cache: auto
       prune-cache: true
+      cache-suffix: ""
     ```
 
 === "Warm Cache"
 
-    Select `warm` to enable restoration and automatic saving without pruning, using a separate cache suffix. Run once to populate this cache, then repeat with the same cache key.
+    Restore and save the complete cache without pruning. The suffix separates it from the CI-pruned cache.
 
     ```yaml
     with:
@@ -163,14 +158,18 @@ After a successful job, the [post-action](https://github.com/astral-sh/setup-uv/
 
 === "Cold Cache"
 
-    Select `cold` on a fresh GitHub-hosted runner to disable restoration and saving. The installation starts without a restored package cache, and the run leaves remote archives unchanged.
+    Keep caching enabled for consistent action setup and cache-key calculation, but skip restoration and saving. On a fresh runner, `uv` starts with an empty local cache and populates it during the job; remote archives remain unchanged. Pruning and the suffix do not affect this run.
 
     ```yaml
     with:
       enable-cache: true
       restore-cache: false
       save-cache: false
+      prune-cache: false
+      cache-suffix: ""
     ```
+
+For `warm` and `ci-pruned`, a cache miss can populate an archive for a later run. Only a run reporting `Restored` qualifies as a warm measurement; check the `uv sync` log as well to confirm that the project wheel was reused.
 
 ### Step: Measure Restored Package Cache Size
 
