@@ -7,6 +7,7 @@ class Request(BaseModel):
     query: str  = ""
     body: str   = ""
     source: str = ""
+    status_code: int | None = None
 
 
 class ScanResult(BaseModel):

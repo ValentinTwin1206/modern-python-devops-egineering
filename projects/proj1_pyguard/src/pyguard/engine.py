@@ -1,3 +1,6 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from .models import Request, ScanResult
 from .rules import SecurityRule
 
@@ -31,7 +34,11 @@ class PyGuard:
         return ScanResult(blocked=False)
 
 
-    def check(self, request: Request) -> Request:
+    def check(
+        self,
+        request: Request,
+        handler: Callable[[], Awaitable[Any]] | None = None,
+    ) -> Request | Awaitable[Any]:
         """
         Check the given request against the security rules and raise an exception if blocked.
         
@@ -41,8 +48,27 @@ class PyGuard:
         """
 
         result = self.scan(request)
-
         if result.blocked:
             raise RequestBlocked(result.reason)
-
+        if handler is not None:
+            return self._check_handler(request, handler)
         return request
+
+    async def _check_handler(
+        self,
+        request: Request,
+        handler: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        """
+        Check the given request using the provided handler and update the request status.
+
+        :param self: The PyGuard instance
+        :param request (Request): The request to be checked
+        :param handler (Callable[[], Awaitable[Any]]): The handler to process the request
+        :return (Any): The response from the handler
+        """
+        response = await handler()
+        request.status_code = response.status_code
+        self.scan(request)
+        return response
+

@@ -22,6 +22,9 @@ class PathTraversal(SecurityRule):
         Check if the request contains a path traversal attempt.
         """
 
+        if request.status_code is not None:
+            return False
+
         text = f"{request.path} {request.query} {request.body}".lower()
 
         # Decode nested URL encoding (maximum 5 iterations)
@@ -39,7 +42,7 @@ class PathTraversal(SecurityRule):
 
 
 class BruteForce(SecurityRule):
-    """Security rule to detect brute force attacks based on request frequency."""
+    """Block sources that exceed a failed-authentication limit."""
 
     def __init__(
         self,
@@ -80,45 +83,54 @@ class BruteForce(SecurityRule):
 
     def check(self, request) -> bool:
         """
-        Check if the request should be blocked based on authentication brute force rules.
+        Track 401/403 responses and block the source's next request at the limit.
 
         :param request (Request): The incoming request object.
         :return (bool): True if the request should be blocked, False otherwise.
         """
 
-        now = time.monotonic()
-
-        # Periodically clean up expired entries
-        if now - self.last_cleanup >= self.cleanup_interval:
-            self._cleanup(now)
-
-        # return False if the request is not for a protected path
         if request.path not in self.paths:
             return False
 
+        # Get the current time in seconds since an unspecified starting point and 
+        # perform cleanup if necessary
+        now = time.monotonic()
+        if now - self.last_cleanup >= self.cleanup_interval:
+            self._cleanup(now)
+
         source = request.source
+
+        if request.status_code is not None:
+            # If the response is not a failed-authentication response (401 or 403), 
+            # do not track it.
+            if request.status_code not in {401, 403}:
+                return False
+
+            # If the request is a failed-authentication response, track the attempt 
+            # and check if the source should be blocked.
+            attempts = self.attempts[source]
+            while attempts and now - attempts[0] > self.window_seconds:
+                attempts.popleft()
+            attempts.append(now)
+
+            # If the number of failed attempts exceeds the maximum allowed, block the 
+            # source for the specified duration.
+            if len(attempts) >= self.max_attempts:
+                logger.warning(
+                    "Blocking source %s after %d failed-auth responses in %d seconds",
+                    source,
+                    len(attempts),
+                    self.window_seconds,
+                )
+                self.blocked_until[source] = now + self.block_seconds
+            return False
 
         if self.is_blocked(source):
             return True
 
         attempts = self.attempts[source]
-
-        # Remove attempts that are outside the time window
         while attempts and now - attempts[0] > self.window_seconds:
             attempts.popleft()
-
-        attempts.append(now)
-
-        # If the number of attempts exceeds the maximum allowed, block the source
-        if len(attempts) >= self.max_attempts:
-            logger.warning(
-                "!!! Blocking source %s due to too many attempts: %d attempts in the last %d seconds",
-                source,
-                len(attempts),
-                self.window_seconds,
-            )
-            self.blocked_until[source] = now + self.block_seconds
-            return True
 
         return False
 

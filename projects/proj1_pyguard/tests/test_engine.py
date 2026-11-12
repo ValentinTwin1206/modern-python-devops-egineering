@@ -135,8 +135,11 @@ def test_brute_force_blocks_at_max_attempts(request_factory):
     )
     request = request_factory(path="/login")
 
-    assert rule.check(request) is False
-    assert rule.check(request) is False
+    for _ in range(3):
+        assert rule.check(request) is False
+        request.status_code = 401
+        assert rule.check(request) is False
+        request.status_code = None
     assert rule.check(request) is True
     assert rule.is_blocked("192.0.2.10") is True
 
@@ -149,7 +152,16 @@ def test_brute_force_tracks_sources_independently(request_factory):
 
     assert rule.check(first) is False
     assert rule.check(second) is False
+    first.status_code = 401
+    rule.check(first)
+    second.status_code = 403
+    rule.check(second)
+    first.status_code = 403
+    rule.check(first)
+    first.status_code = None
+    second.status_code = None
     assert rule.check(first) is True
+    assert rule.check(second) is False
     assert rule.is_blocked("192.0.2.10") is True
     assert rule.is_blocked("192.0.2.11") is False
 
@@ -175,9 +187,15 @@ def test_brute_force_expires_attempts_outside_window(
     request = request_factory(path="/login")
 
     assert rule.check(request) is False
+    request.status_code = 401
+    rule.check(request)
+    request.status_code = None
 
     current_time[0] = 111.0
     assert rule.check(request) is False
+    request.status_code = 401
+    rule.check(request)
+    request.status_code = None
     assert rule.is_blocked("192.0.2.10") is False
     assert len(rule.attempts["192.0.2.10"]) == 1
 
@@ -203,6 +221,9 @@ def test_cleanup_removes_expired_attempts_and_blocks(
     request = request_factory(path="/login")
 
     assert rule.check(request) is False
+    request.status_code = 401
+    rule.check(request)
+    request.status_code = None
     rule.blocked_until["192.0.2.11"] = 105.0
 
     current_time[0] = 111.0
@@ -210,3 +231,12 @@ def test_cleanup_removes_expired_attempts_and_blocks(
 
     assert "192.0.2.10" not in rule.attempts
     assert "192.0.2.11" not in rule.blocked_until
+
+
+def test_brute_force_ignores_success_responses(request_factory):
+    rule = BruteForce(paths=["/login"], max_attempts=1)
+    request = request_factory(path="/login")
+
+    request.status_code = 200
+    assert rule.check(request) is False
+    assert not rule.attempts

@@ -1,107 +1,61 @@
 # PyGuard
 
-**PyGuard** is a lightweight, framework-independent Python security engine for inspecting incoming web requests before they reach application handlers.
-
-It currently provides:
-
--   **Path traversal protection**
--   **Brute-force protection** for configured endpoints
-
-PyGuard separates its security engine and rules from framework integration. This lets applications use the same security rules with their own middleware.
+PyGuard checks incoming requests with configurable security rules.
 
 ## Installation
 
-### Requirements
+### Prerequisites
 
--   Python 3.9+
--   `uv` or `pip`
+- Python 3.11 or later
+- [uv](https://docs.astral.sh/uv/)
 
 ### Install PyGuard
-
-With `uv`, add PyGuard to your project dependencies:
 
 ```bash
 uv add pyguard==0.1.0
 ```
 
-Then install the dependencies:
-
-``` bash
-uv sync
-```
-
 ## Usage
 
-### Create a `PyGuard` instance
+### Import PyGuard
 
-Create a `PyGuard` instance and pass the security rules you want to enable. `PyGuard` runs the configured rules when a request is checked:
-
-``` python
-from pyguard import PyGuard
-from pyguard.rules import PathTraversal, BruteForce
-
-guard = PyGuard(
-    rules=[
-        PathTraversal(),
-        BruteForce(
-            paths=["/login", "/auth"],
-            max_attempts=5,
-            window=60,
-            block_duration=300,
-        ),
-    ]
-)
-
-# PyGuard provides a framework-independent request model through `PyGuard.Request`:
-request = PyGuard.Request(
-    method="GET",
-    path="/download",
-    query="file=../../etc/passwd",
-    source="203.0.113.10",
-    body=body.decode("utf-8", errors="replace"),
-)
-
-try:
-    guard.check(request)
-except RequestBlocked as exc:
-    print(f"Request blocked: {exc}")
+```python
+from pyguard import PyGuard, RequestBlocked
+from pyguard.rules import BruteForce, PathTraversal
 ```
 
-`guard.check(request)` returns the request when no rule blocks it. It raises `RequestBlocked` when a configured rule identifies the request as blocked.
+### Protect an Endpoint
 
-### Brute-Force Protection
+Following example demonstrates the PyGuard integration with an `FastAPI` application middleware.
 
-Configure the endpoints that should be monitored:
+```python
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
-``` python
-from pyguard import PyGuard
-from pyguard.rules import BruteForce
+app = FastAPI()
+guard = PyGuard(rules=[
+    PathTraversal(),
+    BruteForce(
+        paths=["/login"], 
+        max_attempts=5, 
+        window=60, 
+        block_duration=300
+    ),
+])
 
-guard = PyGuard(
-    rules=[
-        BruteForce(
-            paths=["/login", "/auth"],
-            max_attempts=5,
-            window=60,
-            block_duration=300,
-        )
-    ]
-)
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    guarded_request = PyGuard.Request(
+        method=request.method,
+        path=request.url.path,
+        source=request.client.host if request.client else "unknown",
+    )
+    try:
+        return await guard.check(guarded_request, lambda: call_next(request))
+    except RequestBlocked as error:
+        return JSONResponse(status_code=429, content={"detail": str(error)})
 ```
 
-Parameters:
-
-  Parameter          Description
-  ------------------ --------------------------------------------------
-  `paths`            Request paths monitored by the rule.
-  `max_attempts`     Number of requests that trigger a block.
-  `window`           Time window, in seconds, used to count requests.
-  `block_duration`   How long a source remains blocked, in seconds.
-
-> Note: The current implementation counts requests to configured paths. It does not yet distinguish successful requests from failed authentication attempts.
-
-## Drawbacks
-
-- **Brute-force detection:** PyGuard currently counts all requests to configured protected paths, regardless of whether authentication succeeds or fails. Successful authentication attempts do not reset the counter. This may lead to false positives.
-
-- **Multi-worker support:** PyGuard currently stores brute-force tracking data in local memory. Consequently, request counters and temporary blocks are not shared between multiple worker processes or server instances. Support for a shared storage backend such as Redis may be considered in the future.
+`BruteForce` counts only `401` and `403` responses on the configured paths. After
+five such responses within 60 seconds, the next request from that source is
+blocked for 300 seconds. Tracking is in memory and is not shared across workers.
