@@ -9,6 +9,21 @@ PyGuard checks incoming requests with configurable security rules.
 - Python 3.11 or later
 - [uv](https://docs.astral.sh/uv/)
 
+### Configure Cloudsmith Repository
+
+Replace `<CLOUDSMITH_REPOSITORY>` with your Cloudsmith repository slug, then
+add the Cloudsmith index and tell uv to install PyGuard from it in your
+project's `pyproject.toml`:
+
+```toml
+[[tool.uv.index]]
+name = "cloudsmith"
+url = "https://python.cloudsmith.io/<CLOUDSMITH_OWNER>/<CLOUDSMITH_REPOSITORY>/simple/"
+
+[tool.uv.sources]
+pyguard = { index = "cloudsmith" }
+```
+
 ### Install PyGuard
 
 ```bash
