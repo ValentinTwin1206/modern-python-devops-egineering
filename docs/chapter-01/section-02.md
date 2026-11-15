@@ -6,13 +6,13 @@ This page covers Python's standard-library `venv` module.
 
 ### Project Setup
 
-The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for `venv` because a pure-Python library shows clearly how one project-local environment can isolate build and development tools while keeping the installed package itself lightweight.
+The applied project is a Python library called `PaiGuard Project`. It inspects images with local moderation models before an application accepts them. This makes it a good fit for `venv` because its pure-Python package can be isolated with its development tools and required inference dependencies in a project-local environment. PyTorch is configured to use its CPU index, and model weights are downloaded separately.
 
 For a hands-on introduction to the environment itself, see [The Isolation Awakens](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb2_python_venv_lab/python_venv_lab.ipynb) and its [setup instructions](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb2_python_venv_lab/README.md).
 
 ### Run the Project
 
-Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
+Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md).
 
 ## `venv` Environment Model
 
@@ -69,13 +69,51 @@ group. Creating `.venv/` supplies the isolated interpreter, while `pip` or `uv`
 reads this file when the project is installed.
 
 ```toml
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
+
 [project]
-name = "pyguard"
-requires-python = ">=3.9"
-dependencies = []
+name = "paiguard"
+version = "0.1.0"
+description = "Lightweight image content moderation for Python applications."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Julius Pravtchev" },
+    { name = "Valentin Pravtchev" }
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "onnxruntime>=1.17",
+    "torch>=2.2",
+    "transformers>=4.49",
+]
 
 [dependency-groups]
-dev = ["karva>=0.0.1a5", "ruff>=0.15.12"]
+dev = [
+    "karva>=0.0.1a5",
+    "pytest>=8",
+    "ruff>=0.15.12",
+]
+
+# Install the CPU-only build of PyTorch. Only `torch` uses this index.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
 ```
 
 #### Key Directories and Files
@@ -185,7 +223,7 @@ The exact directory names vary by operating system, but each `venv` still contai
     include-system-site-packages = false
     version = 3.12.3
     executable = /usr/bin/python3.12
-    command = /usr/bin/python3 -m venv /path/to/projects/proj1_pyguard/.venv
+    command = /usr/bin/python3 -m venv /path/to/projects/proj1_paiguard/.venv
     ```
 
 #### Activation and Import Path
@@ -218,18 +256,18 @@ The exact directory names vary by operating system, but each `venv` still contai
 
 The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`, `unzip`, 
 `uv`, and `cloudsmith-cli`, then copies the project into `/app`. Choose the workflow that 
-matches the state of the local `mpe/proj1_pyguard` image:
+matches the state of the local `mpe/proj1_paiguard` image:
 
 === "Image does not exist"
 
     From the repository's `projects/` directory, use `build.sh` to build and
-    open the dedicated PyGuard development container. The script mounts the
+    open the dedicated PaiGuard development container. The script mounts the
     project at `/app` and its `.build/` directory at `/build` for build
     artifacts:
 
     ```bash
     ./build.sh build \
-        --path proj1_pyguard/Dockerfile.devEnv
+        --path proj1_paiguard/Dockerfile.devEnv
     ```
 
 === "Image already exists"
@@ -239,9 +277,9 @@ matches the state of the local `mpe/proj1_pyguard` image:
 
     ```bash
     docker run -it \
-        -v "$PWD/proj1_pyguard:/app" \
-        -v "$PWD/proj1_pyguard/.build:/build" \
-        mpe/proj1_pyguard \
+        -v "$PWD/proj1_paiguard:/app" \
+        -v "$PWD/proj1_paiguard/.build:/build" \
+        mpe/proj1_paiguard \
         /bin/bash
     ```
 
@@ -269,12 +307,13 @@ recommended workflow or `venv + pip` for the traditional workflow.
     python3 -m venv .venv
     ```
 
-    Activate the environment, upgrade `pip`, and install the project from
-    `pyproject.toml`:
+    Activate the environment, upgrade `pip`, install the CPU-only PyTorch
+    build, and then install the project from `pyproject.toml`:
 
     ```bash
     source .venv/bin/activate
     python -m pip install --upgrade pip
+    python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
     python -m pip install .
     ```
 
@@ -289,7 +328,9 @@ when using `uv`:
 
     ```toml
     dependencies = [
-        "requests"
+        "pydantic>=2.0",
+        "pillow>=10.0",
+        "requests",
     ]
     ```
 
@@ -315,13 +356,13 @@ when using `uv`:
 
 ### Run the Project
 
-PyGuard is a library rather than a standalone command-line application. Use
-the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md)
-for the middleware and FastAPI examples. After installation, verify that the
+PaiGuard is a library rather than a standalone command-line application. Use
+the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md)
+for the usage examples. After installation, verify that the
 package can be imported from the active environment:
 
 ```bash
-python -c "import pyguard; print(pyguard.__file__)"
+python -c "import paiguard; print(paiguard.__file__)"
 ```
 
 ### Inspect the Environment
@@ -335,7 +376,7 @@ python3 -c "import sys; print(sys.prefix); print(sys.base_prefix)"
 Show where installed packages live:
 
 ```bash
-python3 -c "import pyguard; print(pyguard.__file__)"
+python3 -c "import paiguard; print(paiguard.__file__)"
 ```
 
 Show the folders where the interpreter imports the packages from

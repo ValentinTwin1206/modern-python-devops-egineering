@@ -6,7 +6,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from irislab.analyze import REFERENCE_COLORS, EyeColorDetectionError
 
 from ...schemas.analysis import AnalysisResult, ReferenceColor
-from ...services.analysis import AnalysisService, InvalidImageError, UploadTooLargeError
+from ...services.analysis import (
+    AnalysisService,
+    ContentRejectedError,
+    InvalidImageError,
+    ModerationUnavailableError,
+    UploadTooLargeError,
+)
 
 router = APIRouter()
 
@@ -27,6 +33,10 @@ def analyze_image(
         raise HTTPException(status_code=413, detail=str(error)) from error
     except InvalidImageError as error:
         raise HTTPException(status_code=415, detail=str(error)) from error
+    except ContentRejectedError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except ModerationUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     except EyeColorDetectionError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except FileNotFoundError as error:

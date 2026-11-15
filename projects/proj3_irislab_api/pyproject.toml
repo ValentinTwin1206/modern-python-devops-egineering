@@ -11,7 +11,37 @@ dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn>=0.34,<1",
     "python-multipart>=0.0.20,<1",
+    "pillow>=10.0",
+    "paiguard==0.1.0",
 ]
 
 [dependency-groups]
-dev = ["httpx>=0.28,<1", "pytest>=8,<10"]
+dev = [
+    "httpx>=0.28,<1",
+    "pytest>=8,<10"
+]
+
+# uv does not expand environment variables in index URLs. Set
+# CLOUDSMITH_REPOSITORY to <owner>/<repository>, then use the `uv add` command
+# below to write the concrete index URL and source mapping into this file.
+#
+#   export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+#   uv add "paiguard==0.1.0" --index \
+#     "modern-python-engineering=https://dl.cloudsmith.io/basic/${CLOUDSMITH_REPOSITORY}/python/simple/"
+#
+[tool.uv.sources]
+paiguard = { index = "modern-python-engineering" }
+torch = { index = "pytorch-cpu" }
+
+# Replace <owner>/<repository> with the Cloudsmith repository path. The `uv add`
+# command above writes the actual URL and regenerates the lockfile.
+[[tool.uv.index]]
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/<repository>/python/simple/"
+explicit = true
+
+# Install the CPU-only build of PyTorch. Only `torch` uses this index.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

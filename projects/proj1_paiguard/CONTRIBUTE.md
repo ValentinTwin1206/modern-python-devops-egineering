@@ -3,11 +3,11 @@
 ## Setup
 
 ``` bash
-./build.sh build --path proj1_pyguard/Dockerfile.devEnv
+./build.sh build --path proj1_paiguard/Dockerfile.devEnv
 ```
 
 ``` bash
-uv sync --all-groups
+uv sync --all-groups --all-extras
 source .venv/bin/activate
 ```
 
@@ -15,6 +15,12 @@ source .venv/bin/activate
 
 ``` bash
 ruff check .
+```
+
+## Test
+
+``` bash
+pytest
 ```
 
 ## Build
@@ -29,5 +35,5 @@ uv build --wheel --out-dir /build
 uv publish
 ```
 
-PyGuard is distributed as a pure-Python wheel and can be installed
+PaiGuard is distributed as a pure-Python wheel and can be installed
 directly from PyPI.

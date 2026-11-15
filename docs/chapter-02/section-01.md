@@ -6,11 +6,11 @@ Python wheels are the standard built package format for Python projects. They le
 
 ### Project Setup
 
-The applied project is a small utility library called `PyGuard Project`. It blocks suspicious web requests before they reach application handlers without any runtime dependencies beyond the Python standard library. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
+The applied project is a small utility library called `PaiGuard Project`. It inspects images with local moderation models before an application accepts them. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
 
 ### Run the Project
 
-Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md).
+Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md).
 
 ## Building Blocks
 
@@ -61,29 +61,54 @@ requires = ["uv_build>=0.11.8,<0.12"]
 build-backend = "uv_build"
 
 [project]
-name = "pyguard"
+name = "paiguard"
 version = "0.1.0"
-description = "Lightweight security middleware for Python web applications."
+description = "Lightweight image content moderation for Python applications."
 readme = "README.md"
-requires-python = ">=3.9"
-license = "MIT"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "Julius Pravtchev" },
     { name = "Valentin Pravtchev" }
 ]
-dependencies = []
 
-# [project.scripts]
-# pyguard = "pyguard.cli:main"
-# [project.urls]
-# Homepage = "https://example.com/project"
+dependencies = [
+    "pydantic>=2.0",
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "onnxruntime>=1.17",
+    "torch>=2.2",
+    "transformers>=4.49",
+]
+
+[dependency-groups]
+dev = [
+    "karva>=0.0.1a5",
+    "pytest>=8",
+    "ruff>=0.15.12",
+]
+
+# Install the CPU-only build of PyTorch. Only `torch` uses this index.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
 ```
 
 - `name`: Defines the distribution name used in package indexes and wheel filenames.
 - `version`: Identifies the published release.
 - `requires-python`: Declares compatible Python versions.
-- `dependencies`: Lists packages required when the wheel is installed.
+- `dependencies`: Lists packages required when the wheel is installed, including PaiGuard's built-in inference runtime.
 - `[build-system]`: Selects the build backend and the packages needed to run it.
+- `[tool.uv.sources]` and `[[tool.uv.index]]`: Install the CPU-only build of `torch` from the PyTorch index. `explicit = true` keeps every other package on the default index. This setting applies to the project itself and is not stored in the wheel.
 
 ### Package Layout
 
@@ -129,22 +154,22 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 ### Create the Environment
 
 !!! info
-    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
+    This workflow assumes that you have a valid Cloudsmith repository and API key. Set `CLOUDSMITH_REPOSITORY` to your Cloudsmith `<owner>/<repository>` path, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
 
 The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`,
 `sudo`, `unzip`, and `uv`, then copies the project into `/app`. Cloudsmith CLI
 is installed in the workflow because it is only needed for publication.
-Choose the workflow that matches the local `mpe/proj1_pyguard` image:
+Choose the workflow that matches the local `mpe/proj1_paiguard` image:
 
 === "Image does not exist"
 
     From the `projects/` directory, use `build.sh` to build and open the
-    interactive PyGuard packaging container:
+    interactive PaiGuard packaging container:
 
     ```bash
     ./build.sh build \
-        --path proj1_pyguard/Dockerfile.devEnv \
-        --cloudsmith-workspace "<cloudsmith-repo>" \
+        --path proj1_paiguard/Dockerfile.devEnv \
+        --cloudsmith-workspace "<owner>/<repository>" \
         --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
     ```
 
@@ -154,13 +179,13 @@ Choose the workflow that matches the local `mpe/proj1_pyguard` image:
     artifacts and run the existing image:
 
     ```bash
-    mkdir -p proj1_pyguard/.build
+    mkdir -p proj1_paiguard/.build
     docker run -it \
-        -v "$PWD/proj1_pyguard:/app" \
-        -v "$PWD/proj1_pyguard/.build:/build" \
+        -v "$PWD/proj1_paiguard:/app" \
+        -v "$PWD/proj1_paiguard/.build:/build" \
         --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
         --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-        mpe/proj1_pyguard \
+        mpe/proj1_paiguard \
         /bin/bash
     ```
 
@@ -203,25 +228,25 @@ A wheel (`.whl`) is a **ZIP archive** with Python modules and a `*.dist-info/` m
 List the files inside the wheel archive without extracting it.
 
 ```bash
-zipinfo -1 dist/pyguard-0.1.0-py3-none-any.whl
+zipinfo -1 dist/paiguard-0.1.0-py3-none-any.whl
 ```
 
 Read the wheel metadata that describes the wheel format version, generator, root layout, and compatibility tags.
 
 ```bash
-unzip -p dist/pyguard-0.1.0-py3-none-any.whl pyguard-0.1.0.dist-info/WHEEL
+unzip -p dist/paiguard-0.1.0-py3-none-any.whl paiguard-0.1.0.dist-info/WHEEL
 ```
 
 Read the package metadata that installers and package indexes use for the project name, version, description, and dependency declarations.
 
 ```bash
-unzip -p dist/pyguard-0.1.0-py3-none-any.whl pyguard-0.1.0.dist-info/METADATA
+unzip -p dist/paiguard-0.1.0-py3-none-any.whl paiguard-0.1.0.dist-info/METADATA
 ```
 
 List the files inside the source distribution TAR archive.
 
 ```bash
-tar -tzf dist/pyguard-0.1.0.tar.gz
+tar -tzf dist/paiguard-0.1.0.tar.gz
 ```
 
 ### Publish the Package
@@ -237,86 +262,148 @@ uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/
 Check that the uploaded release is visible through the Cloudsmith `/simple/` API used by installers.
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/pyguard/" | grep "pyguard-0.1.0"
+curl -fsSL "https://dl.cloudsmith.io/basic/${CLOUDSMITH_REPOSITORY}/python/simple/paiguard/" | grep "paiguard-0.1.0"
 ```
 
 ## Consumer Workflow
 
-### Install The Package
+### Install the Package
 
-After publication, users can create a small project, install `pyguard` from the Cloudsmith PyPI repository, and run a short script against the created environment.
+After publication, users can create a small project, install `paiguard` from the Cloudsmith PyPI repository, and run a short server in the created environment.
 
 Create a new working directory for a small consumer project.
 
 ```bash
-mkdir pyguard-consumer && cd pyguard-consumer
+mkdir paiguard-consumer && cd paiguard-consumer
 ```
 
-Add the project files.
+=== "`pyproject.toml`"
 
-=== "pyproject.toml"
+    Add `paiguard` to the project's `[project].dependencies`. Update the
+    `[tool.uv.sources]` table and the `[[tool.uv.index]]` entries to point to the
+    appropriate package indexes. Replace `<owner>/<repository>` with your Cloudsmith
+    repository path and configure Cloudsmith credentials before running `uv sync`.
 
     ```toml
     [project]
-    name = "pyguard-consumer"
+    name = "paiguard-consumer"
     version = "0.1.0"
     requires-python = ">=3.12"
     dependencies = [
-        "pyguard",
+        "paiguard==0.1.0",
+        "fastapi",
+        "uvicorn",
+        "python-multipart",
     ]
 
-    [tool.uv]
-
-    [[tool.uv.index]]
-    name = "pypi"
-    url = "https://pypi.org/simple"
+    [tool.uv.sources]
+    paiguard = { index = "modern-python-engineering" }
+    torch = { index = "pytorch-cpu" }
 
     [[tool.uv.index]]
     name = "modern-python-engineering"
-    url = "https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/"
+    url = "https://dl.cloudsmith.io/basic/<owner>/<repository>/python/simple/"
+    explicit = true
+
+    [[tool.uv.index]]
+    name = "pytorch-cpu"
+    url = "https://download.pytorch.org/whl/cpu"
+    explicit = true
     ```
 
-=== "hello.py"
+=== "`server.py`"
+
+    Create `server.py` with the moderation endpoint, using `PaiGuard.inspect()` to
+    inspect uploaded images:
 
     ```python
-    from pyguard import PyGuardMiddleware, Request, RequestBlocked
+    from fastapi import FastAPI, UploadFile
+    from PIL import Image
 
-    def main() -> None:
-        guard = PyGuardMiddleware()
-        request = Request(method="GET", path="/download", query="file=../../etc/passwd")
+    from paiguard import PaiGuard
+    from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
 
-        try:
-            guard.before_request(request)
-        except RequestBlocked as exc:
-            print(exc)
+    app = FastAPI()
+
+    guard = PaiGuard(
+        rules=[
+            PaiNsfwDetection(threshold=0.80),
+            PaiViolenceDetection(threshold=0.85),
+        ]
+    )
 
 
-    if __name__ == "__main__":
-        main()
+    @app.post("/moderations")
+    def moderate(image: UploadFile):
+        picture = Image.open(image.file).convert("RGB")
+        result = guard.inspect(picture)
+
+        return {
+            "decision": result.decision,
+            "is_safe": result.is_safe,
+            "violations": result.violations,
+        }
     ```
 
-Install the dependency and run the script.
-
-=== "uv"
-
-    Sync the project environment with `uv`, which reads the package indexes directly from `pyproject.toml`, resolves `pyguard` from the configured Cloudsmith repository, and lets the project describe both the public PyPI index and the proprietary Cloudsmith index in one place.
-
-    ```bash
-    uv sync
-    ```
-
-=== "pip"
-
-    Create a virtual environment and install `pyguard` with an explicit `--extra-index-url` argument, because `pip` does not read repository indexes from `pyproject.toml`.
-
-    ```bash
-    python -m venv .venv && . .venv/bin/activate && pip install --extra-index-url https://dl.cloudsmith.io/public/<cloudsmith-repo>/python/simple/ pyguard
-    ```
-    
-Run the script from the same virtual environment.
+Install the dependencies from the complete project configuration:
 
 ```bash
-.venv/bin/python hello.py
+uv sync
+```
+
+### Install Models
+
+Set `PAIGUARD_MODEL_DIR` to the directory where PaiGuard should find its local
+model files:
+
+```bash
+export PAIGUARD_MODEL_DIR="${PAIGUARD_MODEL_DIR:-$PWD/models}"
+```
+
+The SigLIP2 base model encodes images for violence moderation. To download the
+model and its weights, use `curl`:
+
+```bash
+mkdir -p "$PAIGUARD_MODEL_DIR/siglip2-base"
+BASE_URL="https://huggingface.co/google/siglip2-base-patch16-256/resolve/3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab"
+curl -fsSL "$BASE_URL/config.json" -o "$PAIGUARD_MODEL_DIR/siglip2-base/config.json"
+curl -fsSL "$BASE_URL/preprocessor_config.json" -o "$PAIGUARD_MODEL_DIR/siglip2-base/preprocessor_config.json"
+curl -fsSL "$BASE_URL/model.safetensors" -o "$PAIGUARD_MODEL_DIR/siglip2-base/model.safetensors"
+```
+
+The SigLIP2 moderation head classifies image embeddings for violence. To
+download the model and its weights, use `curl`:
+
+```bash
+mkdir -p "$PAIGUARD_MODEL_DIR/siglip2-heads"
+BASE_URL="https://huggingface.co/khasinski/siglip2-moderation-heads/resolve/b88fe03369e3dc6aa9887cd3b4cd3e9b7cf76ee5"
+curl -fsSL "$BASE_URL/violence_head.onnx" -o "$PAIGUARD_MODEL_DIR/siglip2-heads/violence_head.onnx"
+curl -fsSL "$BASE_URL/violence_head.onnx.data" -o "$PAIGUARD_MODEL_DIR/siglip2-heads/violence_head.onnx.data"
+```
+
+The Falconsai classifier detects NSFW content. To download the model and its
+weights, use `curl`:
+
+```bash
+mkdir -p "$PAIGUARD_MODEL_DIR/falconsai-nsfw"
+BASE_URL="https://huggingface.co/Falconsai/nsfw_image_detection/resolve/96cb0d0342c7afb80cab76ecc58b265fa44da256"
+curl -fsSL "$BASE_URL/config.json" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/config.json"
+curl -fsSL "$BASE_URL/preprocessor_config.json" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/preprocessor_config.json"
+curl -fsSL "$BASE_URL/model.safetensors" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/model.safetensors"
+```
+
+### Use PaiGuard Image Moderation
+
+Run the server from the same virtual environment.
+
+```bash
+.venv/bin/uvicorn server:app
+```
+
+Send an image to the server from a second terminal.
+
+```bash
+curl -F 'image=@portrait.png' http://127.0.0.1:8000/moderations
 ```
 
 ## Useful Links

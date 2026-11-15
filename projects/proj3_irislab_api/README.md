@@ -1,6 +1,6 @@
 # IrisLab API
 
-IrisLab API provides HTTP endpoints for iris-color analysis with IrisLab. It accepts PNG and JPEG images up to 10 MiB and 20 megapixels.
+IrisLab API provides HTTP endpoints for iris-color analysis with IrisLab. It accepts PNG and JPEG images up to 10 MiB and 20 megapixels. Every upload is moderated with [PaiGuard](../proj1_paiguard/README.md) before IrisLab analyzes it.
 
 ## Installation
 
@@ -46,3 +46,5 @@ curl -f \
 ```
 
 Interactive API documentation is available at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs).
+
+Images that PaiGuard classifies as NSFW or violent are rejected with HTTP `422`. The thresholds can be changed with the environment variables `IRISLAB_API_NSFW_THRESHOLD` (default `0.80`) and `IRISLAB_API_VIOLENCE_THRESHOLD` (default `0.85`). The container reads the PaiGuard models from `PAIGUARD_MODEL_DIR` (`/opt/irislab/paiguard`) and returns HTTP `503` when they are missing.
