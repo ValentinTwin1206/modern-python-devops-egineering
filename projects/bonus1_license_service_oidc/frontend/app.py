@@ -1,6 +1,8 @@
 """IrisLab Streamlit frontend."""
 
+import base64
 import logging
+from datetime import datetime
 
 import streamlit as st
 
@@ -147,7 +149,6 @@ def page_heading(title: str, subtitle: str):
 
 
 def render_dashboard():
-    page_heading("Dashboard", "Your IrisLab workspace.")
 
     st.markdown(
         """
@@ -167,6 +168,50 @@ def render_dashboard():
     ):
         st.session_state["page"] = "New Analysis"
         st.rerun()
+
+    # ---------------------------------------------------------------------------
+    # Analysis history
+    # ---------------------------------------------------------------------------
+    st.divider()
+    st.subheader("Recent analyses")
+
+    try:
+      # Load the user's analysis history from the API
+      history = api.get_analysis_history()
+    except IrisAPIError as exc:
+      logger.warning("Could not load analysis history: %s", exc)
+      st.error(f"Could not load your analysis history: {exc}")
+      return
+
+    if not history:
+      st.caption("Your completed analyses will appear here.")
+      return
+
+    # Display the most recent analyses, up to 5 entries
+    st.caption(f"Showing the {min(len(history), 5)} most recent of {len(history)} analyses")
+    for item in reversed(history[-5:]):
+      with st.container(border=True):
+        image_col, details_col = st.columns([1, 5])
+        with image_col:
+          try:
+            st.image(base64.b64decode(item["image_base64"], validate=True), width=110)
+          except (KeyError, ValueError):
+            st.caption("Preview unavailable")
+        with details_col:
+          result = item.get("result", {})
+          st.markdown(f"**{result.get('eye_color', 'Unknown')} iris**")
+          created_at = item.get("created_at", "")
+          try:
+                created_at = datetime.fromisoformat(created_at).astimezone().strftime(
+              "%b %d, %Y · %I:%M %p"
+            )
+          except (AttributeError, ValueError):
+            pass
+          st.caption(created_at)
+          details = [item.get("filename"), result.get("closest_profile")]
+          if result.get("confidence") is not None:
+            details.append(f"{result['confidence']:.0%} confidence")
+          st.caption(" · ".join(str(value) for value in details if value))
 
 
 def render_analysis():

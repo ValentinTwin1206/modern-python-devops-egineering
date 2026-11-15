@@ -1,5 +1,7 @@
 """Public JSON representations of IrisLab results."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -26,3 +28,12 @@ class AnalysisResult(BaseModel):
     source: str
     confidence: float
     eyes_detected: int
+
+
+class AnalysisHistoryItem(BaseModel):
+    id: str
+    result: AnalysisResult
+    image_base64: str
+    filename: str
+    content_type: str | None = None
+    created_at: datetime

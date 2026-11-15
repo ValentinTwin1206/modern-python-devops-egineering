@@ -52,6 +52,9 @@ class IrisAPIClient:
     def get_reference_colors(self) -> list:
         return self._request("GET", "/api/v1/reference-colors")
 
+    def get_analysis_history(self) -> list:
+        return self._request("GET", "/api/v1/analyses")
+
     def analyze_image(
         self,
         filename: str,

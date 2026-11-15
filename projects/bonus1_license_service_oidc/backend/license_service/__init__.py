@@ -1,1 +1,0 @@
-"""License service infrastructure modules."""

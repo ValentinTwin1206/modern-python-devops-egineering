@@ -1,24 +1,4 @@
 services:
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     additional_contexts:
-  #       pyguard: ../proj1_pyguard
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     # Keep SQLite license and entitlement records across container replacement.
-  #     - license_service_data:/app/data
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     ADMIN_API_KEY: ${ADMIN_API_KEY}
-  #     OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
-  #     OIDC_JWKS_URL: ${OIDC_JWKS_URL}
-  #     DATABASE_PATH: ${DATABASE_PATH}
-  #   networks:
-  #     license_service_network:
-  #       ipv4_address: ${BACKEND_IP}
 
   devcontainer:
     build:
@@ -37,21 +17,53 @@ services:
       PLAYWRIGHT_HOST_GATEWAY: 172.30.0.1
       KEYCLOAK_TEST_USERNAME: ${KEYCLOAK_TEST_USERNAME}
       KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
+      IRIS_PERF_CLIENT_ID: ${IRIS_PERF_CLIENT_ID:-iris-analysis-frontend}
+      IRIS_PERF_CLIENT_SECRET: ${IRIS_PERF_CLIENT_SECRET:-}
+      IRIS_PERF_UPLOADS: ${IRIS_PERF_UPLOADS:-50}
+      IRIS_FORBIDDEN_TEST_TOKEN: ${IRIS_FORBIDDEN_TEST_TOKEN:-}
+      PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
     networks:
       irislab_network:
 
   backend:
-    build:
-      context: ../proj3_irislab_api
-      args:
-        IRISLAB_CHANNEL: https://conda.cloudsmith.io/${CLOUDSMITH_OWNER}/${CLOUDSMITH_REPOSITORY}/
-      secrets:
-        - cloudsmith_api_key
+    image: irislab-api:1.0.0
+    depends_on:
+      mongodb:
+        condition: service_healthy
     ports:
       - "8080:8080"
+    environment:
+      MONGODB_URI: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL}
+      OIDC_REQUIRED_ROLE: ${OIDC_REQUIRED_ROLE:-}
+      PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
+      PYGUARD_WINDOWS_SECONDS: ${PYGUARD_WINDOWS_SECONDS:-60}
+      PYGUARD_BLOCK_SECONDS: ${PYGUARD_BLOCK_SECONDS:-300s}
     networks:
       irislab_network:
         ipv4_address: ${IRIS_API_IP}
+
+  mongodb:
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:${MONGODB_HOST_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --eval 'db.adminCommand("ping").ok' --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      irislab_network:
+        ipv4_address: ${MONGODB_IP}
 
   frontend:
     build: ./frontend
@@ -168,6 +180,7 @@ networks:
         - subnet: 172.30.0.0/24
 
 volumes:
+  mongodb_data:
   influxdb_data:
   grafana_data:
   loki_data:

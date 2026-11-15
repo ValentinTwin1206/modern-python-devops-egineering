@@ -14,11 +14,24 @@ export CLOUDSMITH_REPOSITORY="<CLOUDSMITH_REPOSITORY>"
 
 ### Install IrisLab API
 
+Configure the external MongoDB database and OIDC issuer before starting the API:
+
+```bash
+export MONGODB_URI="mongodb://..."
+export MONGODB_DATABASE="irislab"
+export OIDC_ISSUER_URL="https://..."
+export OIDC_JWKS_URL="https://.../.well-known/jwks.json"
+# Set OIDC_AUDIENCE and OIDC_REQUIRED_ROLE when required by your provider.
+```
+
 Pull and run the published container image:
 
 ```bash
 docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 docker run --rm -p 8080:8080 \
+  -e MONGODB_URI -e MONGODB_DATABASE \
+  -e OIDC_ISSUER_URL -e OIDC_JWKS_URL \
+  -e OIDC_AUDIENCE -e OIDC_REQUIRED_ROLE \
   "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 ```
 
@@ -41,6 +54,7 @@ curl -f http://127.0.0.1:8080/api/v1/reference-colors
 
 ```bash
 curl -f \
+  -H "Authorization: Bearer <access-token>" \
   -F 'image=@portrait.png' \
   http://127.0.0.1:8080/api/v1/analyses
 ```

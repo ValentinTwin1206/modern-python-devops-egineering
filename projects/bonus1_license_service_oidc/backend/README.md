@@ -1,216 +1,194 @@
-# License Service Backend
+# IrisLab API Backend
 
-The License Service backend is a small [FastAPI](https://fastapi.tiangolo.com/) application for creating, retrieving, validating, and revoking license keys from [clousmith](www.cloudsmith.io). 
-
-It uses [Pydantic](https://docs.pydantic.dev/) for typed API models, [Uvicorn](https://www.uvicorn.org/) as the application server, and SQLite for local license storage.
-
-The backend also validates OIDC bearer tokens for protected operations and uses [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) to rate-limit requests that can be used for brute-force attacks.
+The IrisLab API is a [FastAPI](https://fastapi.tiangolo.com/) service for iris
+image analysis. It validates uploaded PNG and JPEG images, invokes the IrisLab
+analysis model, and returns typed results. MongoDB stores analysis metadata and
+user history, while GridFS stores the original images. Protected endpoints use
+Keycloak-issued OIDC bearer tokens, and [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/tree/main/projects/proj1_pyguard)
+adds request security and brute-force protection.
 
 ## Architecture
 
-The following diagram shows the application flow inside the License Service backend. 
+The API uses an MVC-inspired layered structure:
 
-1. `main.py` creates the database and FastAPI application.
-2. The application lifespan loads the Cloudsmith configuration and checks the current database state at startup.
-3. Middleware applies PyGuard rate limiting, validates bearer tokens for protected license operations and send metrics to InfluxDB.
-4. Route handlers authorize the request, read or update SQLite, and call Cloudsmith when a license is created or refreshed.
-5. A background task refreshes the stored Cloudsmith token while the service is running and is cancelled cleanly during shutdown.
+1. **Controller and service — request handling and workflow:** FastAPI routes
+   accept HTTP input, obtain the authenticated user's subject, delegate image
+   validation, analysis, and persistence to the service, then translate
+   expected errors into HTTP responses.
+2. **Model — data and persistence:** Pydantic schemas define API input/output;
+  database models and MongoDB repositories manage stored users and analyses.
+3. **Response representation:** There is no separate HTML view. Typed JSON
+  responses are the API's presentation to its clients.
 
 ```mermaid
 graph LR
-   REQUEST["request"] --> APP["FastAPI<br/>main.py"] 
-	 APP --> GUARD["PyGuard<br/>rate limiting"]
-	 subgraph MIDDLEWARE["Middleware"]
-   GUARD --> JWT["JWT Authentication"]
-   JWT --> METRICS["InfluxDB metrics Dump"]
-	 end
-   METRICS --> RESPONSE["response"]
-	 APP --> DB["SQLite<br/>licenses.db"]
-	 APP --> CLOUDSMITH["Cloudsmith<br/>license token service"]
-	 SCHEDULE["Background refresh<br/>task"] --> CLOUDSMITH
-	 SCHEDULE --> DB
+  CLIENT["Frontend / Client"] --> SECURITY
+  subgraph MIDDLEWARE["Middleware"]
+    SECURITY["PyGuard"] --> AUTH["JWT authentication"]
+  end
+  AUTH --> ROUTES["Routes / controllers"]
+    ROUTES --> SERVICE["Analysis service"]
+    SERVICE --> MODEL["IrisLab model"]
+  MODEL --> SERVICE
+  SERVICE --> REPO
+  subgraph DATABASE["Database"]
+    REPO["MongoDB repositories"] --> DB["MongoDB"]
+    GRIDFS["GridFS image storage"]
+  end
+  SERVICE --> GRIDFS
+    ROUTES --> SCHEMA["Pydantic response schemas"]
+    SCHEMA --> CLIENT
 ```
 
 ## Basic Components
 
-The License Service backend is boostrapped as a `FastAPI` application and uses `asynccontextmanager` as its lifespan manager. The following snippet refers to the `main.py` and shows the basic logic
+### Application lifespan
+
+`create_app()` in `src/irislab_api/main.py` creates the FastAPI application, registers middleware and mounts the routers to the application. Its async lifespan opens MongoDB at startup, initializes the repositories and GridFS bucket on `app.state`, then closes the MongoDB client at shutdown.
 
 ```python
-# main.py
-from fastapi import FastAPI
-from license_service.middleware import configure_middleware
+def create_app() -> FastAPI:
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    # on startup
-    try:
-        yield
-    finally:
-        # on teardown
-        ...
+  @asynccontextmanager
+  async def lifespan(app: FastAPI):
+      client = MongoClient(os.environ["MONGODB_URI"])
+      try:
+          bootstrap_db(app, client, os.environ["MONGODB_DATABASE"])
+          yield
+      finally:
+          client.close()
 
-app = FastAPI(
-    title="License Service",
-    description="Small example service for generating and validating license keys.",
-    lifespan=lifespan,
-)
+    # Create FastAPI app and configure middleware
+    app = FastAPI( title="IrisLab API", version="1.0.0", lifespan=lifespan )
+    configure_middleware(app)
 
-configure_middleware(app)
+    # Add routers
+    app.include_router( health.router, tags=["health"] )
+    app.include_router( analysis.router, prefix="/api/v1", tags=["iris analysis"] )
 
+    return app        
 ```
-
-The `FastAPI` instance stores the application metadata, routes, and middleware. Its `lifespan` handler performs startup and shutdown work:
-
-* Loads Cloudsmith configuration from environment variables.
-* Logs the current active-license state.
-* Verifies the Cloudsmith repository when Cloudsmith is configured.
-* Starts the background token-refresh task.
-* Cancels and awaits the refresh task during shutdown.
-
-If Cloudsmith configuration is incomplete, the service remains available for health checks and license retrieval, but license creation returns `503` until the required configuration is provided.
 
 ### Middleware
 
-The middleware is configured within the `configure_middleware()` method and consists of three basic middleware operations:
-
-1. **PyGuard middleware** tracks requests to protected paths and returns `429`
-  when the configured brute-force threshold is exceeded.
-2. **JWT authentication middleware** validates an `Authorization: Bearer` token
-  for protected license operations and stores the validated claims on
-  `request.state.jwt_claims`.
-3. **Metrics middleware** writes metrics to the monitoring stack using flux protocol
-
+`configure_middleware()` in `api/middleware/middleware.py` creates the PyGuard
+instance and registers JWT authentication and security middleware.
 
 ```python
-# license_service/middleware.py
-def configure_middleware(app):
+def configure_middleware(app) -> None:
 
-    ...
-
-    @app.middleware("http")
-    async def security_middleware(request: FastAPIRequest, call_next):
-        ...
-    
-       response = await call_next(request)
-
-    @app.middleware("http")
-    async def jwt_auth_middleware(request: FastAPIRequest, call_next):
-
-        ...
-        return await call_next(request)
-
-    @app.middleware("http")
-    async def metrics_middleware(request: FastAPIRequest, call_next):
-        ...
-
+    app.state.guard = create_security_guard()
+    app.middleware("http")(jwt_auth_middleware)
+    app.middleware("http")(security_middleware)
 ```
 
-``FastApi`` offers the decorator ``@app.middleware("http")`` that registers the function as an HTTP middleware. Within, a developer can utilize the ``call_next()`` method, that passes the request to the next processing layer. Depending on the middleware stack, this can be another middleware or, eventually, the actual FastAPI route.
+#### JWT authentication
 
-The part after the ``call_next()`` can be used to modify the reponse back to the client. 
+Protects the analysis and reference-color endpoints. It validates RS256 tokens against the configured issuer and JWKS, optionally checks audience and realm role, and exposes validated claims through `request.state.jwt_claims`. Missing or invalid tokens return 401; missing required roles return 403.
 
-
-### Routes and models
-
-The application implements its endpoints within the `main.py` and decorates them with the `@app.get`, `@app.post`, etc. decorators. The backend uses Pydantic response models to document and validate its API:
-
-* `LicenseResponse` contains the owner, Cloudsmith token, and expiration time.
-* `LicenseCheckResponse` contains the validation status and optional owner.
-* The health route returns the service name and an `ok` status.
-
-FastAPI exposes interactive API documentation at `/docs` and the generated OpenAPI schema at `/openapi.json`.
-
-The following shows an example snippet inside the `main.py`
-
-```python
-# main.py
-from fastapi  import Depends, FastAPI, HTTPException, Query, Request as FastAPIRequest
-from pydantic import BaseModel
-
-class LicenseResponse(BaseModel):
-    user: str
-    cloudsmith_token: str
-    cloudsmith_expires_at: str
-
-@app.get(
-    "/licenses",
-    response_model=LicenseResponse,
-    dependencies=[Depends(require_admin_or_user)],
-)
-def get_license() -> LicenseResponse:
-    """Return the current Cloudsmith token without refreshing it."""
-    
-    ...
-    
-    return LicenseResponse(
-        user=license_row["user"],
-        cloudsmith_token=license_row["cloudsmith_token"],
-        cloudsmith_expires_at=license_row["expires_at"],
-    )
+```mermaid
+flowchart LR
+  TOKEN["Bearer JWT"] --> VALIDATE["Validate signature and claims"]
+  VALIDATE --> CLAIMS["Read sub claim"]
+  CLAIMS --> ROUTE["Route passes subject to service"]
+  ROUTE --> STORE["Store analysis under user"]
 ```
+
+#### PyGuard security 
+
+Checks requests for path traversal and brute-force activity. Repeated authentication failures on protected API paths can be blocked with 429 responses. Defaults are five failed attempts in 60 seconds and a 300-second block; environment variables can adjust these values.
+
+
+### Routes
+
+Routes are grouped under `api/routes/`. Health checks are public; analysis and
+reference-color endpoints require a valid bearer token.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /health/live` | Liveness check |
+| `GET /health/ready` | Checks that the IrisLab model file is available |
+| `GET /api/v1/reference-colors` | Returns the reference color profiles |
+| `POST /api/v1/analyses` | Validates and analyzes an uploaded image, then stores it |
+| `GET /api/v1/analyses` | Returns the authenticated user's analysis history |
+
+Uploads are limited to 10 MiB and 20 megapixels and must be valid PNG or JPEG
+images. Expected failures use suitable HTTP responses: 413 for oversized files,
+415 for invalid or unsupported images, 422 when no iris can be analyzed, and
+503 when the model or persistence layer is unavailable. FastAPI provides
+interactive documentation at `/docs` and the OpenAPI schema at `/openapi.json`.
+
+### Services and models
+
+`services/analysis.py` contains `AnalysisService`, which validates uploads,
+uses a temporary file for the path-based IrisLab inference call, and stores the
+result and source image. If persistence fails partway through, it attempts to
+remove the created analysis document and GridFS file. History is resolved by
+the authenticated OIDC `sub`, so users receive only their own records.
+
+Pydantic schemas in `schemas/analysis.py` define `ReferenceColor`,
+`AnalysisResult`, and `AnalysisHistoryItem`, the public JSON response shapes.
+Persistence models in `database/models/` define the MongoDB user and analysis
+documents. The repositories in `database/mongo/` manage those documents and
+initialize the unique user-subject index. GridFS holds image bytes separately
+from analysis metadata.
 
 ## Project Structure
 
+The implementation is in `projects/proj3_irislab_api`:
+
 | Path | Purpose |
 | --- | --- |
-| `main.py` | FastAPI application, lifecycle, middleware registration, and routes |
-| `license_service/schedule.py` | Background Cloudsmith token refresh loop |
-| `license_service/database.py` | SQLite database creation and license operations |
-| `license_service/helpers.py` | OIDC validation and authorization helpers |
-| `license_service/middleware.py` | PyGuard and JWT middleware configuration |
-| `license_service/cloudsmith.py` | Cloudsmith configuration and API integration |
-| `pyproject.toml` | Runtime and development dependencies |
-| `Dockerfile` | Container image definition |
-| `test/` | Backend tests |
+| `src/irislab_api/main.py` | App factory, lifespan, and router registration |
+| `src/irislab_api/api/routes/` | Health and analysis HTTP controllers |
+| `src/irislab_api/api/middleware/` | JWT and PyGuard middleware configuration |
+| `src/irislab_api/services/analysis.py` | Image validation, inference, and storage workflow |
+| `src/irislab_api/schemas/` | Public Pydantic response schemas |
+| `src/irislab_api/database/models/` | MongoDB document models and ObjectId type |
+| `src/irislab_api/database/mongo/` | MongoDB repositories and bootstrap |
+| `tests/test_api.py` | API contract and persistence tests using fakes |
+| `pyproject.toml`, `uv.lock` | Project metadata, dependencies, and lockfile |
+| `Dockerfile` | Multi-stage API image build |
 
 ## Development Setup
 
-### Requirements
-
-* Python 3.9+
-* [uv](https://docs.astral.sh/uv/)
-* Cloudsmith configuration for creating or refreshing licenses
-* OIDC issuer and JWKS configuration for protected user requests
-
-### Getting started
-
-From this directory, create the environment and install the locked
-dependencies:
+The API requires Python 3.12 and [uv](https://docs.astral.sh/uv/). From the
+implementation directory, install the locked dependencies:
 
 ```bash
-uv sync
+cd projects/proj3_irislab_api
+uv sync --locked
 ```
 
-The backend reads its runtime configuration from environment variables. Set the Cloudsmith and OIDC values required by the deployment before using the protected endpoints. The database path defaults to `licenses.db` and can be changed with `DATABASE_PATH`.
+Set these runtime variables before starting the API:
 
-## Run the Application
+| Variable | Purpose |
+| --- | --- |
+| `MONGODB_URI` | MongoDB connection string |
+| `MONGODB_DATABASE` | Database name |
+| `OIDC_ISSUER_URL` | Expected token issuer |
+| `OIDC_JWKS_URL` | Keycloak JWKS endpoint |
 
-Start the backend from this directory:
+`OIDC_AUDIENCE` and `OIDC_REQUIRED_ROLE` are optional. PyGuard thresholds can
+be changed with `PYGUARD_MAX_ATTEMPTS`, `PYGUARD_WINDOWS_SECONDS`, and
+`PYGUARD_BLOCK_SECONDS`. The model location is supplied by the IrisLab package
+or can be overridden with `IRISLAB_MODEL_PATH`.
+
+## Run the API
+
+Start the service on port 8080:
 
 ```bash
-uv run python main.py
+uv run uvicorn irislab_api.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-The service listens on `http://localhost:8080`. Interactive API documentation is available at [http://localhost:8080/docs](http://localhost:8080/docs).
-
-For development, start Uvicorn with reload enabled:
-
-```bash
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8080
-```
+The API is available at [http://localhost:8080](http://localhost:8080), with
+interactive documentation at [http://localhost:8080/docs](http://localhost:8080/docs).
 
 ## Run Tests
 
-Run the backend test suite with:
+Run the API tests from `projects/proj3_irislab_api`:
 
 ```bash
 uv run pytest
-```
-
-## Container Build
-
-Build the backend image from the `bonus1_license_service_oidc` project root with `docker compose`:
-
-```bash
-docker compose up
 ```

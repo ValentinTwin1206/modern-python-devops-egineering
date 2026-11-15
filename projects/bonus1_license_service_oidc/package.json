@@ -1,11 +1,12 @@
 {
-  "name": "license-service-devcontainer",
+  "name": "iris-analysis-devcontainer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "gui-test": "bunx playwright test",
-    "spike-test": "artillery run tests/load/spike.yml"
+    "spike-test": "artillery run tests/load/spike.yml",
+    "performance-test": "artillery run tests/load/performance.yml"
   },
   "devDependencies": {
     "@playwright/test": "1.58.0"

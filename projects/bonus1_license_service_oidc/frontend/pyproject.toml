@@ -1,7 +1,7 @@
 [project]
-name = "license-service-frontend"
+name = "iris-analysis-frontend"
 version = "0.1.0"
-description = "Streamlit frontend for the license service"
+description = "Streamlit frontend for Iris Analysis"
 requires-python = ">=3.12"
 dependencies = [
     "requests>=2.32",

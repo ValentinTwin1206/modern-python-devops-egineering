@@ -1,12 +1,12 @@
 {
-  "realm": "license-service",
+  "realm": "iris-analysis",
   "enabled": true,
-  "displayName": "License Service",
+  "displayName": "Iris Analysis",
   "clients": [
     {
-      "clientId": "streamlit-frontend",
-      "name": "Streamlit Frontend",
-      "description": "OIDC client for the license-service Streamlit application",
+      "clientId": "iris-analysis-frontend",
+      "name": "Iris Analysis Frontend",
+      "description": "OIDC client for the Iris Analysis Streamlit application",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -22,6 +22,25 @@
       "webOrigins": [
         "http://localhost:8501"
       ]
+    },
+    {
+      "clientId": "iris-analysis-cli",
+      "name": "Iris Analysis CLI",
+      "description": "Public OIDC client for the interactive IrisLab CLI (authorization code with PKCE)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:8765/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     }
   ],
   "users": [

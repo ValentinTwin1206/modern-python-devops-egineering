@@ -1,55 +1,33 @@
-function checkResponse(requestParams, response, context, ee, next) {
-  context.vars.tokenCaptured = false;
-
-  if (response.statusCode === 429) {
-    console.log(
-      `429 Too Many Requests - ${response.body}`
-    );
-  } else if (response.statusCode === 200) {
-    try {
-      const body = JSON.parse(response.body);
-
-      if (typeof body.cloudsmith_token !== "string" || !body.cloudsmith_token) {
-        console.error("GET /licenses returned no cloudsmith_token");
-      } else {
-        context.vars.cloudsmithToken = body.cloudsmith_token;
-        context.vars.tokenCaptured = true;
-        context.vars.licenseUser = body.user;
-      }
-    } catch (error) {
-      console.error(`Failed to parse GET /licenses response: ${error.message}`);
-    }
-  } else if (response.statusCode >= 400) {
-    console.log(
-      `${response.statusCode} - ${response.body}`
-    );
+function setForbiddenTestToken(requestParams, context, events, next) {
+  const token = process.env.IRIS_FORBIDDEN_TEST_TOKEN;
+  if (!token) {
+    return next(new Error("Set IRIS_FORBIDDEN_TEST_TOKEN to a valid token without the required role"));
   }
 
+  requestParams.headers = { ...requestParams.headers, Authorization: `Bearer ${token}` };
   return next();
 }
 
-function checkTokenResponse(requestParams, response, context, ee, next) {
-  if (response.statusCode !== 200) {
-    console.error(
-      `GET /licenses/{cloudsmith_token} returned ${response.statusCode} - ${response.body}`
-    );
-  } else {
-    try {
-      const body = JSON.parse(response.body);
-      if (body.valid !== true) {
-        console.error("GET /licenses/{cloudsmith_token} returned valid=false");
-      }
-    } catch (error) {
-      console.error(
-        `Failed to parse token validation response: ${error.message}`
-      );
-    }
+function checkPyGuardResponse(requestParams, response, context, events, next) {
+  const maxAttempts = Number(process.env.PYGUARD_MAX_ATTEMPTS || 100);
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts >= 120) {
+    return next(new Error("PYGUARD_MAX_ATTEMPTS must be an integer from 1 to 119 for this 120-request test"));
   }
 
+  const attempt = context.vars.authAttempt || 0;
+  const expected = attempt < maxAttempts
+    ? (attempt % 2 === 0 ? 401 : 403)
+    : 429;
+  context.vars.authAttempt = attempt + 1;
+
+  if (response.statusCode !== expected) {
+    return next(new Error(`Expected HTTP ${expected}, received ${response.statusCode}`));
+  }
+  console.log(`${requestParams.url} -> ${response.statusCode}`);
   return next();
 }
 
 module.exports = {
-  checkResponse,
-  checkTokenResponse,
+  setForbiddenTestToken,
+  checkPyGuardResponse,
 };

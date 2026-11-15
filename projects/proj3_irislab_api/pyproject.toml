@@ -9,9 +9,25 @@ description = "HTTP API for IrisLab iris-color analysis"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115,<1",
+    "dnspython>=2.6,<3",
+    "pillow>=11,<13",
+    "pydantic>=2.10,<3",
+    "pymongo>=4.10,<5",
+    "PyJWT[crypto]>=2.10,<3",
+    "pyguard",
     "uvicorn>=0.34,<1",
     "python-multipart>=0.0.20,<1",
 ]
 
 [dependency-groups]
 dev = ["httpx>=0.28,<1", "pytest>=8,<10"]
+
+[tool.uv.sources]
+pyguard = { path = "../proj1_pyguard" }
+
+# ACTIVATE ME LATER: use these when PyGuard 1.0.0 is published to Cloudsmith.
+# pyguard = { index = "cloudsmith" }
+#
+# [[tool.uv.index]]
+# name = "cloudsmith"
+# url = "https://python.cloudsmith.io/pravi-brothers/modern-python-engineering/simple/"

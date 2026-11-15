@@ -1,11 +1,12 @@
 {
-  "name": "License Service DevContainer",
+  "name": "Iris Analysis DevContainer",
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
   "postCreateCommand": "npm ci",
   "runServices": [
     "backend",
+    "mongodb",
     "frontend",
     "devcontainer",
     "keycloak",
