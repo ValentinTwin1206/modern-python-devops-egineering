@@ -379,7 +379,7 @@ cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "libirislab OR irislab-to
 
 ## Consumer Workflow
 
-### Configure the Package Manager
+### Install the Package
 
 Configure `.condarc` before creating the environment. Replace `<cloudsmith-repo>` with the repository slug. Conda creates `.condarc` automatically when the first command writes to it.
 
@@ -409,8 +409,6 @@ Set strict channel priority:
 conda config --set channel_priority strict
 ```
 
-### Install the Package
-
 Create a small consumer project:
 
 ```bash
@@ -434,16 +432,18 @@ conda env create --file environment.yml
 
 > Both `irislab-tools` and its exact `libirislab` dependency get installed.
 
-Activate the consumer environment:
-
-```bash
-conda activate irislab-demo
-```
-
 Since `mediapipe` is not available from `conda-forge`, install it from PyPI:
 
 ```bash
 conda run --name "irislab-demo" python -m pip install mediapipe
+```
+
+### Use the Package
+
+Activate the consumer environment:
+
+```bash
+conda activate irislab-demo
 ```
 
 The CLI accepts a portrait image and analyzes the detected iris color:

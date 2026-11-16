@@ -260,7 +260,7 @@ cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "server-cli"
 
 ## Consumer Workflow
 
-### Configure the Package Manager
+### Install the Package
 
 Import the repository signing key:
 
@@ -277,16 +277,21 @@ printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/
 sudo apt update
 ```
 
-### Install the OS Package
-
-Install and run Server CLI:
+Install Server CLI:
 
 ```bash
 sudo apt install server-cli
+```
+
+### Use the Package
+
+Run Server CLI:
+
+```bash
 server-cli --help
 ```
 
-Ask `dpkg` which files belong to the package:
+To inspect which files belong to the installed package, use `dpkg`:
 
 ```bash
 dpkg -L server-cli

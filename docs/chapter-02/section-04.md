@@ -372,7 +372,7 @@ docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 
 ## Consumer Workflow
 
-### Install the Container
+### Install the Package
 
 Once published, the image can be downloaded from Cloudsmith:
 
@@ -380,7 +380,9 @@ Once published, the image can be downloaded from Cloudsmith:
 docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 ```
 
-To run the packaged service, you can leverage the `run` command:
+### Use the Package
+
+Run the packaged service with the `run` command:
 
 ```bash
 docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"

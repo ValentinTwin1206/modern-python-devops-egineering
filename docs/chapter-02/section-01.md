@@ -345,7 +345,7 @@ Install the dependencies from the complete project configuration:
 uv sync
 ```
 
-### Install Models
+**Install Models**
 
 Set `PAIGUARD_MODEL_DIR` to the directory where pAIguard should find its local
 model files:
@@ -386,7 +386,7 @@ curl -fsSL "$BASE_URL/preprocessor_config.json" -o "$PAIGUARD_MODEL_DIR/falconsa
 curl -fsSL "$BASE_URL/model.safetensors" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/model.safetensors"
 ```
 
-### Use pAIguard Image Moderation
+### Use the Package
 
 Run the server from the same virtual environment.
 
