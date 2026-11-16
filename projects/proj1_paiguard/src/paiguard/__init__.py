@@ -1,4 +1,4 @@
-"""PaiGuard: local image content moderation."""
+"""pAIguard: local image content moderation."""
 
 from .guard import PaiGuard
 from .models import ModelNotFoundError

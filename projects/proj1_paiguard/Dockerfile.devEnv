@@ -2,7 +2,7 @@
 #   - uses Ubuntu 24.04 with its APT-managed Python 3.12
 #   - installs uv as the project workflow tool
 #   - includes ZIP/TAR inspection tools for package artifacts
-#   - downloads the PaiGuard moderation models to /opt/paiguard/models
+#   - downloads the pAIguard moderation models to /opt/paiguard/models
 #   - opens an interactive shell in /app for library development
 FROM ubuntu:24.04
 

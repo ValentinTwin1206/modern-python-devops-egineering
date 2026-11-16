@@ -1,7 +1,7 @@
 """
 Model adapters used by the moderation rules.
 
-The model files are never downloaded by PaiGuard. They must already exist in
+The model files are never downloaded by pAIguard. They must already exist in
 the model directory, which is read from the PAIGUARD_MODEL_DIR environment
 variable. Each adapter loads its model on the first call to `score()`.
 """
@@ -27,7 +27,7 @@ class ModelNotFoundError(Exception):
 
 
 def model_dir() -> Path:
-    """Return the directory that contains all PaiGuard models."""
+    """Return the directory that contains all pAIguard models."""
     return Path(os.environ.get("PAIGUARD_MODEL_DIR", DEFAULT_MODEL_DIR)).expanduser()
 
 
@@ -37,7 +37,7 @@ def require_files(directory: Path, names: list[str]) -> None:
         path = directory / name
         if not path.is_file() or path.stat().st_size == 0:
             raise ModelNotFoundError(
-                f"Model file not found: {path}. Download the PaiGuard models "
+                f"Model file not found: {path}. Download the pAIguard models "
                 "and point PAIGUARD_MODEL_DIR to their directory."
             )
 
@@ -51,7 +51,7 @@ def import_inference_libraries():
         import transformers
     except ImportError as error:
         raise ImportError(
-            "The PaiGuard models need extra packages. "
+            "The pAIguard models need extra packages. "
             'Install them with: pip install "paiguard[models]"'
         ) from error
 

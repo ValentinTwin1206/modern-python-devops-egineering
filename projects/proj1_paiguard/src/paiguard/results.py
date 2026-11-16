@@ -1,4 +1,4 @@
-"""Result types returned by the rules and by PaiGuard."""
+"""Result types returned by the rules and by pAIguard."""
 
 from pydantic import BaseModel
 

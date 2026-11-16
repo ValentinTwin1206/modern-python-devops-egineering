@@ -1,4 +1,4 @@
-"""The PaiGuard class runs the configured rules and decides the outcome."""
+"""The ``PaiGuard`` class runs pAIguard's configured rules and decides the outcome."""
 
 import logging
 

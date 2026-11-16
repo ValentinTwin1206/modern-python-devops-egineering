@@ -1,13 +1,13 @@
-# PaiGuard
+# pAIguard [pie guard]
 
-**PaiGuard** is a lightweight, framework-independent Python library for inspecting images with local moderation models before an application accepts them.
+**pAIguard** is a lightweight, framework-independent Python library for inspecting images with local moderation models before an application accepts them.
 
 It currently provides:
 
 -   **NSFW detection** for explicit content
 -   **Violence detection**
 
-PaiGuard separates its moderation rules from framework integration and from upload handling. The application validates and decodes the upload, for example with Pillow, and passes the decoded image to PaiGuard. Inference runs locally; PaiGuard never downloads models and never sends images to another service.
+pAIguard separates its moderation rules from framework integration and from upload handling. The application validates and decodes the upload, for example with Pillow, and passes the decoded image to pAIguard. Inference runs locally; pAIguard never downloads models and never sends images to another service.
 
 ## Installation
 
@@ -17,7 +17,7 @@ PaiGuard separates its moderation rules from framework integration and from uplo
 -   `uv` or `pip`
 -   The model files listed under [Models](#models), about 1.8 GB on disk
 
-### Install PaiGuard
+### Install pAIguard
 
 With `uv`, first configure the PyTorch CPU index in your project's `pyproject.toml` so PyTorch resolves to the CPU-only build:
 
@@ -31,7 +31,7 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 ```
 
-Add PaiGuard to your project dependencies using `uv`. 
+Add pAIguard to your project dependencies using `uv`.
 
 ```bash
 uv add "paiguard==0.1.0"
@@ -41,7 +41,7 @@ Its model weights are downloaded separately. Follow [Install Models](#install-mo
 
 ### Install Models
 
-Set `PAIGUARD_MODEL_DIR` to the directory where PaiGuard should find its local
+Set `PAIGUARD_MODEL_DIR` to the directory where pAIguard should find its local
 model files:
 
 ```bash
@@ -153,7 +153,7 @@ To add your own rule, subclass `paiguard.rules.PaiRule` and return a `RuleResult
 
 ### Models
 
-PaiGuard reads its models from the directory named by `PAIGUARD_MODEL_DIR` (default: `/opt/paiguard/models`). A model is loaded when its rule inspects the first image and then stays in memory.
+pAIguard reads its models from the directory named by `PAIGUARD_MODEL_DIR` (default: `/opt/paiguard/models`). A model is loaded when its rule inspects the first image and then stays in memory.
 
 | Rule | Directory | Model and pinned revision | Files | License on model card |
 |------|-----------|---------------------------|-------|-----------------------|
@@ -161,14 +161,14 @@ PaiGuard reads its models from the directory named by `PAIGUARD_MODEL_DIR` (defa
 | `PaiViolenceDetection` | `siglip2-base/` | [google/siglip2-base-patch16-256](https://huggingface.co/google/siglip2-base-patch16-256) @ `3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab` | `config.json`, `preprocessor_config.json`, `model.safetensors` (1.5 GB) | Apache-2.0 |
 | `PaiViolenceDetection` | `siglip2-heads/` | [khasinski/siglip2-moderation-heads](https://huggingface.co/khasinski/siglip2-moderation-heads) @ `b88fe03369e3dc6aa9887cd3b4cd3e9b7cf76ee5` | `violence_head.onnx`, `violence_head.onnx.data` (0.8 MB) | Apache-2.0 |
 
-The development image built from `Dockerfile.devEnv` downloads these files with `curl` and verifies their SHA-256 checksums. The model files are not part of the PaiGuard wheel. The licenses above are the ones stated on the model cards; the cards do not fully document the licenses of the training data, so review them before commercial use.
+The development image built from `Dockerfile.devEnv` downloads these files with `curl` and verifies their SHA-256 checksums. The model files are not part of the pAIguard wheel. The licenses above are the ones stated on the model cards; the cards do not fully document the licenses of the training data, so review them before commercial use.
 
 ## Drawbacks
 
 - **Model accuracy:** `PaiNsfwDetection` uses a general NSFW classifier and does not report a dedicated nudity score. `PaiViolenceDetection` was trained on real-life violence and may miss illustrations. Both models can produce false positives and false negatives.
 
-- **Weapon detection:** PaiGuard does not detect weapons yet, because neither model provides it. A `PaiWeaponDetection` rule is planned as a future feature.
+- **Weapon detection:** pAIguard does not detect weapons yet, because neither model provides it. A `PaiWeaponDetection` rule is planned as a future feature.
 
 - **Resource usage:** The models need about 1.8 GB on disk, and the first inspection is slow because the models are loaded then. Inference runs on the CPU. Each worker process loads its own copy of the models.
 
-- **Image handling:** PaiGuard does not validate uploads, limit file sizes, or remove metadata. The application must do this before it calls `guard.inspect(image)`.
+- **Image handling:** pAIguard does not validate uploads, limit file sizes, or remove metadata. The application must do this before it calls `guard.inspect(image)`.

@@ -126,4 +126,4 @@ def test_missing_paiguard_models(client, monkeypatch, tmp_path):
     files = {"image": ("x.png", image_bytes(), "image/png")}
     response = client.post("/api/v1/analyses", files=files)
     assert response.status_code == 503
-    assert response.json()["detail"] == "PaiGuard models are unavailable"
+    assert response.json()["detail"] == "pAIguard models are unavailable"

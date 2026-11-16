@@ -10,8 +10,7 @@ Use the navigation on the left to move through the chapter's sections:
 
 | Section | Summary | Project | Notebook |
 |---------|---------|---------|-----------|
-| [Section 01](./section-01.md) | Python wheels           | [PaiGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) | |
+| [Section 01](./section-01.md) | Python wheels           | [pAIguard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) | |
 | [Section 02](./section-02.md) | Debian packages       | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md) | |
 | [Section 03](./section-03.md) | Conda packages          | [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md)  | |
 | [Section 04](./section-04.md) | Python containers       | [IrisLab API](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/README.md) | |
-| [Bonus 01](./bonus-01.md) | Windows MSI and WinGet packages | [Server CLI](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md) | |

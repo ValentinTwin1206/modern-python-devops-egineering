@@ -20,7 +20,7 @@ MAX_IMAGE_PIXELS = 20_000_000
 
 logger = logging.getLogger("irislab_api")
 
-# PaiGuard moderates every upload before IrisLab analyzes it. The models are
+# pAIguard moderates every upload before IrisLab analyzes it. The models are
 # loaded from PAIGUARD_MODEL_DIR when the first image is inspected.
 guard = PaiGuard(
     rules=[
@@ -43,11 +43,11 @@ class UploadTooLargeError(ValueError):
 
 
 class ContentRejectedError(ValueError):
-    """PaiGuard did not allow the image."""
+    """pAIguard did not allow the image."""
 
 
 class ModerationUnavailableError(RuntimeError):
-    """The PaiGuard models are not available."""
+    """The pAIguard models are not available."""
 
 
 class AnalysisService:
@@ -78,16 +78,16 @@ class AnalysisService:
             return AnalysisResult.model_validate(analyze(path, device="cpu"))
 
     def moderate(self, data: bytes) -> None:
-        """Raise ContentRejectedError unless PaiGuard allows the image."""
+        """Raise ContentRejectedError unless pAIguard allows the image."""
         with Image.open(BytesIO(data)) as image:
             picture = image.convert("RGB")
 
         try:
             result = guard.inspect(picture)
         except ModelNotFoundError as error:
-            logger.error("PaiGuard models are unavailable: %s", error)
+            logger.error("pAIguard models are unavailable: %s", error)
             raise ModerationUnavailableError(
-                "PaiGuard models are unavailable"
+                "pAIguard models are unavailable"
             ) from error
 
         if not result.is_safe:

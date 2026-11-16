@@ -1,4 +1,4 @@
-"""Moderation rules that can be passed to PaiGuard."""
+"""Moderation rules that can be passed to pAIguard's ``PaiGuard`` class."""
 
 from abc import ABC, abstractmethod
 
@@ -9,7 +9,7 @@ from .results import RuleResult
 
 
 class PaiRule(ABC):
-    """Abstract base class for all PaiGuard rules."""
+    """Abstract base class for all pAIguard rules."""
 
     @abstractmethod
     def inspect(self, image: Image.Image) -> RuleResult:

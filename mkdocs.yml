@@ -74,8 +74,6 @@ nav:
         - Section 02: chapter-02/section-02.md
         - Section 03: chapter-02/section-03.md
         - Section 04: chapter-02/section-04.md
-      - Bonus:
-        - Bonus 01: chapter-02/bonus-01.md
   - Chapter 03:
       - Overview: chapter-03/index.md
       - Sections:
@@ -83,8 +81,6 @@ nav:
         - Section 02: chapter-03/section-02.md
         - Section 03: chapter-03/section-03.md
         - Section 04: chapter-03/section-04.md
-      - Bonus:
-        - Bonus 05: chapter-03/bonus-05.md
   - Chapter 04:
       - Overview: chapter-04/index.md
       - Sections:
@@ -95,9 +91,5 @@ nav:
   - Bonus:
       - Overview: chapter-bonus/index.md
       - Sections:
-        - Section 01: chapter-bonus/section-01.md
-        - Section 02: chapter-bonus/section-02.md
-        - Section 03: chapter-bonus/section-03.md
-        - Section 04: chapter-bonus/section-04.md
-        - Section 05: chapter-bonus/section-05.md
-        - Section 06: chapter-bonus/section-06.md
+        - Bonus 01: chapter-bonus/bonus-01.md
+        - Bonus 02: chapter-bonus/bonus-02.md

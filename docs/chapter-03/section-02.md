@@ -58,7 +58,7 @@ dependencies = [
 
 #### Add a Dependency from a Private Package Index
 
-A project may depend on packages hosted on a private package index. This example uses the course's `paiguard` package to show how to configure an index and map a package to it. When resolving across multiple indexes, `uv` uses the first index containing a package by default; see [uv's package index documentation](https://docs.astral.sh/uv/concepts/indexes/). To add PaiGuard 0.1.0 from the private index, provide its name and URL:
+A project may depend on packages hosted on a private package index. This example uses the course's `paiguard` package to show how to configure an index and map a package to it. When resolving across multiple indexes, `uv` uses the first index containing a package by default; see [uv's package index documentation](https://docs.astral.sh/uv/concepts/indexes/). To add pAIguard 0.1.0 from the private index, provide its name and URL:
 
 ```bash
 uv add "paiguard==0.1.0" --index "<repo>=https://dl.cloudsmith.io/basic/<owner>/<repo>/python/simple/"
@@ -567,4 +567,4 @@ When another tool expects a `requirements.txt`, export one from the project's lo
 uv export --format requirements.txt -o requirements.txt
 ```
 
-Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](./bonus-05.md#work-with-legacy-projects).
+Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](../chapter-bonus/bonus-02.md#work-with-legacy-projects).

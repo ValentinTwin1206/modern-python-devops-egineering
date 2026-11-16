@@ -52,7 +52,7 @@ RUN mkdir -p /opt/irislab \
     && echo '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff  /opt/irislab/face_landmarker.task' | sha256sum -c -
 
 #
-# Download the Falconsai NSFW classifier used by PaiGuard.
+# Download the Falconsai NSFW classifier used by pAIguard.
 #
 # The model is stored outside the Python source tree and inference runs
 # locally inside the container.
@@ -72,7 +72,7 @@ RUN mkdir -p /opt/irislab/paiguard/falconsai-nsfw \
   && echo '97b2ce64ec146884b37f98ee7944ca4891aa72f6827dc0cb10684a1cbecd5830  /opt/irislab/paiguard/falconsai-nsfw/model.safetensors' | sha256sum -c -
 
 #
-# Download the SigLIP2 image encoder used by PaiGuard.
+# Download the SigLIP2 image encoder used by pAIguard.
 #
 # The model is stored outside the Python source tree and inference runs
 # locally inside the container.
@@ -92,7 +92,7 @@ RUN mkdir -p /opt/irislab/paiguard/siglip2-base \
   && echo '6125cacc01fa93bdc98a0c5101cefcd69b2ed1f8ab4f38d86f4ad5984f5dc863  /opt/irislab/paiguard/siglip2-base/model.safetensors' | sha256sum -c -
 
 #
-# Download the SigLIP2 violence head used by PaiGuard.
+# Download the SigLIP2 violence head used by pAIguard.
 #
 # The model is stored outside the Python source tree and inference runs
 # locally inside the container.

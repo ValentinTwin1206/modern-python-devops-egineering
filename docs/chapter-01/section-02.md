@@ -6,7 +6,7 @@ This page covers Python's standard-library `venv` module.
 
 ### Project Setup
 
-The applied project is a Python library called `PaiGuard Project`. It inspects images with local moderation models before an application accepts them. This makes it a good fit for `venv` because its pure-Python package can be isolated with its development tools and required inference dependencies in a project-local environment. PyTorch is configured to use its CPU index, and model weights are downloaded separately.
+The applied project is a Python library called pAIguard [pie guard]. It inspects images with local moderation models before an application accepts them. This makes it a good fit for `venv` because its pure-Python package can be isolated with its development tools and required inference dependencies in a project-local environment. PyTorch is configured to use its CPU index, and model weights are downloaded separately.
 
 For a hands-on introduction to the environment itself, see [The Isolation Awakens](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb2_python_venv_lab/python_venv_lab.ipynb) and its [setup instructions](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/notebooks/nb2_python_venv_lab/README.md).
 
@@ -115,6 +115,12 @@ explicit = true
 target-version = "py311"
 line-length = 88
 ```
+
+- `requires-python`: Declares that PaiGuard supports Python 3.11 and newer. Since `venv` does not install or select Python, create the environment with a compatible interpreter.
+- `dependencies`: Lists the packages PaiGuard needs at runtime; `uv sync` installs them into the project environment.
+- `[dependency-groups].dev`: Separates development tools, such as `pytest` and `ruff`, from runtime requirements.
+- `[tool.uv.sources]`: Routes `torch` to the `pytorch-cpu` index.
+- `[[tool.uv.index]]`: Defines the PyTorch CPU package index. Setting `explicit = true` ensures this index is used only for packages explicitly mapped to it.
 
 #### Key Directories and Files
 
@@ -261,7 +267,7 @@ matches the state of the local `mpe/proj1_paiguard` image:
 === "Image does not exist"
 
     From the repository's `projects/` directory, use `build.sh` to build and
-    open the dedicated PaiGuard development container. The script mounts the
+    open the dedicated pAIguard development container. The script mounts the
     project at `/app` and its `.build/` directory at `/build` for build
     artifacts:
 
@@ -356,10 +362,8 @@ when using `uv`:
 
 ### Run the Project
 
-PaiGuard is a library rather than a standalone command-line application. Use
-the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md)
-for the usage examples. After installation, verify that the
-package can be imported from the active environment:
+pAIguard is a library rather than a standalone command-line application. Use
+the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) for the usage examples. After installation, verify that the package can be imported from the active environment:
 
 ```bash
 python -c "import paiguard; print(paiguard.__file__)"

@@ -6,7 +6,7 @@ Python wheels are the standard built package format for Python projects. They le
 
 ### Project Setup
 
-The applied project is a small utility library called `PaiGuard Project`. It inspects images with local moderation models before an application accepts them. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
+The applied project is a small utility library called pAIguard [pie guard]. It inspects images with local moderation models before an application accepts them. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
 
 ### Run the Project
 
@@ -106,7 +106,7 @@ line-length = 88
 - `name`: Defines the distribution name used in package indexes and wheel filenames.
 - `version`: Identifies the published release.
 - `requires-python`: Declares compatible Python versions.
-- `dependencies`: Lists packages required when the wheel is installed, including PaiGuard's built-in inference runtime.
+- `dependencies`: Lists packages required when the wheel is installed, including pAIguard's built-in inference runtime.
 - `[build-system]`: Selects the build backend and the packages needed to run it.
 - `[tool.uv.sources]` and `[[tool.uv.index]]`: Install the CPU-only build of `torch` from the PyTorch index. `explicit = true` keeps every other package on the default index. This setting applies to the project itself and is not stored in the wheel.
 
@@ -164,7 +164,7 @@ Choose the workflow that matches the local `mpe/proj1_paiguard` image:
 === "Image does not exist"
 
     From the `projects/` directory, use `build.sh` to build and open the
-    interactive PaiGuard packaging container:
+    interactive pAIguard packaging container:
 
     ```bash
     ./build.sh build \
@@ -313,7 +313,7 @@ mkdir paiguard-consumer && cd paiguard-consumer
 
 === "`server.py`"
 
-    Create `server.py` with the moderation endpoint, using `PaiGuard.inspect()` to
+    Create `server.py` with the moderation endpoint, using pAIguard's `PaiGuard.inspect()` to
     inspect uploaded images:
 
     ```python
@@ -353,7 +353,7 @@ uv sync
 
 ### Install Models
 
-Set `PAIGUARD_MODEL_DIR` to the directory where PaiGuard should find its local
+Set `PAIGUARD_MODEL_DIR` to the directory where pAIguard should find its local
 model files:
 
 ```bash
@@ -392,7 +392,7 @@ curl -fsSL "$BASE_URL/preprocessor_config.json" -o "$PAIGUARD_MODEL_DIR/falconsa
 curl -fsSL "$BASE_URL/model.safetensors" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/model.safetensors"
 ```
 
-### Use PaiGuard Image Moderation
+### Use pAIguard Image Moderation
 
 Run the server from the same virtual environment.
 

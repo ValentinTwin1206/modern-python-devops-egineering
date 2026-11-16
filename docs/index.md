@@ -22,4 +22,4 @@ Use the navigation on the left to move through the chapters and bonus material:
 | [Chapter 02](./chapter-02/index.md) | Python Software Delivery              |
 | [Chapter 03](./chapter-03/index.md) | Modern Python Workflows with uv       |
 | [Chapter 04](./chapter-04/index.md) | An OIDC-enabled License Server        |
-| [Bonus](./chapter-bonus/index.md) | Python Project Configuration History    |
+| [Bonus](./chapter-bonus/index.md) | Additional material on Windows packaging and uv workflows |

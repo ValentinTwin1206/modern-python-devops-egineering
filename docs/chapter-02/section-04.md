@@ -61,7 +61,7 @@ proj3_irislab_api/
 
 An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration.
 
-The [project's `Dockerfile`](../../projects/proj3_irislab_api/Dockerfile) provides the complete workflow for combining `irislab` with `irislab-api` in one container image. It uses a **multi-stage build**, with a `BUILD STAGE` to prepare the application and a `RUNTIME STAGE` containing only the components needed to run it. This keeps build-only tools out of the final image. Both stages use `mambaorg/micromamba:2.3.3` as the **base image**, which comes with `micromamba`, a modern Conda package manager. In the `BUILD STAGE`, Micromamba installs `irislab-tools` into a Conda environment, and `pip` installs `mediapipe` as described in the [Conda consumer workflow](section-03.md#consumer-workflow):
+The project's `Dockerfile` provides the complete workflow for combining `irislab` with `irislab-api` in one container image. It uses a **multi-stage build**, with a `BUILD STAGE` to prepare the application and a `RUNTIME STAGE` containing only the components needed to run it. This keeps build-only tools out of the final image. Both stages use `mambaorg/micromamba:2.3.3` as the **base image**, which comes with `micromamba`, a modern Conda package manager. In the `BUILD STAGE`, Micromamba installs `irislab-tools` into a Conda environment, and `pip` installs `mediapipe` as described in the [Conda consumer workflow](section-03.md#consumer-workflow):
 
 ```dockerfile
 RUN micromamba create \

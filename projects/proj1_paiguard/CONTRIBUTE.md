@@ -35,5 +35,5 @@ uv build --wheel --out-dir /build
 uv publish
 ```
 
-PaiGuard is distributed as a pure-Python wheel and can be installed
+pAIguard is distributed as a pure-Python wheel and can be installed
 directly from PyPI.

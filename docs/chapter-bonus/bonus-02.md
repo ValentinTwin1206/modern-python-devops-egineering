@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This bonus section covers caching dependencies in Docker builds and using `uv` to manage existing requirements, run individual scripts, and provide command-line tools without creating a project. The examples are independent, so choose the workflow that fits your needs. For project-managed dependencies, see [Dependency Management with uv](./section-02.md).
+This bonus section covers caching dependencies in Docker builds and using `uv` to manage existing requirements, run individual scripts, and provide command-line tools without creating a project. The examples are independent, so choose the workflow that fits your needs. For project-managed dependencies, see [Dependency Management with uv](../chapter-03/section-02.md).
 
 ## Using uv's Cache in Docker Builds
 
@@ -13,7 +13,7 @@ To effectively use `uv`'s cache within a Docker build that runs inside a CI envi
 
 ### Image Layers and BuildKit Cache Mounts
 
-The recommended approach is a **two-layer install**: install dependencies in a reusable layer, then copy and install the project source in a separate layer. This lets *Docker* reuse the dependency layer when only application code changes, while a *BuildKit* cache mount lets `uv` reuse downloaded packages and built wheels when an installation step must run again. The following `Dockerfile` assumes a single packaged project with a `pyproject.toml`, a committed `uv.lock`, and dependencies available without local source directories; its two sync steps use [frozen](./section-02.md#frozen-installs) and [locked installs](./section-02.md#locked-installs), respectively:
+The recommended approach is a **two-layer install**: install dependencies in a reusable layer, then copy and install the project source in a separate layer. This lets *Docker* reuse the dependency layer when only application code changes, while a *BuildKit* cache mount lets `uv` reuse downloaded packages and built wheels when an installation step must run again. The following `Dockerfile` assumes a single packaged project with a `pyproject.toml`, a committed `uv.lock`, and dependencies available without local source directories; its two sync steps use [frozen](../chapter-03/section-02.md#frozen-installs) and [locked installs](../chapter-03/section-02.md#locked-installs), respectively:
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -236,4 +236,4 @@ The executable directory must be on `PATH` to invoke `ruff` directly. Tool envir
 | Run a tool with project dependencies | `uv run` |
 | Keep a CLI tool available | `uv tool install` |
 
-To export requirements **from a managed project**, see [Export Dependencies](./section-02.md#export-dependencies).
+To export requirements **from a managed project**, see [Export Dependencies](../chapter-03/section-02.md#export-dependencies).

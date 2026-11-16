@@ -20,7 +20,7 @@ Bob has learned to scaffold projects, resolve dependencies, and make the most of
 
 ## Documentation
 
-- [Chapter 03, Bonus 05: Additional uv Workflows](../../docs/chapter-03/bonus-05.md)
+- [Bonus: Additional uv Workflows](../../docs/chapter-bonus/bonus-02.md)
 - [Open the notebook](./uv_extra_features.ipynb); follow [Bob Follows the Cache](../nb5_uv_cache_lab/uv_cache_lab.ipynb).
 
 ## Run The Lab
