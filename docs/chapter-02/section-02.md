@@ -4,15 +4,9 @@ Debian packages distribute applications as `.deb` archives that APT can discover
 
 ## Applied Project
 
-### Project Setup
-
 The applied project is a small Click-based administration tool called `Server CLI`, exposed as the `server-cli` command. The project uses [Nuitka](https://nuitka.net/) to compile its Python modules and dependencies into a platform-specific executable. Its Debian package installs that executable under `/usr/lib/server-cli` and creates the public `/usr/bin/server-cli` link.
 
 This design separates two concerns: Nuitka creates the runnable application artifact, while Debian packaging supplies installation metadata, filesystem placement, dependency tracking, upgrades, and removal through APT.
-
-### Run the Project
-
-Application, test, lint, executable-build, and Debian-package commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md).
 
 ## Building Blocks
 

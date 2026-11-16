@@ -4,13 +4,7 @@ This page explains how a Dev Container turns a Python project environment into a
 
 ## Applied Project
 
-### Project Setup
-
 The applied project is a small server administration CLI called `Server CLI`. It is built on [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
-
-### Run the Project
-
-Application, test, lint, container startup, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_servercli/README.md).
 
 ## Dev Containers Environment Model
 

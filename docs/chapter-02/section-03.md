@@ -6,8 +6,6 @@ The Conda workflow connects project definition, multi-language dependency resolu
 
 ## Applied Project
 
-### Project Setup
-
 The applied project is `IrisLab`, a small image-based iris color analysis application. It uses MediaPipe Face Landmarker with a **local machine-learning model** to locate the irises in real photos, then analyzes the extracted pixels with NumPy and CIELAB color space to determine perceptual color features and classify the eye color. The resulting color profile is compared with reference colors using a native C++ library that calculates CIE ΔE color distances and is exposed to Python through `pybind11`. This makes `IrisLab` a good fit for Conda because a single environment manages Python packages, native libraries, compiled C++ code, and local machine-learning dependencies together.
 
 The recipe produces two Conda packages:
@@ -16,10 +14,6 @@ The recipe produces two Conda packages:
 | ------------- | -------- |
 | `libirislab` | Standalone C++ shared library (`libirislab.so`, `.dylib`, or `.dll`) and the public `irislab.hpp` header. |
 | `irislab-tools` | Python package, `irislab` CLI, and pybind11 extension. It depends on the matching `libirislab` build. |
-
-### Run the Project
-
-Application, test, lint, package-build, and shell-exit commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md).
 
 ## Building Blocks
 

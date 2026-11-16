@@ -4,13 +4,7 @@ Python wheels are the standard built package format for Python projects. They le
 
 ## Applied Project
 
-### Project Setup
-
-The applied project is a small utility library called pAIguard [pie guard]. It inspects images with local moderation models before an application accepts them. This makes it a good fit for wheels because a pure-Python library shows clearly how a project can be built into a lightweight, platform-independent distribution artifact.
-
-### Run the Project
-
-Application, lint, build, and shell-exit commands are documented in the [section README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md).
+The applied project is a Python library called `pAIguard` *[pie guard]*. It runs local image classifiers to screen uploaded images for NSFW ("*not safe for work*") content and violence; the *IrisLab-API* uses these checks to moderate uploads before iris analysis. As pAIguard's own code is pure Python and does not require separately managed system libraries or a cross-language build toolchain, it is a good fit for `venv`. Its Python dependencies and development tools can be isolated in a project-local environment. PyTorch is installed from its CPU index, and model weights are downloaded separately.
 
 ## Building Blocks
 

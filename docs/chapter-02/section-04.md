@@ -4,13 +4,7 @@ Python containers package an application with its code, dependencies, and the op
 
 ## Applied Project
 
-### Project Setup
-
-The applied project is the `IrisLab API`, a FastAPI service exposing the [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md) iris-color analysis application over HTTP. Its container image delivers the API together with Python, the scientific libraries, the native extension, and the local MediaPipe model needed for inference.
-
-### Run the Project
-
-Application, build, and test commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/README.md).
+The applied project is the `IrisLab API`, a FastAPI service that integrates [`irislab`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md) iris-color analysis with [`paiguard`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) image moderation and exposes the combined workflow over HTTP. It screens each uploaded image with `paiguard` before passing it to `irislab`, making the functionality available as a web service rather than a command-line-only workflow. Since it serves HTTP requests and depends on a consistent runtime, the API is a good fit for OCI-container deployment. Its container image packages the API with Python, the scientific libraries, the native extension, and the local model files used by `irislab` and `paiguard`.
 
 ## Building Blocks
 
