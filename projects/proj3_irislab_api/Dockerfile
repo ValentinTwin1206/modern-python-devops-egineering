@@ -16,19 +16,19 @@ RUN micromamba config prepend channels conda-forge \
     && micromamba config set channel_priority strict
 
 # Install IrisLab and MediaPipe:
-#   - creates a Conda environment with the exact libirislab build
+#   - creates a Conda environment for IrisLab and MediaPipe
+#   - TODO: Add irislab-tools=1.0.0 to the below micromamba create command below.
 #   - includes libglib for MediaPipe's PyPI OpenCV wheel
 #   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
         python=3.12 \
-        irislab-tools=1.0.0 \
         libglib \
         pip \
     && /opt/conda/envs/irislab-api/bin/python -m pip install \
         mediapipe==0.10.35 \
-    && micromamba clean --all --yes
+        && micromamba clean --all --yes
 
 # Install curl via conda:
 #   - adds curl to the build stage's base Conda environment
@@ -42,14 +42,17 @@ RUN micromamba install \
 #
 # Download the MediaPipe Face Landmarker model used by iris.py.
 #
-# The model is stored outside the Python source tree and inference runs
-# locally inside the container.
-#
-RUN mkdir -p /opt/irislab \
-    && /opt/conda/bin/curl -fsSL \
-        https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task \
-        -o /opt/irislab/face_landmarker.task \
-    && echo '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff  /opt/irislab/face_landmarker.task' | sha256sum -c -
+ARG MEDIAPIPE_FACE_LANDMARKER_URL=https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+# TODO: Add a build step to download and verify the model:
+#       - Create `/opt/irislab` with `mkdir -p`.
+#       - Download the URL from `${MEDIAPIPE_FACE_LANDMARKER_URL}` with:
+#           /opt/conda/bin/curl -fsSL "${MEDIAPIPE_FACE_LANDMARKER_URL}" \
+#             -o /opt/irislab/face_landmarker.task
+#       - Verify the downloaded file against its pinned SHA-256 digest:
+#           echo '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff  /opt/irislab/face_landmarker.task' \
+#             | sha256sum -c -
+#       Store the model outside the Python source tree so inference can load it
+#       locally inside the container.
 
 #
 # Download the Falconsai NSFW classifier used by pAIguard.
@@ -122,11 +125,16 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/irislab-api-venv \
 COPY pyproject.toml uv.lock ./
 COPY src ./src
 
-# Create the uv environment with Conda's Python:
-#   - uses Conda's interpreter instead of downloading another Python
-#   - exposes Conda-installed packages, including IrisLab and MediaPipe
-RUN uv venv --python /opt/conda/envs/irislab-api/bin/python \
-    --system-site-packages "${UV_PROJECT_ENVIRONMENT}"
+# TODO: Create the API's virtual environment with `uv venv`, passing:
+#       - `${UV_PROJECT_ENVIRONMENT}` as the target directory (positional
+#         argument).
+#       - `--python /opt/conda/envs/irislab-api/bin/python` to use Conda's
+#         existing Python instead of installing another interpreter.
+#       - `--system-site-packages` to let the virtual environment import
+#         packages already installed in the Conda environment, including
+#         `irislab-tools` and MediaPipe.
+#       Create this environment before `uv sync` so the API dependencies are
+#       installed into the same environment.
 
 # Install 'irislab-api':
 #   - installs the production dependencies recorded in uv.lock
