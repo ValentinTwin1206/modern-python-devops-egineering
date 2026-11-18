@@ -9,6 +9,7 @@ description = "HTTP API for IrisLab iris-color analysis"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115,<1",
+    "influxdb-client>=1.48,<2",
     "dnspython>=2.6,<3",
     "pillow>=11,<13",
     "pydantic>=2.10,<3",

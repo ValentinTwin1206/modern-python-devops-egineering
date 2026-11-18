@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const API_URL = process.env.IRIS_API_URL || "http://backend:8080";
 const KEYCLOAK_URL = process.env.IRIS_KEYCLOAK_URL || "http://keycloak.localhost:8081";
+const KEYCLOAK_TOKEN_URL = process.env.IRIS_KEYCLOAK_TOKEN_URL || "http://keycloak:8080";
 const REALM = process.env.IRIS_KEYCLOAK_REALM || "iris-analysis";
 const CLIENT_ID = process.env.IRIS_PERF_CLIENT_ID || "iris-analysis-frontend";
 const REDIRECT_URI = "http://localhost:8501/oauth2callback";
@@ -45,13 +46,32 @@ async function runAnalysisJourney(page, vuContext, events, test) {
   }).toString();
 
   let callbackUrl;
-  // Install interception before navigation; capture Streamlit's redirect without running the frontend.
+  // Capture Keycloak's redirect before the browser follows it to Streamlit.
   const callbackCaptured = new Promise((resolve, reject) => {
-    page.route(`${REDIRECT_URI}**`, async (route) => {
-      callbackUrl = new URL(route.request().url());
-      await route.fulfill({ status: 200, contentType: "text/html", body: "Sign-in complete" });
-      resolve(callbackUrl);
-    }).catch(reject);
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timed out waiting for Keycloak callback; browser is at ${page.url()}`));
+    }, 30_000);
+    page.route((url) => url.pathname.endsWith("/login-actions/authenticate"), async (route) => {
+      try {
+        const response = await route.fetch({ maxRedirects: 0 });
+        const location = response.headers().location;
+        if (response.status() >= 300 && response.status() < 400) {
+          if (!location) throw new Error("Keycloak login redirect had no Location header");
+          callbackUrl = new URL(location, route.request().url());
+          await route.fulfill({ status: 200, contentType: "text/html", body: "Sign-in complete" });
+          clearTimeout(timeout);
+          resolve(callbackUrl);
+          return;
+        }
+        await route.fulfill({ response });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    }).catch((error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
   });
 
   await test.step("keycloak_login", async () => {
@@ -67,7 +87,7 @@ async function runAnalysisJourney(page, vuContext, events, test) {
     if (!code) throw new Error("Keycloak did not return an authorization code");
 
     const tokenResponse = await page.request.post(
-      `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`,
+      `${KEYCLOAK_TOKEN_URL}/realms/${REALM}/protocol/openid-connect/token`,
       {
         form: {
           grant_type: "authorization_code",
@@ -107,7 +127,7 @@ async function runAnalysisJourney(page, vuContext, events, test) {
         },
       });
       if (response.status() !== 200) {
-        throw new Error(`Analysis upload ${index + 1} failed with HTTP ${response.status()}`);
+        throw new Error(`Analysis upload ${index + 1} failed with HTTP ${response.status()}: ${await response.text()}`);
       }
       const result = await response.json();
       if (!result.eye_color || !result.closest_profile) {
@@ -119,7 +139,7 @@ async function runAnalysisJourney(page, vuContext, events, test) {
     await test.step("analysis_history_get", async () => {
       const response = await page.request.get(`${API_URL}/api/v1/analyses`, { headers });
       if (response.status() !== 200) {
-        throw new Error(`History request ${index + 1} failed with HTTP ${response.status()}`);
+        throw new Error(`History request ${index + 1} failed with HTTP ${response.status()}: ${await response.text()}`);
       }
       const history = await response.json();
       if (!Array.isArray(history) || !history.some((item) => item.filename === filename)) {

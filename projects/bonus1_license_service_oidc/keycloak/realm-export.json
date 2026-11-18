@@ -2,6 +2,14 @@
   "realm": "iris-analysis",
   "enabled": true,
   "displayName": "Iris Analysis",
+  "roles": {
+    "realm": [
+      {
+        "name": "load-test-required",
+        "description": "Allows protected Iris API operations in the local test stack"
+      }
+    ]
+  },
   "clients": [
     {
       "clientId": "iris-analysis-frontend",
@@ -41,6 +49,19 @@
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
+    },
+    {
+      "clientId": "iris-analysis-load-test",
+      "name": "Iris Analysis Load Test",
+      "description": "Test-only public client for obtaining short-lived roleless tokens",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false
     }
   ],
   "users": [
@@ -51,6 +72,7 @@
       "emailVerified": true,
       "firstName": "Example",
       "lastName": "User",
+      "realmRoles": ["load-test-required"],
       "credentials": [
         {
           "type": "password",

@@ -27,7 +27,7 @@ pyguard = { index = "cloudsmith" }
 ### Install PyGuard
 
 ```bash
-uv add pyguard==0.1.0
+uv add pyguard==1.0.0
 ```
 
 ## Usage

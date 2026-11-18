@@ -69,6 +69,16 @@ The callback port defaults to `8765` and can be changed through
 `IRIS_CLI_CALLBACK_PORT`; when changed, update the client's exact redirect URI
 to match `http://127.0.0.1:<port>/callback` as well.
 
+### Artillery Load-Test Client
+
+The `iris-analysis-load-test` client is a test-only public client used to get a
+short-lived token for the Artillery spike test. It enables direct access grants
+for this local test flow, has no client secret, and sets `fullScopeAllowed` to
+`false` without adding role-scope mappings. The example user still has the
+`load-test-required` realm role, but this client's token omits it; the API
+therefore responds with `403` until PyGuard blocks repeated requests. Do not
+use this client in production.
+
 ### User
 
 The realm export contains an `example-user` for local development. Production users should be created through Keycloak administration or an approved provisioning workflow, and passwords must not be committed to source control.

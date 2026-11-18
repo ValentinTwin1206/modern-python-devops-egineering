@@ -42,7 +42,7 @@ services:
       - ./logging/loki/config.yaml:/etc/loki/config.yaml:ro
       - loki_data:/loki
     networks:
-      - license_service_network
+      - irislab_network
 
   alloy:
     image: grafana/alloy:v1.8.3
@@ -58,7 +58,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy/data
     networks:
-      - license_service_network
+      - irislab_network
 
   influxdb:
     image: influxdb:2.7
@@ -71,7 +71,7 @@ services:
       timeout: 3s
 
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${INFLUXDB_IP:-172.30.0.40}
     ports:
       - "8086:8086"
@@ -89,7 +89,7 @@ services:
       loki:
         condition: service_started
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${GRAFANA_IP:-172.30.0.50}
     ports:
       - "3001:3000"
@@ -97,13 +97,13 @@ services:
       - grafana_data:/var/lib/grafana
 
 networks:
-  license_service_network:
+  irislab_network:
     ipam:
       config:
         - subnet: 172.30.0.0/24
 
 volumes:
-  license_service_data:
+  mongodb_data:
   influxdb_data:
   grafana_data:
   loki_data:

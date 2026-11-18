@@ -44,35 +44,45 @@ graph LR
 
 ### Application lifespan
 
-`create_app()` in `src/irislab_api/main.py` creates the FastAPI application, registers middleware and mounts the routers to the application. Its async lifespan opens MongoDB at startup, initializes the repositories and GridFS bucket on `app.state`, then closes the MongoDB client at shutdown.
+`create_app()` in `src/irislab_api/main.py` creates the FastAPI application, registers middleware and mounts the routers. Its async lifespan configures the optional InfluxDB client, opens MongoDB, and initializes the repositories and GridFS bucket on `app.state`. Both clients are closed at shutdown.
 
 ```python
 def create_app() -> FastAPI:
-
-  @asynccontextmanager
-  async def lifespan(app: FastAPI):
-      client = MongoClient(os.environ["MONGODB_URI"])
-      try:
-          bootstrap_db(app, client, os.environ["MONGODB_DATABASE"])
-          yield
-      finally:
-          client.close()
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        client = MongoClient(os.environ["MONGODB_URI"])
+        try:
+            influxdb_client = InfluxDBClient(
+                url=os.getenv("INFLUXDB_URL", None),
+                token=os.getenv("INFLUXDB_TOKEN", None),
+                org=os.getenv("INFLUXDB_ORG", None),
+                timeout=5000,
+            )
+            configure_metrics(app, influxdb_client, os.getenv("INFLUXDB_ORG", None), os.getenv("INFLUXDB_BUCKET", None))
+            bootstrap_db(app, client, os.environ["MONGODB_DATABASE"])
+            yield
+        finally:
+            influxdb_client = getattr(app.state, "influxdb_client", None)
+            if influxdb_client is not None:
+                influxdb_client.close()
+            client.close()
 
     # Create FastAPI app and configure middleware
-    app = FastAPI( title="IrisLab API", version="1.0.0", lifespan=lifespan )
+    app = FastAPI(title="IrisLab API", version="1.0.0", lifespan=lifespan)
     configure_middleware(app)
 
     # Add routers
-    app.include_router( health.router, tags=["health"] )
-    app.include_router( analysis.router, prefix="/api/v1", tags=["iris analysis"] )
+    app.include_router(health.router, tags=["health"])
+    app.include_router(analysis.router, prefix="/api/v1", tags=["iris analysis"])
 
-    return app        
+    return app
 ```
 
 ### Middleware
 
 `configure_middleware()` in `api/middleware/middleware.py` creates the PyGuard
-instance and registers JWT authentication and security middleware.
+instance and registers JWT authentication, security, and request-metrics
+middleware. The InfluxDB client is configured during the application lifespan.
 
 ```python
 def configure_middleware(app) -> None:
@@ -80,7 +90,16 @@ def configure_middleware(app) -> None:
     app.state.guard = create_security_guard()
     app.middleware("http")(jwt_auth_middleware)
     app.middleware("http")(security_middleware)
+    app.middleware("http")(metrics_middleware)
 ```
+
+  The metrics middleware records every handled request in the `api_requests`
+  measurement: `method`, `endpoint`, and `client_ip` tags; `status_code` and
+  `duration_ms` fields. It also records authentication failures and PyGuard 429
+  responses. Configure `INFLUXDB_URL`, `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, and
+  `INFLUXDB_BUCKET` to enable it. If any setting is missing, metrics are disabled;
+  write failures are logged and do not change the API response. The InfluxDB
+  client is closed when the FastAPI application shuts down.
 
 #### JWT authentication
 
@@ -141,7 +160,7 @@ The implementation is in `projects/proj3_irislab_api`:
 | --- | --- |
 | `src/irislab_api/main.py` | App factory, lifespan, and router registration |
 | `src/irislab_api/api/routes/` | Health and analysis HTTP controllers |
-| `src/irislab_api/api/middleware/` | JWT and PyGuard middleware configuration |
+| `src/irislab_api/api/middleware/` | JWT, PyGuard and metrics middleware configuration |
 | `src/irislab_api/services/analysis.py` | Image validation, inference, and storage workflow |
 | `src/irislab_api/schemas/` | Public Pydantic response schemas |
 | `src/irislab_api/database/models/` | MongoDB document models and ObjectId type |
@@ -168,6 +187,10 @@ Set these runtime variables before starting the API:
 | `MONGODB_DATABASE` | Database name |
 | `OIDC_ISSUER_URL` | Expected token issuer |
 | `OIDC_JWKS_URL` | Keycloak JWKS endpoint |
+| `INFLUXDB_URL` | InfluxDB endpoint, for example `http://influxdb:8086` |
+| `INFLUXDB_TOKEN` | Token with write access to the metrics bucket |
+| `INFLUXDB_ORG` | InfluxDB organization |
+| `INFLUXDB_BUCKET` | Bucket for request metrics |
 
 `OIDC_AUDIENCE` and `OIDC_REQUIRED_ROLE` are optional. PyGuard thresholds can
 be changed with `PYGUARD_MAX_ATTEMPTS`, `PYGUARD_WINDOWS_SECONDS`, and

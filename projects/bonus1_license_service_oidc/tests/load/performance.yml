@@ -5,7 +5,13 @@ config:
       arrivalCount: 1
       name: "Single-user Iris analysis performance run"
   engines:
-    playwright: {}
+    playwright:
+      launchOptions:
+        args:
+          - --enable-precise-memory-info
+          - --disable-dev-shm-usage
+          # Artillery does not load playwright.config.js, so mirror its host mapping.
+          - "--host-resolver-rules=MAP localhost 172.30.0.1, MAP keycloak.localhost 172.30.0.1"
   processor: "./helpers/performance-flow.cjs"
 
 scenarios:

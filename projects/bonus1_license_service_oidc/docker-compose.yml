@@ -20,7 +20,10 @@ services:
       IRIS_PERF_CLIENT_ID: ${IRIS_PERF_CLIENT_ID:-iris-analysis-frontend}
       IRIS_PERF_CLIENT_SECRET: ${IRIS_PERF_CLIENT_SECRET:-}
       IRIS_PERF_UPLOADS: ${IRIS_PERF_UPLOADS:-50}
-      IRIS_FORBIDDEN_TEST_TOKEN: ${IRIS_FORBIDDEN_TEST_TOKEN:-}
+      # Use Keycloak's canonical host for browser-based authorization redirects.
+      IRIS_KEYCLOAK_URL: ${IRIS_KEYCLOAK_URL:-http://keycloak.localhost:8081}
+      IRIS_KEYCLOAK_TOKEN_URL: ${IRIS_KEYCLOAK_TOKEN_URL:-http://keycloak:8080}
+      IRIS_KEYCLOAK_REALM: ${IRIS_KEYCLOAK_REALM:-iris-analysis}
       PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
     networks:
       irislab_network:
@@ -41,6 +44,10 @@ services:
       PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
       PYGUARD_WINDOWS_SECONDS: ${PYGUARD_WINDOWS_SECONDS:-60}
       PYGUARD_BLOCK_SECONDS: ${PYGUARD_BLOCK_SECONDS:-300s}
+      INFLUXDB_URL: ${INFLUXDB_URL:-http://influxdb:8086}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-irislab}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-api_metrics}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-}
     networks:
       irislab_network:
         ipv4_address: ${IRIS_API_IP}
