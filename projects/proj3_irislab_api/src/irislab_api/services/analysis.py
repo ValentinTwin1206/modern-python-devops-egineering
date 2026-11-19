@@ -1,9 +1,13 @@
-"""Validate uploads and adapt IrisLab's path-based API."""
+"""Validate uploads, moderate them and adapt IrisLab's path-based API."""
 
 import base64
 import logging
 from io       import BytesIO
 from pathlib  import Path
+import logging
+import os
+from io import BytesIO
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from time     import perf_counter
 from typing   import BinaryIO
@@ -15,6 +19,10 @@ from irislab      import analyze
 from irislab.iris import model_path
 from PIL          import Image, UnidentifiedImageError
 
+from paiguard import ModelNotFoundError, PaiGuard
+from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+from PIL import Image, UnidentifiedImageError
+
 from ..database.models.analysis   import AnalysisDocument
 from ..database.mongo.analysis_db import AnalysisDB
 from ..database.mongo.users_db    import UsersDB
@@ -23,6 +31,21 @@ from ..schemas.analysis           import AnalysisHistoryItem, AnalysisResult
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 logger = logging.getLogger("iris-lab")
+
+logger = logging.getLogger("irislab_api")
+
+# pAIguard moderates every upload before IrisLab analyzes it. The models are
+# loaded from PAIGUARD_MODEL_DIR when the first image is inspected.
+guard = PaiGuard(
+    rules=[
+        PaiNsfwDetection(
+            threshold=float(os.environ.get("IRISLAB_API_NSFW_THRESHOLD", "0.80"))
+        ),
+        PaiViolenceDetection(
+            threshold=float(os.environ.get("IRISLAB_API_VIOLENCE_THRESHOLD", "0.85"))
+        ),
+    ]
+)
 
 
 class InvalidImageError(ValueError):
@@ -35,6 +58,12 @@ class UploadTooLargeError(ValueError):
 
 class AnalysisStorageError(RuntimeError):
     """The analysis result could not be persisted."""
+class ContentRejectedError(ValueError):
+    """pAIguard did not allow the image."""
+
+
+class ModerationUnavailableError(RuntimeError):
+    """The pAIguard models are not available."""
 
 
 class AnalysisService:
@@ -63,6 +92,8 @@ class AnalysisService:
                 image.verify()
         except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
             raise InvalidImageError("Invalid PNG or JPEG image") from error
+
+        self.moderate(data)
 
         path = model_path()
         if not path.is_file() or path.stat().st_size == 0:
@@ -211,6 +242,28 @@ class AnalysisService:
             raise AnalysisStorageError("Analysis storage is unavailable") from error
 
 
+
+    def moderate(self, data: bytes) -> None:
+        """Raise ContentRejectedError unless pAIguard allows the image."""
+        with Image.open(BytesIO(data)) as image:
+            picture = image.convert("RGB")
+
+        try:
+            result = guard.inspect(picture)
+        except ModelNotFoundError as error:
+            logger.error("pAIguard models are unavailable: %s", error)
+            raise ModerationUnavailableError(
+                "pAIguard models are unavailable"
+            ) from error
+
+        if not result.is_safe:
+            violations = ", ".join(result.violations)
+            logger.warning("Upload rejected (%s): %s", result.decision, violations)
+            raise ContentRejectedError(
+                f"Image rejected by content moderation ({result.decision}): "
+                f"{violations}"
+            )
+        
 def get_analysis_service(request: Request) -> AnalysisService:
     """Build the request's analysis service from lifespan-managed resources."""
     return AnalysisService(

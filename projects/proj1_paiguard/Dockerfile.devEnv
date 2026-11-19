@@ -1,0 +1,130 @@
+# DEVELOPMENT IMAGE:
+#   - uses Ubuntu 24.04 with its APT-managed Python 3.12
+#   - installs uv as the project workflow tool
+#   - includes ZIP/TAR inspection tools for package artifacts
+#   - downloads the pAIguard moderation models to /opt/paiguard/models
+#   - opens an interactive shell in /app for library development
+FROM ubuntu:24.04
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    CLOUDSMITH_REPOSITORY="" \
+    PAIGUARD_MODEL_DIR=/opt/paiguard/models
+
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+
+#
+# Configure the project workspace.
+#
+WORKDIR /app
+
+#
+# Install the OS packages required by the development workflow.
+#
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        python3 \
+        python3-venv \
+        sudo \
+        unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+# Download the Falconsai NSFW classifier used by PaiNsfwDetection.
+#
+# The model is stored outside the Python source tree and inference runs
+# locally inside the container.
+#
+RUN mkdir -p /opt/paiguard/models/falconsai-nsfw \
+  && curl -fsSL \
+    https://huggingface.co/Falconsai/nsfw_image_detection/resolve/96cb0d0342c7afb80cab76ecc58b265fa44da256/config.json \
+    -o /opt/paiguard/models/falconsai-nsfw/config.json \
+  && echo 'cd8c0a19566f199b5c64da402f1d6a9daf80d094fe6536befb060a2cc59449c2  /opt/paiguard/models/falconsai-nsfw/config.json' | sha256sum -c - \
+  && curl -fsSL \
+    https://huggingface.co/Falconsai/nsfw_image_detection/resolve/96cb0d0342c7afb80cab76ecc58b265fa44da256/preprocessor_config.json \
+    -o /opt/paiguard/models/falconsai-nsfw/preprocessor_config.json \
+  && echo 'a34861a24e781942424ad790b82bc99348404a2e64ea882de88c40905851698d  /opt/paiguard/models/falconsai-nsfw/preprocessor_config.json' | sha256sum -c - \
+  && curl -fsSL \
+    https://huggingface.co/Falconsai/nsfw_image_detection/resolve/96cb0d0342c7afb80cab76ecc58b265fa44da256/model.safetensors \
+    -o /opt/paiguard/models/falconsai-nsfw/model.safetensors \
+  && echo '97b2ce64ec146884b37f98ee7944ca4891aa72f6827dc0cb10684a1cbecd5830  /opt/paiguard/models/falconsai-nsfw/model.safetensors' | sha256sum -c -
+
+#
+# Download the SigLIP2 image encoder used by PaiViolenceDetection.
+#
+# The model is stored outside the Python source tree and inference runs
+# locally inside the container.
+#
+RUN mkdir -p /opt/paiguard/models/siglip2-base \
+  && curl -fsSL \
+    https://huggingface.co/google/siglip2-base-patch16-256/resolve/3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab/config.json \
+    -o /opt/paiguard/models/siglip2-base/config.json \
+  && echo '7b5aedcb8893e31376e129c1ffd7a5392f1a806dbc793ce53eda220c2ec59edf  /opt/paiguard/models/siglip2-base/config.json' | sha256sum -c - \
+  && curl -fsSL \
+    https://huggingface.co/google/siglip2-base-patch16-256/resolve/3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab/preprocessor_config.json \
+    -o /opt/paiguard/models/siglip2-base/preprocessor_config.json \
+  && echo 'd14ba2ee3fd816f3de8abaddc31953565128eaf37c73ad4bed32101a98465aff  /opt/paiguard/models/siglip2-base/preprocessor_config.json' | sha256sum -c - \
+  && curl -fsSL \
+    https://huggingface.co/google/siglip2-base-patch16-256/resolve/3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab/model.safetensors \
+    -o /opt/paiguard/models/siglip2-base/model.safetensors \
+  && echo '6125cacc01fa93bdc98a0c5101cefcd69b2ed1f8ab4f38d86f4ad5984f5dc863  /opt/paiguard/models/siglip2-base/model.safetensors' | sha256sum -c -
+
+#
+# Download the SigLIP2 violence head used by PaiViolenceDetection.
+#
+# The model is stored outside the Python source tree and inference runs
+# locally inside the container.
+#
+RUN mkdir -p /opt/paiguard/models/siglip2-heads \
+  && curl -fsSL \
+    https://huggingface.co/khasinski/siglip2-moderation-heads/resolve/b88fe03369e3dc6aa9887cd3b4cd3e9b7cf76ee5/violence_head.onnx \
+    -o /opt/paiguard/models/siglip2-heads/violence_head.onnx \
+  && echo '268b8702e8e373ab0fea4de55250f506650ff87be532d1809ba70513bd5fa5b4  /opt/paiguard/models/siglip2-heads/violence_head.onnx' | sha256sum -c - \
+  && curl -fsSL \
+    https://huggingface.co/khasinski/siglip2-moderation-heads/resolve/b88fe03369e3dc6aa9887cd3b4cd3e9b7cf76ee5/violence_head.onnx.data \
+    -o /opt/paiguard/models/siglip2-heads/violence_head.onnx.data \
+  && echo '433df42d2b884d598a65f41d1cb16e2c44b60000f0f46da6b7c380f3851ce2ef  /opt/paiguard/models/siglip2-heads/violence_head.onnx.data' | sha256sum -c -
+
+#
+# Create bob with the host user's numeric UID/GID so files written through the
+# bind mounts remain owned by the host user.
+#
+RUN existing_user="$(getent passwd "${HOST_UID}" | cut -d: -f1)" \
+    && if [ -n "${existing_user}" ] && [ "${existing_user}" != bob ]; then \
+        userdel "${existing_user}"; \
+    fi \
+    && group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && if [ -z "${group_name}" ]; then \
+        groupadd --gid "${HOST_GID}" bob; \
+        group_name=bob; \
+    fi \
+    && useradd --uid "${HOST_UID}" --gid "${group_name}" \
+        --create-home --shell /bin/bash --groups sudo bob \
+    && echo 'bob:c3po' | chpasswd \
+    && printf 'bob ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/bob \
+    && chmod 0440 /etc/sudoers.d/bob
+
+#
+# Install uv.
+#
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+#
+# Copy the files needed for the image's build-time project setup.
+#
+COPY pyproject.toml ./
+COPY README.md LICENSE ./
+COPY src ./src
+
+# Ensure files copied into the image are owned by bob before USER takes effect.
+RUN group_name="$(getent group "${HOST_GID}" | cut -d: -f1)" \
+    && chown -R bob:"${group_name}" /app
+
+ENV PATH="/app/.venv/bin:${PATH}"
+
+USER bob
+
+CMD ["/bin/bash"]

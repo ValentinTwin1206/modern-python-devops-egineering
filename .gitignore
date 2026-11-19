@@ -62,3 +62,6 @@ htmlcov/
 # IDE settings
 .idea/
 .vscode/
+
+# Temporary directories
+*tmp*

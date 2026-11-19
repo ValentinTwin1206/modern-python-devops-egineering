@@ -4,13 +4,7 @@ Python containers package an application with its code, dependencies, and the op
 
 ## Applied Project
 
-### Project Setup
-
-The applied project is the `IrisLab API`, a FastAPI service exposing the [IrisLab](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md) iris-color analysis application over HTTP. Its container image delivers the API together with Python, the scientific libraries, the native extension, and the local MediaPipe model needed for inference.
-
-### Run the Project
-
-Application, build, and test commands are documented in the [project README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/README.md).
+The applied project is the `IrisLab API`, a FastAPI service that integrates [`irislab`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/README.md) iris-color analysis with [`paiguard`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) image moderation and exposes the combined workflow over HTTP. It screens each uploaded image with `paiguard` before passing it to `irislab`, making the functionality available as a web service rather than a command-line-only workflow. Since it serves HTTP requests and depends on a consistent runtime, the API is a good fit for OCI-container deployment. Its container image packages the API with Python, the scientific libraries, the native extension, and the local model files used by `irislab` and `paiguard`.
 
 ## Building Blocks
 
@@ -61,7 +55,7 @@ proj3_irislab_api/
 
 An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration.
 
-The [project's `Dockerfile`](../../projects/proj3_irislab_api/Dockerfile) provides the complete workflow for combining `irislab` with `irislab-api` in one container image. It uses a **multi-stage build**, with a `BUILD STAGE` to prepare the application and a `RUNTIME STAGE` containing only the components needed to run it. This keeps build-only tools out of the final image. Both stages use `mambaorg/micromamba:2.3.3` as the **base image**, which comes with `micromamba`, a modern Conda package manager. In the `BUILD STAGE`, Micromamba installs `irislab-tools` into a Conda environment, and `pip` installs `mediapipe` as described in the [Conda consumer workflow](section-03.md#consumer-workflow):
+The project's `Dockerfile` provides the complete workflow for combining `irislab` with `irislab-api` in one container image. It uses a **multi-stage build**, with a `BUILD STAGE` to prepare the application and a `RUNTIME STAGE` containing only the components needed to run it. This keeps build-only tools out of the final image. Both stages use `mambaorg/micromamba:2.3.3` as the **base image**, which comes with `micromamba`, a modern Conda package manager. In the `BUILD STAGE`, Micromamba installs `irislab-tools` into a Conda environment, and `pip` installs `mediapipe` as described in the [Conda consumer workflow](section-03.md#consumer-workflow):
 
 ```dockerfile
 RUN micromamba create \
@@ -378,7 +372,7 @@ docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 
 ## Consumer Workflow
 
-### Install the Container
+### Install the Package
 
 Once published, the image can be downloaded from Cloudsmith:
 
@@ -386,7 +380,9 @@ Once published, the image can be downloaded from Cloudsmith:
 docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 ```
 
-To run the packaged service, you can leverage the `run` command:
+### Use the Package
+
+Run the packaged service with the `run` command:
 
 ```bash
 docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"

@@ -3,12 +3,6 @@
 name: uv cache demo
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "notebooks/nb5_uv_cache_lab/**"
-      - ".github/workflows/uv-cache.yml"
   workflow_dispatch:
     inputs:
       strategy:

@@ -8,6 +8,8 @@ from bson import ObjectId
 from fastapi.testclient import TestClient
 from irislab import ColorAnalysisResult, EyeColorDetectionError
 from irislab.eye_color import EyeColor
+from paiguard import PaiGuard
+from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
 from PIL import Image
 
 from irislab_api.main import create_app
@@ -96,17 +98,32 @@ class FakeGridFS:
         return stream
 
 
+class FakeModel:
+    def __init__(self, score):
+        self.fixed_score = score
+
+    def score(self, image):
+        return self.fixed_score
+
+
+def use_fake_models(monkeypatch, nsfw_score, violence_score):
+    guard = PaiGuard(
+        rules=[
+            PaiNsfwDetection(threshold=0.8, model=FakeModel(nsfw_score)),
+            PaiViolenceDetection(
+                threshold=0.8, review_threshold=0.5, model=FakeModel(violence_score)
+            ),
+        ]
+    )
+    monkeypatch.setattr(analysis, "guard", guard)
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     model = tmp_path / "model.task"
     model.write_bytes(b"model")
     monkeypatch.setenv("IRISLAB_MODEL_PATH", str(model))
-    monkeypatch.setenv("MONGODB_URI", "mongodb://fake")
-    monkeypatch.setenv("MONGODB_DATABASE", "irislab_test")
-    mongo_clients = []
-    monkeypatch.setattr(main, "MongoClient", lambda uri: mongo_clients.append(FakeMongoClient(uri)) or mongo_clients[-1])
-    monkeypatch.setattr(mongo, "GridFSBucket", FakeGridFS)
-    monkeypatch.setattr(jwt_middleware, "_validate_bearer_token", lambda authorization: {"sub": "user-123"})
+    use_fake_models(monkeypatch, 0.0, 0.0)
     with TestClient(create_app()) as test_client:
         yield test_client
     assert mongo_clients[0].closed
@@ -264,4 +281,35 @@ def test_detection_failure_and_missing_model(client, monkeypatch, tmp_path):
     files = {"image": ("x.png", image_bytes(), "image/png")}
     assert client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS).status_code == 422
     monkeypatch.setenv("IRISLAB_MODEL_PATH", str(tmp_path / "missing"))
-    assert client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS).status_code == 503
+    assert client.post("/api/v1/analyses", files=files).status_code == 503
+
+
+def test_moderation_runs_before_analysis(client, monkeypatch):
+    def must_not_run(*args, **kwargs):
+        pytest.fail("IrisLab must not analyze a rejected image")
+
+    monkeypatch.setattr(analysis, "analyze", must_not_run)
+    files = {"image": ("x.png", image_bytes(), "image/png")}
+
+    use_fake_models(monkeypatch, 0.9, 0.1)
+    blocked = client.post("/api/v1/analyses", files=files)
+    assert blocked.status_code == 422
+    assert "block" in blocked.json()["detail"]
+    assert "nsfw" in blocked.json()["detail"]
+
+    use_fake_models(monkeypatch, 0.1, 0.6)
+    review = client.post("/api/v1/analyses", files=files)
+    assert review.status_code == 422
+    assert "review" in review.json()["detail"]
+    assert "violence" in review.json()["detail"]
+
+
+def test_missing_paiguard_models(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("PAIGUARD_MODEL_DIR", str(tmp_path / "missing"))
+    monkeypatch.setattr(
+        analysis, "guard", PaiGuard(rules=[PaiNsfwDetection(), PaiViolenceDetection()])
+    )
+    files = {"image": ("x.png", image_bytes(), "image/png")}
+    response = client.post("/api/v1/analyses", files=files)
+    assert response.status_code == 503
+    assert response.json()["detail"] == "pAIguard models are unavailable"

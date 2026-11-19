@@ -2,7 +2,7 @@
 
 Bob has learned to scaffold projects, resolve dependencies, and make the most of the cache. Proud of his progress, he is ready to help his company: an old requirements-based service needs a repeatable environment, a small report needs to be shared, and the team wants useful tools without disturbing project dependencies. Bob builds a practical runbook for each task.
 
-![uv Extra Features lab logo](./project_logo.svg)
+![uv Extra Features lab logo](./project_logo.png)
 
 ## Learning Objectives
 
@@ -20,7 +20,7 @@ Bob has learned to scaffold projects, resolve dependencies, and make the most of
 
 ## Documentation
 
-- [Chapter 03, Section 05: Standalone Environments and Tools with uv](../../docs/chapter-03/section-05.md)
+- [Bonus: Additional uv Workflows](../../docs/chapter-bonus/bonus-02.md)
 - [Open the notebook](./uv_extra_features.ipynb); follow [Bob Follows the Cache](../nb5_uv_cache_lab/uv_cache_lab.ipynb).
 
 ## Run The Lab

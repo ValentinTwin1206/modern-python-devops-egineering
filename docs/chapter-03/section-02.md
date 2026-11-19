@@ -58,10 +58,10 @@ dependencies = [
 
 #### Add a Dependency from a Private Package Index
 
-A project may depend on packages hosted on a private package index. This example uses the course's `pyguard` package to show how to configure an index and map a package to it. When resolving across multiple indexes, `uv` uses the first index containing a package by default; see [uv's package index documentation](https://docs.astral.sh/uv/concepts/indexes/). To add PyGuard 0.1.0 from the private index, provide its name and URL:
+A project may depend on packages hosted on a private package index. This example uses the course's `paiguard` package to show how to configure an index and map a package to it. When resolving across multiple indexes, `uv` uses the first index containing a package by default; see [uv's package index documentation](https://docs.astral.sh/uv/concepts/indexes/). To add pAIguard 0.1.0 from the private index, provide its name and URL:
 
 ```bash
-uv add "pyguard==0.1.0" --index "<repo>=https://dl.cloudsmith.io/basic/<owner>/<repo>/python/simple/"
+uv add "paiguard==0.1.0" --index "<repo>=https://dl.cloudsmith.io/basic/<owner>/<repo>/python/simple/"
 ```
 
 > Replace `<owner>` and `<repo>` with your Cloudsmith values.
@@ -76,16 +76,16 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "requests>=2.32.3", # Set a minimum version
 ]
 
 [tool.uv.sources]
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
@@ -139,17 +139,17 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "requests>=2.32.3", # Set a minimum version
 ]
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
@@ -185,7 +185,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "requests>=2.32.3", # Set a minimum version
 ]
 
@@ -200,11 +200,11 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
@@ -227,7 +227,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "pywin32>=310; sys_platform == 'win32'", # Windows-only
     "requests>=2.32.3", # Set a minimum version
 ]
@@ -243,11 +243,11 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
@@ -270,7 +270,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "pywin32>=310; sys_platform == 'win32'", # Windows-only
     "requests>=2.32.3", # Set a minimum version
 ]
@@ -286,11 +286,11 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 
 [project.optional-dependencies]
@@ -336,7 +336,7 @@ dependencies = [
     "fastapi>=0.115,<0.116", # Allow patch releases in 0.115
     "flask",
     "httpx==0.27.2", # Require this exact version
-    "pyguard==0.1.0",
+    "paiguard==0.1.0",
     "pywin32>=310; sys_platform == 'win32'", # Windows-only
 ]
 
@@ -353,11 +353,11 @@ docs = [
 
 [tool.uv.sources]
 flask = { git = "https://github.com/pallets/flask" }
-pyguard = { index = "moder-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
-name = "moder-python-engineering"
-url = "https://dl.cloudsmith.io/basic/<owner>/moder-python-engineering/python/simple/"
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/basic/<owner>/modern-python-engineering/python/simple/"
 explicit = true # Only packages mapped in [tool.uv.sources] use this index
 ```
 
@@ -567,4 +567,4 @@ When another tool expects a `requirements.txt`, export one from the project's lo
 uv export --format requirements.txt -o requirements.txt
 ```
 
-Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](./section-05.md#work-with-legacy-projects).
+Keep `pyproject.toml` and `uv.lock` as the project's source of truth; regenerate the export after changing dependencies. For working directly with an existing `requirements.txt`, see [Standalone Environments and Tools](../chapter-bonus/bonus-02.md#work-with-legacy-projects).

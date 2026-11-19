@@ -1,5 +1,0 @@
-Legacy API Demonstration
-
-Copyright (c) Example Corporation
-
-Licensed for demonstration purposes only.
