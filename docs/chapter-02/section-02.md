@@ -266,11 +266,16 @@ curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/gpg.key" \
     | sudo gpg --dearmor -o /usr/share/keyrings/cloudsmith-repository.gpg
 ```
 
-Add a deb822 repository source and refresh APT metadata:
+APT uses repositories to find software packages. Create a configuration file that tells APT where the Cloudsmith packages are, which Ubuntu release and package group to use, and which key to use to verify them:
 
 ```bash
 printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
     | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
+```
+
+Next, refresh APT's package lists so it can find packages from the new repository:
+
+```bash
 sudo apt update
 ```
 
