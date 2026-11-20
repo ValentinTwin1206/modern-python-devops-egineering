@@ -19,7 +19,9 @@ pAIguard separates its moderation rules from framework integration and from uplo
 
 ### Install pAIguard
 
-With `uv`, first configure the PyTorch CPU index in your project's `pyproject.toml` so PyTorch resolves to the CPU-only build:
+#### Install From pyproject.toml
+
+Configure the Cloudsmith package index and PyTorch CPU index in your project's `pyproject.toml`:
 
 ```toml
 [tool.uv.sources]
@@ -41,6 +43,15 @@ Add pAIguard to your project dependencies using `uv`.
 
 ```bash
 uv add "paiguard==0.0.1"
+```
+
+#### Install From Scratch
+
+Install `paiguard` and its dependencies from Cloudsmith, the PyTorch CPU index, and PyPI:
+
+```bash
+uv add paiguard \
+  --index-url https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/
 ```
 
 Its model weights are downloaded separately. Follow [Install Models](#install-models) to download them.
@@ -88,35 +99,77 @@ curl -fsSL "$BASE_URL/model.safetensors" -o "$PAIGUARD_MODEL_DIR/falconsai-nsfw/
 
 ## Usage
 
-### Create a `PaiGuard` instance
+### Use pAIguard in FastAPI Middleware
 
-Create a `PaiGuard` instance and pass the moderation rules you want to enable. `PaiGuard` runs all configured rules when an image is inspected:
+The pAIguard library provides `PaiGuard.inspect()`. A FastAPI middleware can call it before passing an uploaded image to the endpoint:
 
 ``` python
-from PIL import Image
+from io import BytesIO
 
-from paiguard import PaiGuard
+from fastapi import FastAPI, Request, UploadFile
+from fastapi.responses import JSONResponse
+from PIL import Image
+from starlette.datastructures import UploadFile as StarletteUploadFile
+
+from paiguard import ModelNotFoundError, PaiGuard
 from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
 
-guard = PaiGuard(
+app = FastAPI()
+app.state.moderation_guard = PaiGuard(
     rules=[
         PaiNsfwDetection(threshold=0.80),
         PaiViolenceDetection(threshold=0.85, review_threshold=0.50),
     ]
 )
 
-# PaiGuard expects an image that the application has already decoded:
-image = Image.open("uploads/image.jpg").convert("RGB")
 
-result = guard.inspect(image)
+@app.middleware("http")
+async def moderate_upload(request: Request, call_next):
+    if request.method == "POST" and request.url.path == "/moderations":
+        # Cache the body so FastAPI can parse the upload again in the endpoint.
+        await request.body()
+        form = await request.form()
+        result = None
+        try:
+            upload = form.get("image")
+            if isinstance(upload, StarletteUploadFile):
+                with Image.open(BytesIO(await upload.read())) as image:
+                    result = request.app.state.moderation_guard.inspect(
+                        image.convert("RGB")
+                    )
+        except OSError:
+            return JSONResponse(
+                status_code=415,
+                content={"detail": "Upload must be a readable image"},
+            )
+        except ModelNotFoundError:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "pAIguard models are unavailable"},
+            )
+        finally:
+            await form.close()
 
-if result.is_safe:
-    print("Image approved")
-else:
-    print(f"Image {result.decision}: {result.violations}")
+        if result is not None and not result.is_safe:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "detail": (
+                        f"Image rejected ({result.decision}): "
+                        f"{', '.join(result.violations)}"
+                    )
+                },
+            )
+
+    return await call_next(request)
+
+
+@app.post("/moderations")
+async def moderate(image: UploadFile):
+    return {"filename": image.filename, "decision": "allow"}
 ```
 
-`guard.inspect(image)` returns an `InspectionResult`:
+`PaiGuard.inspect(image)` expects a decoded Pillow image and returns an `InspectionResult`:
 
 | Attribute    | Description                                                              |
 |--------------|--------------------------------------------------------------------------|
