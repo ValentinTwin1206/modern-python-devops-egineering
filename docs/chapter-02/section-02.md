@@ -4,7 +4,7 @@ Debian packages distribute applications as `.deb` archives that APT can discover
 
 ## Applied Project
 
-The applied project is `IrisLab CLI`, a Click-based interactive client for the IrisLab API, exposed as the `irislab-cli` command. The project uses [Nuitka](https://nuitka.net/) to compile its Python modules and dependencies into a platform-specific executable. Its Debian package installs that executable under `/usr/lib/irislab-cli` and creates the public `/usr/bin/irislab-cli` link.
+The applied project is `IrisLab CLI`, an interactive command-line client for the IrisLab API that logs in through Keycloak in the browser. It is built on [Click](https://click.palletsprojects.com/) and [Requests](https://requests.readthedocs.io/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
 
 This design separates two concerns: Nuitka creates the runnable application artifact, while Debian packaging supplies installation metadata, filesystem placement, dependency tracking, upgrades, and removal through APT.
 
@@ -76,7 +76,10 @@ Description: interactive command-line client for the IrisLab API
  a Python interpreter or network access to install.
 ```
 
-`Architecture: any` means the build produces an architecture-specific package. Debhelper calculates `${shlibs:Depends}` from the compiled executable, while `${misc:Depends}` contains dependencies required by other Debhelper features. Python is not a package dependency because Nuitka's one-file output contains the application and its Python runtime components.
+- `Architecture: any` means the build produces an architecture-specific package.
+- `${shlibs:Depends}` contains dependencies Debhelper calculates from the compiled executable.
+- `${misc:Depends}` contains dependencies required by other Debhelper features.
+- `Python` is not a package dependency because Nuitka's one-file output contains the application and its Python runtime components.
 
 ### Package Layout
 
@@ -194,8 +197,6 @@ Inside the container, synchronize the project environment and install the Clouds
 uv sync --group dev
 uv tool install cloudsmith-cli
 ```
-
-- `cloudsmith-cli`: Uploads and manages packages in Cloudsmith repositories.
 
 ### Create the Package
 

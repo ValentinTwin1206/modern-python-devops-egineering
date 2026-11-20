@@ -1,5 +1,5 @@
 {
-    "name": "Python Dev Containers",
+    "name": "Python Dev Container",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".."
@@ -18,9 +18,13 @@
             ],
             "settings": {
                 "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
-                "python.terminal.activateEnvironment": true,
-                "ruff.nativeServer": "on"
+                "python.terminal.activateEnvironment": true
             }
+        },
+        "jetbrains": {
+            "plugins": [
+                "Python"
+            ]
         }
     },
     "postCreateCommand": "uv venv --clear && uv sync --group dev",
