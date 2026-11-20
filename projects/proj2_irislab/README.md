@@ -14,7 +14,9 @@ conda config --add channels conda-forge
 conda config --set channel_priority strict
 ```
 
-### Install IrisLab From an `environment.yml` File
+### Install IrisLab
+
+#### From an `environment.yml` File
 
 Create an `environment.yml` file:
 
@@ -38,7 +40,7 @@ conda activate irislab
 python -m pip install mediapipe
 ```
 
-### Install From Scratch
+#### From Scratch
 
 Install the Python package and CLI from Cloudsmith:
 
