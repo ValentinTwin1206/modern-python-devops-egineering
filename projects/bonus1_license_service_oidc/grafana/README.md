@@ -1,6 +1,6 @@
 # Grafana
 
-Grafana is used to visualize the collected API metrics of the used Influx Database. The examples below use the `api_metrics` bucket and the `api_requests` measurement. 
+Grafana provides dashboards and alerts for IrisLab API telemetry. The InfluxDB examples use the `api_metrics` bucket and `api_requests` measurement. The current IrisLab API sends container logs to Loki; its source does not currently write request metrics to InfluxDB. The InfluxDB panels and alert therefore need a metric writer that records the fields and tags shown below.
 
 ## Table of contents
 - [Configure Grafana](#configure-grafana)
@@ -22,13 +22,13 @@ Grafana is used to visualize the collected API metrics of the used Influx Databa
 
 ### Connect InfluxDB
 
-At first, define and connect the InfluxDB datasource for Grafana
+First, define and connect the InfluxDB data source for Grafana.
 
 * Open **Connections > Add new data source**
 * Select **InfluxDB** and set **Flux** as the query language
-* Use the following settings and confirm the with clicking on **Save & test**:
+* Use the following settings, then click **Save & test**:
   * URL: `http://influxdb:8086`
-  * Organization: `oidc_license_service`
+  * Organization: `irislab`
   * Bucket: `api_metrics`
   * Token: `INFLUXDB_TOKEN` from `.env`
 
@@ -48,7 +48,7 @@ data sources in one place, making it easier to monitor and explore metrics.
 
 #### Re-create the API dashboard
 
-Follow these steps to recreate the **OIDC License Service** dashboard in the
+Follow these steps to recreate the **IrisLab API** dashboard in the
 **General** folder:
 
 1. In Grafana, open **Dashboards > New > New dashboard**.
@@ -110,10 +110,9 @@ Follow these steps to recreate the **OIDC License Service** dashboard in the
      |> yield(name: "api_calls")
    ```
 
-6. Save the dashboard as **OIDC License Service** in the **General** folder.
-   Choose the dashboard time range you want to inspect; the panel queries use
-   that range. Older records may not appear in the latency panel because they
-   predate the `duration_ms` field.
+6. Save the dashboard as **IrisLab API** in the **General** folder. Choose the
+  dashboard time range you want to inspect; the panel queries use that range.
+  The latency panel requires `duration_ms` data from the metric writer.
 
 Grafana supplies `v.timeRangeStart`, `v.timeRangeStop`, and `v.windowPeriod`
 when it runs these queries in a dashboard. For Time series panels, Grafana
@@ -144,10 +143,11 @@ recipients so they can investigate.
 
 #### PyGuard HTTP 429 alert
 
-The `PyGuard HTTP 429 Alert` rule detects rate-limit blocks on PyGuard's
-protected license endpoints. PyGuard protects `GET /licenses` and
-`POST /licenses`; the backend records each response's status code, endpoint,
-and method in the `api_requests` measurement.
+The `PyGuard HTTP 429 Alert` rule is intended to detect rate-limit responses
+from PyGuard on the IrisLab API. It covers `GET` and `POST /api/v1/analyses`
+and `GET /api/v1/reference-colors`. The metric writer must record each response's
+status code, endpoint, and method in the `api_requests` measurement for the
+query to return data.
 
 The alert query counts matching 429 responses over the last five minutes:
 
@@ -158,8 +158,9 @@ from(bucket: "api_metrics")
     r._measurement == "api_requests" and
     r._field == "status_code" and
     r._value == 429 and
-    r.endpoint == "/licenses" and
-    (r.method == "GET" or r.method == "POST")
+    ((r.endpoint == "/api/v1/analyses" and
+      (r.method == "GET" or r.method == "POST")) or
+     (r.endpoint == "/api/v1/reference-colors" and r.method == "GET"))
   )
   |> group()
   |> aggregateWindow(every: 1m, fn: count, createEmpty: false)
@@ -198,7 +199,7 @@ the default email contact point needs SMTP configuration.
 
 Export dashboards and alert rules to reuse them in another Grafana instance or keep their configuration in version control. These exports contain configuration, not the metrics stored in InfluxDB.
 
-- **Dashboard:** Open **OIDC License Service**, choose **Share > Export**, and download the JSON file. Save it as [oidc-license-service.dashboard.json](oidc-license-service.dashboard.json) in this directory. For Docker provisioning, export the regular dashboard JSON rather than the **Export for sharing externally** variant.
+- **Dashboard:** Open **IrisLab API**, choose **Share > Export**, and download the JSON file. Save it as [oidc-license-service.dashboard.json](oidc-license-service.dashboard.json) in this directory. The filename is retained for compatibility with the Compose mount. For Docker provisioning, export the regular dashboard JSON rather than the **Export for sharing externally** variant.
 - **Alert rule:** In **Alerting > Alert rules**, find **PyGuard HTTP 429 Alert** and use its **Export** action. Select **YAML for file provisioning** and save it as [pyguard-http-429.alerting.yaml](pyguard-http-429.alerting.yaml) in this directory. The export includes the rule and its evaluation group.
 
 ### Import Configurations
@@ -208,7 +209,8 @@ Before importing, configure an InfluxDB data source connected to `api_metrics`. 
 #### Import via the Grafana UI
 
 **Dashboard:** Open **Dashboards > New > Import** and upload
-[oidc-license-service.dashboard.json](oidc-license-service.dashboard.json).
+[oidc-license-service.dashboard.json](oidc-license-service.dashboard.json) (the
+filename is retained for the existing Compose mount).
 Select the destination folder (this example uses **General**) and map the
 InfluxDB data source if prompted. If no mapping prompt appears, ensure the
 JSON's datasource UIDs match your data source before importing. Choose whether
@@ -232,7 +234,7 @@ also needs a provider file that tells Grafana where to find the dashboard JSON.
    ```yaml
    apiVersion: 1
    providers:
-     - name: OIDC License Service
+     - name: IrisLab API
        orgId: 1
        folder: ""
        type: file

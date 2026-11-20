@@ -45,7 +45,7 @@ services:
       - .:/workspace:cached
     working_dir: /workspace
     networks:
-      license_service_network:
+      irislab_network:
 
 	...
 
@@ -102,7 +102,7 @@ The `devcontainer.json` file connects the development container to the existing 
 
 ```json
 {
-  "name": "License Service DevContainer",
+  "name": "Iris Analysis DevContainer",
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
@@ -158,7 +158,7 @@ The `devcontainer.json` file connects the development container to the existing 
 ```
 
 !!! info "Bootstrapping"
-	Please check the below section about bootstrapping the license-service through a devcontainer.
+    Please check the below section about bootstrapping Iris Analysis through a devcontainer.
 
 ## End-To-End Testing 
 
@@ -182,20 +182,18 @@ test('signs in through Keycloak', async ({ page }) => {
   }
 
   await page.goto('/');
-  await expect(page.getByText('🔑 License Service')).toBeVisible();
-  await expect(page.getByText('You are not logged in.')).toBeVisible();
-  await page.getByRole('button', { name: 'Log in with Keycloak' }).click();
+  await expect(page.getByText('IrisLab Analysis Platform')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue with Keycloak' }).click();
 
   await expect(page).toHaveURL(
-    /keycloak\.localhost:8081\/realms\/license-service\/protocol\/openid-connect\/auth/,
+    '/keycloak\.localhost:8081\/realms\/iris-analysis\/protocol\/openid-connect\/auth/',
   );
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   await page.locator('#kc-login').click();
 
-  await expect(page.getByText(`Signed in as: ${username}`)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Get license' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'License Key' })).toBeVisible();
+  await expect(page.getByText('Discover the details of the iris.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start a new analysis/ })).toBeVisible();
 });
 ```
 
@@ -208,39 +206,39 @@ The `page` fixture provides an isolated browser page. `page.goto('/')` uses the 
 
 [Artillery](https://www.artillery.io/) is a load-testing tool for measuring how an application behaves when it receives requests from many concurrent users. It helps identify performance bottlenecks, high error rates, and slow response times before they affect users in production.
 
-Artillery tests are commonly configured in YAML. The `config` section sets the target service and load phases, while `scenarios` define the requests each virtual user makes. This test also uses the `processor` section to load custom JavaScript callbacks from `helpers/test-helpers.cjs`; these callbacks inspect responses, capture a returned license token, and validate it:
+Artillery tests are commonly configured in YAML. The `config` section sets the target service and load phases, while `scenarios` define the requests each virtual user makes. This test targets the Iris API's protected analysis-history endpoint. It sends a valid token without the required role and checks that PyGuard returns the expected authorization and rate-limit statuses:
 
 ```yaml
 config:
   target: "http://backend:8080"
 
   phases:
+    # One virtual user sends 120 roleless-token requests from the same source IP.
     - duration: 60
-      arrivalCount: 120
-      name: "GET license brute-force limit"
+      arrivalCount: 1
+      name: "Iris API authentication brute-force limit"
 
   processor: "./helpers/test-helpers.cjs"
 
 scenarios:
-  - name: "GET license and validate returned token"
+  - name: "PyGuard blocks repeated forbidden requests"
     flow:
-      - get:
-          url: "/licenses"
-          headers:
-            x-api-key: "dev-secret"
-          afterResponse: "checkResponse"
-      - ifTrue:
-          condition: "{{ tokenCaptured }}"
-          then:
-            - get:
-                url: "/licenses/{{ cloudsmithToken }}"
-                afterResponse: "checkTokenResponse"
+      # Repeat requests with a valid token missing the required role.
+      - loop:
+          - get:
+              url: "/api/v1/analyses"
+              beforeRequest: "setRolelessTestToken"
+              afterResponse: "checkPyGuard403Response"
+        count: 120
 ```
 
-For successful license requests, the processor captures the returned token and the scenario checks that the token is valid. Artillery records response times, throughput, and response statuses for the run.
+The helper obtains a short-lived access token from the test-only Keycloak client. Because its token omits the required realm role, each request should return `403` until the configured PyGuard attempt limit is reached; later requests should return `429`. Artillery records response times, throughput, and response statuses for the run.
+
+Artillery can also run browser journeys through its Playwright engine. In the [performance scenario](../../projects/bonus1_license_service_oidc/tests/load/performance.yml), `engines.playwright` enables the engine and `testFunction` selects the [JavaScript journey](../../projects/bonus1_license_service_oidc/tests/load/helpers/performance-flow.cjs).
 
 !!! info "Artillery"
-	The test is intended to exceed `PyGuard`'s limit of 100 attempts in a 60-second window, to verify that the protection is enforced under load. For more details on running and interpreting the load test, see the [README](../../projects/bonus1_license_service_oidc/tests/README.md).
+	For more details on running and interpreting the tests, see the [README](../../projects/bonus1_license_service_oidc/tests/README.md).
+
 
 ## Development Workflow
 
@@ -250,13 +248,7 @@ The project can be started from VS Code using the `devcontainer.json` configurat
 
 1. **Install the prerequisites.** Install Docker and the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for VS Code. Make sure Docker is running.
 
-2. **Open the project.** In VS Code, select **File > Open Folder** and open:
-
-	```text
-	projects/proj11_license_service_devcontainer
-	```
-
-	The folder contains `.devcontainer/devcontainer.json` and the referenced `docker-compose.yml` file.
+2. **Open the project.** In VS Code, select **File > Open Folder** and open the project folder. The folder contains `.devcontainer/devcontainer.json` and the referenced `docker-compose.yml` file.
 
 3. **Start the container.** Open the Command Palette with **Ctrl+Shift+P** or **Cmd+Shift+P**, then run **Dev Containers: Reopen in Container**. VS Code builds the image and starts the `backend`, `frontend`, and `devcontainer` services. The first build may take several minutes because Playwright browsers are installed.
 

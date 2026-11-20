@@ -1,36 +1,36 @@
 # Keycloak OIDC Provider
 
-Keycloak is the OpenID Connect (OIDC) identity provider for the License Service. It authenticates users for the Streamlit frontend and issues the ID and access tokens that the backend validates before allowing protected license operations.
+Keycloak is the OpenID Connect (OIDC) identity provider for Iris Analysis. It authenticates users for the Streamlit frontend and issues the ID and access tokens that the backend validates before allowing protected analysis operations.
 
 This directory contains the realm definition imported by the Keycloak container. Keycloak itself is provided as a Docker image; there is no separate application source code to install in this directory.
 
 ## Basic Components
 
-The Keycloak configuration for this project is defined in `realm-export.json`. This realm export describes the identity-provider components required by the application: the `license-service` realm, the `streamlit-frontend` OIDC client, and a development user. When the Keycloak container starts with `--import-realm`, it uses this file to create the realm configuration.
+The Keycloak configuration for this project is defined in `realm-export.json`. This realm export describes the identity-provider components required by the application: the `iris-analysis` realm, the `iris-analysis-frontend` OIDC client, and a development user. When the Keycloak container starts with `--import-realm`, it uses this file to create the realm configuration.
 
 The following sections explain each component and its role in the authentication flow.
 
 ### Realm
 
-A Keycloak realm is an isolated security domain containing users, clients, roles, and authentication settings. This project imports the `license-service` realm so the license application has its own identity configuration.
+A Keycloak realm is an isolated security domain containing users, clients, roles, and authentication settings. This project imports the `iris-analysis` realm so the application has its own identity configuration.
 
 ```json
 {
-  "realm": "license-service",
+  "realm": "iris-analysis",
   "enabled": true,
-  "displayName": "License Service"
+  "displayName": "Iris Analysis"
 }
 ```
 
 ### Client
 
-The `streamlit-frontend` client represents the Streamlit application. It is a confidential OIDC client using the standard authorization-code flow.
+The `iris-analysis-frontend` client represents the Streamlit application. It is a confidential OIDC client using the standard authorization-code flow.
 
 ```json
 {
-  "clientId": "streamlit-frontend",
-  "name": "Streamlit Frontend",
-  "description": "OIDC client for the license-service Streamlit application",
+  "clientId": "iris-analysis-frontend",
+  "name": "Iris Analysis Frontend",
+  "description": "OIDC client for the Iris Analysis Streamlit application",
   "enabled": true,
   "protocol": "openid-connect",
   "publicClient": false,
@@ -50,6 +50,34 @@ The `streamlit-frontend` client represents the Streamlit application. It is a co
 ```
 
 The client secret is used by the frontend when exchanging the authorization result for tokens. It is a development value in the checked-in realm export and must be replaced or managed through a secret-management system in a production deployment.
+
+### IrisLab CLI Client
+
+The `iris-analysis-cli` client is a public native-app client for the interactive
+CLI. It uses the authorization-code flow with PKCE (S256), has no client secret,
+and only accepts the loopback callback registered in the realm export:
+
+```text
+http://127.0.0.1:8765/callback
+```
+
+The CLI binds that callback to IPv4 loopback, validates the OAuth `state`, and
+exchanges the code using its PKCE verifier. Do not add a client secret to this
+public client or distribute the frontend client's secret with the CLI. The
+IrisLab CLI README describes configuring the issuer and starting a session.
+The callback port defaults to `8765` and can be changed through
+`IRIS_CLI_CALLBACK_PORT`; when changed, update the client's exact redirect URI
+to match `http://127.0.0.1:<port>/callback` as well.
+
+### Artillery Load-Test Client
+
+The `iris-analysis-load-test` client is a test-only public client used to get a
+short-lived token for the Artillery spike test. It enables direct access grants
+for this local test flow, has no client secret, and sets `fullScopeAllowed` to
+`false` without adding role-scope mappings. The example user still has the
+`load-test-required` realm role, but this client's token omits it; the API
+therefore responds with `403` until PyGuard blocks repeated requests. Do not
+use this client in production.
 
 ### User
 
@@ -115,13 +143,13 @@ The issuer, JWKS endpoint, audience, and required role are configured through th
 In the Docker Compose configuration, Keycloak issues tokens with this host-facing issuer URL in the `iss` claim:
 
 ```text
-http://keycloak.localhost:8081/realms/license-service
+http://keycloak.localhost:8081/realms/iris-analysis
 ```
 
 The backend runs inside the Compose network and therefore fetches the public signing keys through Keycloak's internal service address:
 
 ```text
-http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
+http://keycloak:8080/realms/iris-analysis/protocol/openid-connect/certs
 ```
 
 ## Frontend Configuration

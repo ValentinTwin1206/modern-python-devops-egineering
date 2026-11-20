@@ -2,12 +2,12 @@
 
 ## Applied Project
 
-The applied project is an integrated license service for issuing and validating Cloudsmith credentials. It consists of three main application components:
+The applied project is an integrated iris lab analyzation for analyzing incoming pictures of the iris. It consists of four main application components:
 
-* A [Streamlit](https://streamlit.io/) frontend provides the browser-based user interface. Users sign in through the frontend and can retrieve or validate their license.
+* A [Streamlit](https://streamlit.io/) frontend provides the browser-based user interface. Users sign in through the frontend and upload images for iris analysation. 
 * A [Keycloak](https://www.keycloak.org/) provides the OpenID Connect (OIDC) identity service. It authenticates users, manages the configured realm and client, and issues tokens for authenticated requests.
-* A [FastAPI](https://fastapi.tiangolo.com/) backend validates OIDC access tokens, authorizes protected operations, stores license data in SQLite, and integrates with Cloudsmith.
-* The [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) library provides brute-force protection middleware for the backend. It tracks requests to protected endpoints and can temporarily block clients that exceed the configured attempt threshold.
+* A [FastAPI](https://fastapi.tiangolo.com/) backend analyzes incoming pictures of the iris, authorizes protected operations, stores the data in MongoDB, and returns the response.
+* The [PyGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_pyguard/README.md) library provides brute-force protection middleware for the backend. It tracks requests to protected endpoints and can temporarily block suspicious clients that exceed the configured attempt threshold.
 
 ```mermaid
 flowchart LR
@@ -15,8 +15,7 @@ flowchart LR
     F --> K["Keycloak OIDC"]
     K -->|access token| F
     F -->|Bearer token| A["FastAPI backend"]
-    A -->|create or refresh license| C["Cloudsmith API"]
-    A --> D["SQLite license database"]
+    A --> D["MongoDB/GridFS"]
 ```
 
 !!! info "For more information"
@@ -28,50 +27,55 @@ flowchart LR
 
 ### Project Setup
 
-Docker Compose starts the frontend, backend, and Keycloak services and places them on a shared network. The project demonstrates how a user-facing application, an external identity provider, a protected API, local persistence, and a third-party license service work together as one deployable system.
+Docker Compose starts the frontend, backend, MongoDB, and Keycloak services on a shared network. 
 
 The Compose configuration is stored in `projects/bonus1_license_service_oidc/docker-compose.yml`. 
 
 ```yaml
 services:
-  devcontainer:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    command: sleep infinity
-    depends_on:
-      - backend
-      - frontend
-    volumes:
-      - .:/workspace:cached
-    working_dir: /workspace
-    networks:
-      license_service_network:
-
   backend:
-    build:
-      context: ./backend
-      additional_contexts:
-        pyguard: ../proj1_pyguard
+    image: irislab-api:1.0.0
+    depends_on:
+      mongodb:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    volumes:
-      - license_service_data:/app/data
-    env_file:
-      - .env
     environment:
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
-      OIDC_ISSUER_URL: http://keycloak.localhost:8081/realms/license-service
-      OIDC_JWKS_URL: http://keycloak:8080/realms/license-service/protocol/openid-connect/certs
-      DATABASE_PATH: /app/data/licenses.db
+      MONGODB_URI: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL}
     networks:
-      license_service_network:
-        ipv4_address: ${BACKEND_IP:-172.30.0.2}
+      irislab_network:
+        ipv4_address: ${IRIS_API_IP}
+
+  mongodb:
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:${MONGODB_HOST_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --eval 'db.adminCommand("ping").ok' --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      irislab_network:
+        ipv4_address: ${MONGODB_IP}
 
   frontend:
     build: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     ports:
       - "8501:8501"
     extra_hosts:
@@ -79,35 +83,40 @@ services:
     volumes:
       - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
     networks:
-      license_service_network:
-        ipv4_address: ${FRONTEND_IP:-172.30.0.3}
+      irislab_network:
+        ipv4_address: ${FRONTEND_IP}
     environment:
-      BACKEND_URL: http://backend:8080
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-secret}
+      IRIS_API_URL: http://backend:8080
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
     command: start-dev --import-realm
+    healthcheck:
+      test: ["CMD", "bash", "-c", ":</dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HOSTNAME: http://keycloak.localhost:8081
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
     ports:
       - "8081:8080"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
-      license_service_network:
-        ipv4_address: ${KEYCLOAK_IP:-172.30.0.4}
+      irislab_network:
+        ipv4_address: ${KEYCLOAK_IP}
 
 networks:
-  license_service_network:
+  irislab_network:
     ipam:
       config:
         - subnet: 172.30.0.0/24
 
 volumes:
-  license_service_data:
+  mongodb_data:
 ```
 
 The most important Compose configuration keys are:
@@ -115,7 +124,7 @@ The most important Compose configuration keys are:
 | Key | Purpose |
 | --- | --- |
 | `services` | Defines the containers that make up the application. |
-| `build` | Builds a service image from a local Dockerfile. |
+| `image` and `build` | Use a prebuilt image or build a service image from a local Dockerfile. |
 | `depends_on` | Defines service startup order. |
 | `ports` | Maps host ports to container ports. |
 | `environment` | Passes configuration values into a container. |
@@ -123,10 +132,9 @@ The most important Compose configuration keys are:
 | `networks` | Connects services to a shared Docker network. |
 | `ipam` and `subnet` | Configure the address range of that network. |
 
-The project-level `.env` file supplies variable values used by Docker Compose.
-Compose loads these values when it reads the file and substitutes them into
-`${...}` expressions in `docker-compose.yml`, while each service's `env_file`
-setting passes the selected variables into that container's environment.
+The project-level `.env` file supplies values for Compose variable substitution.
+Only variables listed under a service's `environment` section are passed into
+that container.
 
 
 
@@ -142,9 +150,9 @@ The `backend` service exposes port `8080`, the `frontend` service exposes port `
 
 ### Networking
 
-The frontend, backend, and Keycloak services join the
-`license_service_network` network. The network uses the `172.30.0.0/24`
-subnet, with configurable addresses for the services.
+The frontend, backend, MongoDB, and Keycloak services join the
+`irislab_network` network. The network uses the `172.30.0.0/24` subnet, with
+configurable addresses for the services.
 
 Published ports are different from internal service addresses. Port `8501`
 makes the frontend available to the host, while port `8080` makes the backend
@@ -174,9 +182,10 @@ cd projects/bonus1_license_service_oidc
 docker compose up --build
 ```
 
-The `--build` option rebuilds the backend and frontend images before starting
-the stack. Keycloak imports the realm export during startup, and the frontend
-uses the mounted Streamlit OIDC configuration.
+The `--build` option builds the frontend image before starting the stack. The
+backend uses the prebuilt `irislab-api:1.0.0` image. Keycloak imports the realm
+export during startup, and the frontend uses the mounted Streamlit OIDC
+configuration.
 
 Run the services in the background with `-d`:
 

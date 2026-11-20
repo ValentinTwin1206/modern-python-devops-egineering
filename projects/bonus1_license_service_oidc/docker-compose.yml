@@ -1,4 +1,5 @@
 services:
+
   devcontainer:
     build:
       context: .
@@ -16,34 +17,68 @@ services:
       PLAYWRIGHT_HOST_GATEWAY: 172.30.0.1
       KEYCLOAK_TEST_USERNAME: ${KEYCLOAK_TEST_USERNAME}
       KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
+      IRIS_PERF_CLIENT_ID: ${IRIS_PERF_CLIENT_ID:-iris-analysis-frontend}
+      IRIS_PERF_CLIENT_SECRET: ${IRIS_PERF_CLIENT_SECRET:-}
+      IRIS_PERF_UPLOADS: ${IRIS_PERF_UPLOADS:-50}
+      # Use Keycloak's canonical host for browser-based authorization redirects.
+      IRIS_KEYCLOAK_URL: ${IRIS_KEYCLOAK_URL:-http://keycloak.localhost:8081}
+      IRIS_KEYCLOAK_TOKEN_URL: ${IRIS_KEYCLOAK_TOKEN_URL:-http://keycloak:8080}
+      IRIS_KEYCLOAK_REALM: ${IRIS_KEYCLOAK_REALM:-iris-analysis}
+      PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
     networks:
-      license_service_network:
+      irislab_network:
 
   backend:
-    build:
-      context: ./backend
-      additional_contexts:
-        pyguard: ../proj1_pyguard
+    image: irislab-api:1.0.0
+    depends_on:
+      mongodb:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    volumes:
-      # Keep SQLite license and entitlement records across container replacement.
-      - license_service_data:/app/data
-    env_file:
-      - .env
     environment:
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      MONGODB_URI: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
       OIDC_JWKS_URL: ${OIDC_JWKS_URL}
-      DATABASE_PATH: ${DATABASE_PATH}
+      OIDC_REQUIRED_ROLE: ${OIDC_REQUIRED_ROLE:-}
+      PYGUARD_MAX_ATTEMPTS: ${PYGUARD_MAX_ATTEMPTS:-100}
+      PYGUARD_WINDOWS_SECONDS: ${PYGUARD_WINDOWS_SECONDS:-60}
+      PYGUARD_BLOCK_SECONDS: ${PYGUARD_BLOCK_SECONDS:-300s}
+      INFLUXDB_URL: ${INFLUXDB_URL:-http://influxdb:8086}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-irislab}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-api_metrics}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-}
     networks:
-      license_service_network:
-        ipv4_address: ${BACKEND_IP}
+      irislab_network:
+        ipv4_address: ${IRIS_API_IP}
+
+  mongodb:
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:${MONGODB_HOST_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --eval 'db.adminCommand("ping").ok' --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      irislab_network:
+        ipv4_address: ${MONGODB_IP}
 
   frontend:
     build: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     ports:
       - "8501:8501"
     extra_hosts:
@@ -56,16 +91,20 @@ services:
       # on every container start, invalidating browser login cookies from older runs.
       - ./frontend/.streamlit/secrets.toml:/run/secrets/streamlit-secrets.toml:ro
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${FRONTEND_IP}
     environment:
-      BACKEND_URL: ${BACKEND_URL}
-      # Must match the backend so the admin X-API-Key path keeps working.
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      IRIS_API_URL: http://backend:8080
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
     command: start-dev --import-realm
+    healthcheck:
+      test: ["CMD", "bash", "-c", ":</dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -75,7 +114,7 @@ services:
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${KEYCLOAK_IP}
 
   loki:
@@ -85,7 +124,7 @@ services:
       - ./logging/loki/config.yaml:/etc/loki/config.yaml:ro
       - loki_data:/loki
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${LOKI_IP}
 
   alloy:
@@ -102,7 +141,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy/data
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${ALLOY_IP}
 
   influxdb:
@@ -116,7 +155,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${INFLUXDB_IP}
     ports:
       - "8086:8086"
@@ -134,7 +173,7 @@ services:
       loki:
         condition: service_started
     networks:
-      license_service_network:
+      irislab_network:
         ipv4_address: ${GRAFANA_IP}
     ports:
       - "3001:3000"
@@ -142,14 +181,18 @@ services:
       - grafana_data:/var/lib/grafana
 
 networks:
-  license_service_network:
+  irislab_network:
     ipam:
       config:
         - subnet: 172.30.0.0/24
 
 volumes:
-  license_service_data:
+  mongodb_data:
   influxdb_data:
   grafana_data:
   loki_data:
   alloy_data:
+
+secrets:
+  cloudsmith_api_key:
+    environment: CLOUDSMITH_API_KEY

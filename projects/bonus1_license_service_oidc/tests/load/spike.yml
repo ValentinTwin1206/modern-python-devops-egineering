@@ -2,28 +2,20 @@ config:
   target: "http://backend:8080"
 
   phases:
-    # Send more than the 100-attempt limit within the 60-second window.
+    # One virtual user sends 120 roleless-token requests from the same source IP.
     - duration: 60
-      arrivalCount: 120
-      name: "GET license brute-force limit"
+      arrivalCount: 1
+      name: "Iris API authentication brute-force limit"
 
-  # Log the 429 responses returned by the middleware.
   processor: "./helpers/test-helpers.cjs"
 
 scenarios:
-  - name: "GET license and validate returned token"
+  - name: "PyGuard blocks repeated forbidden requests"
     flow:
-      - get:
-          url: "/licenses"
-          # Use the default admin key so authentication does not stop the test.
-          headers:
-            x-api-key: "dev-secret"
-          afterResponse: "checkResponse"
-      # A 429 response does not produce a token, so do not issue a request with
-      # an empty path parameter. The condition is evaluated per virtual user.
-      - ifTrue:
-          condition: "{{ tokenCaptured }}"
-          then:
-            - get:
-                url: "/licenses/{{ cloudsmithToken }}"
-                afterResponse: "checkTokenResponse"
+      # Repeat roleless-token requests to exceed the configured attempt limit.
+      - loop:
+          - get:
+              url: "/api/v1/analyses"
+              beforeRequest: "setRolelessTestToken"
+              afterResponse: "checkPyGuard403Response"
+        count: 120

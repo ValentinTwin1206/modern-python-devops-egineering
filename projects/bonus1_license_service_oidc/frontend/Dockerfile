@@ -9,7 +9,8 @@ COPY pyproject.toml .
 RUN uv sync --no-dev
 
 COPY app.py .
-COPY api.py .
+COPY api/* ./api/
+
 COPY entrypoint.sh .
 
 EXPOSE 8501

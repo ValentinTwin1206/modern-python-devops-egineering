@@ -1,0 +1,19 @@
+Source: irislab-cli
+Section: utils
+Priority: optional
+Maintainer: Modern Python Engineering <maintainers@example.invalid>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
+
+Package: irislab-cli
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: interactive command-line client for the IrisLab API
+ irislab-cli is a Click-based interactive client for the IrisLab API. It logs
+ in through Keycloak in the browser and uploads eye images for analysis.
+ The Debian package contains a standalone Nuitka executable and does not need
+ a Python interpreter or network access to install.

@@ -4,7 +4,7 @@ This page explains how a Dev Container turns a Python project environment into a
 
 ## Applied Project
 
-The applied project is a small server administration CLI called `Server CLI`. It is built on [Click](https://click.palletsprojects.com/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
+The applied project is `IrisLab CLI`, an interactive command-line client for the IrisLab API that logs in through Keycloak in the browser. It is built on [Click](https://click.palletsprojects.com/) and [Requests](https://requests.readthedocs.io/), with [Nuitka](https://nuitka.net/) for native compilation and Debian packaging for APT installation. This makes it a good fit for Dev Containers because the project depends on a reproducible operating-system-level toolchain, not just isolated Python packages.
 
 ## Dev Containers Environment Model
 
@@ -108,7 +108,7 @@ The Dev Container environment is defined by a `.devcontainer/devcontainer.json` 
 	"workspaceFolder": "/workspaces/project",
 	"runArgs": [
 		"--name",
-		"mpe-proj5_server_cli"
+		"mpe-proj4_irislab_cli"
 	],
 	"customizations": {
 		"vscode": {
@@ -144,7 +144,7 @@ The Dev Container environment is defined by a `.devcontainer/devcontainer.json` 
 		- `settings`: Applies VS Code settings, including the container's Python interpreter.
 	- `jetbrains`:
 		- `plugins`: Requests JetBrains plugins such as Python from the JetBrains Dev Container integration.
-- `runArgs`: Passes Docker run arguments to the container. The `--name` argument gives the container the stable name `mpe-proj5_server_cli`.
+- `runArgs`: Passes Docker run arguments to the container. The `--name` argument gives the container the stable name `mpe-proj4_irislab_cli`.
 - `postCreateCommand`: Clears any stale mounted environment, creates a project-local `.venv` with the Ubuntu system Python, and installs the project and development dependencies with the project interpreter after the workspace is mounted.
 - `remoteUser`: Selects the user for terminals, tools, and lifecycle commands. This example uses `bob`, which is renamed from the base image's host-mapped `vscode` account. Renaming the existing account preserves its UID/GID, so lifecycle commands can modify files in the bind-mounted workspace.
 
@@ -155,8 +155,10 @@ The `Dockerfile` defines the content of the container image, such as preinstalle
 ```dockerfile
 # DEVELOPMENT IMAGE:
 #   - uses the Ubuntu 24.04 Dev Containers base image
-#   - installs CPython build headers, uv, Nuitka, and Debian packaging tooling
-#   - uses the base image's host-mapped UID/GID under the bob account
+#   - installs uv, Nuitka, and the native build prerequisites Nuitka needs
+#   - installs the Debian packaging tools used by scripts/build-deb.sh
+#   - includes ELF inspection tools used to inspect compiled binary artifacts
+#   - runs editor terminals and lifecycle commands as bob
 # # # # # # # # # # #
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
@@ -164,38 +166,43 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Put user-level tools installed by uv on PATH.
-ENV PATH="/home/bob/.local/bin:${PATH}"
+ENV PATH="/home/bob/.local/bin:${PATH}" \
+    CLOUDSMITH_REPOSITORY=""
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Install Python, the native tools Nuitka needs, and Debian packaging tools.
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
-		build-essential \
-		binutils \
-		ca-certificates \
-		curl \
-		debhelper \
-		devscripts \
-		dpkg-dev \
-		git \
-		patchelf \
-		python3 \
-		python3-dev \
-		python3-venv \
-		sudo \
-	&& rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        binutils \
+        ca-certificates \
+        coreutils \
+        curl \
+        debhelper \
+        devscripts \
+        dpkg-dev \
+        file \
+        git \
+        libc-bin \
+        patchelf \
+        python3 \
+        python3-dev \
+        python3-venv \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
 
 # Keep the base image's host-mapped UID/GID while using the project's bob name.
 USER root
 RUN usermod --login bob --home /home/bob --move-home vscode \
-	&& groupmod --new-name bob vscode
+    && groupmod --new-name bob vscode \
+    && echo 'bob:c3po' | chpasswd
 
 # Install user-level tools as the same account the container uses.
 USER bob
 
-# Install Nuitka as a user-level uv tool. It is intentionally not a
-# pyproject.toml dependency because it is a container build tool.
+# Install Nuitka as a user-level uv tool. It is intentionally not a project
+# dependency: it is only needed to compile the executable.
 RUN uv tool install nuitka
 
 # Keep the final image user aligned with devcontainer.json.
@@ -248,26 +255,26 @@ project-root/
 
 ### Create the Environment
 
-Build the image with the stable tag `mpe/proj5_server_cli`:
+Build the image with the stable tag `mpe/proj4_irislab_cli`:
 
 ```bash
 devcontainer build \
-    --workspace-folder projects/proj4_servercli \
-	--image-name mpe/proj5_server_cli
+    --workspace-folder projects/proj4_irislab_cli \
+	--image-name mpe/proj4_irislab_cli
 ```
 
 Create the container from the Dev Container configuration:
 
 ```bash
-devcontainer up	--workspace-folder projects/proj4_servercli
+devcontainer up	--workspace-folder projects/proj4_irislab_cli
 ```
 
-> `runArgs` inside `devcontainer.json` gives it the stable name `mpe-proj5_server_cli`
+> `runArgs` inside `devcontainer.json` gives it the stable name `mpe-proj4_irislab_cli`
 
 Open a `bash` shell inside the running container:
 
 ```bash
-devcontainer exec --workspace-folder projects/proj4_servercli bash
+devcontainer exec --workspace-folder projects/proj4_irislab_cli bash
 ```
 
 Activate the automatically created `.venv` project environment:
@@ -311,7 +318,7 @@ Use the appropriate tab for Python dependencies or system tools.
 With the container shell and `.venv` active, run the applied project:
 
 ```bash
-server-cli --help
+irislab-cli --help
 ```
 
 ### Inspect the Environment

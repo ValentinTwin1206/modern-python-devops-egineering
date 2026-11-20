@@ -24,8 +24,9 @@ groups:
                     r._measurement == "api_requests" and
                     r._field == "status_code" and
                     r._value == 429 and
-                    r.endpoint == "/licenses" and
-                    (r.method == "GET" or r.method == "POST")
+                    ((r.endpoint == "/api/v1/analyses" and
+                      (r.method == "GET" or r.method == "POST")) or
+                     (r.endpoint == "/api/v1/reference-colors" and r.method == "GET"))
                   )
                   |> group()
                   |> aggregateWindow(every: 1m, fn: count, createEmpty: false)

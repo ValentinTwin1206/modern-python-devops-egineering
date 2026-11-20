@@ -1,0 +1,20 @@
+config:
+  target: "http://backend:8080"
+  phases:
+    - duration: 1
+      arrivalCount: 1
+      name: "Single-user Iris analysis performance run"
+  engines:
+    playwright:
+      launchOptions:
+        args:
+          - --enable-precise-memory-info
+          - --disable-dev-shm-usage
+          # Artillery does not load playwright.config.js, so mirror its host mapping.
+          - "--host-resolver-rules=MAP localhost 172.30.0.1, MAP keycloak.localhost 172.30.0.1"
+  processor: "./helpers/performance-flow.cjs"
+
+scenarios:
+  - name: "Keycloak login, image analysis, and history"
+    engine: playwright
+    testFunction: runAnalysisJourney

@@ -1,10 +1,10 @@
-# An OIDC-Enabled License Service
+# An OIDC-Enabled Iris Analysis
 
 ## Introduction
 
 Chapter 04 applies the development, authentication, containerization, and
 testing concepts from the previous chapters to an integrated OIDC-enabled
-license service. The project overview and system flow are introduced in
+iris lab analysis application. The project overview and system flow are introduced in
 [Section 01](./section-01.md), where the Compose orchestration is described.
 
 ## Overview

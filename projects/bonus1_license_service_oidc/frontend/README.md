@@ -1,121 +1,116 @@
-# License Service Frontend
+# IrisLab Streamlit Frontend
 
-The License Service frontend is a small [Streamlit](https://streamlit.io/) application for obtaining and checking licenses. It authenticates users with Keycloak through OpenID Connect (OIDC), forwards the access token to the backend API, and presents the result in a browser-based user interface.
-
-Streamlit reruns `app.py` from top to bottom whenever the user interacts with a widget, while the current license values are kept in `st.session_state` between reruns.
+The IrisLab frontend is a Streamlit application for analyzing iris images. Users
+sign in with Keycloak, upload an image for analysis, review recent analyses,
+and browse the reference colors supplied by the IrisLab API.
 
 ## Architecture
 
-The following diagram shows the application flow inside the License Service frontend. 
-
-1. The user signs in through Keycloak.
-2. Streamlit exposes the authenticated OIDC access token through `st.user`.
-3. `app.py` passes that token to `api.py` when requesting the current license.
-4. `api.py` sends HTTP requests to the backend configured by `BACKEND_URL`.
-5. The backend returns license information, which Streamlit renders in the UI.
+1. The user signs in through Keycloak using OpenID Connect (OIDC).
+2. Streamlit exposes the authenticated access token through `st.user`.
+3. `app.py` passes the token to `IrisAPIClient` for protected API requests.
+4. The API validates the bearer token, performs the analysis, and persists
+   results for the authenticated user.
+5. The frontend displays the result and loads the user's recent analyses from
+   the API.
 
 ```mermaid
 graph LR
-		USER["User<br/>Browser"] --> UI["Streamlit<br/>app.py"]
-		UI --> OIDC["Keycloak<br/>OpenID Connect"]
-		OIDC --> UI
-		UI --> CLIENT["HTTP client<br/>api.py"]
-		CLIENT --> API["License Service<br/>Backend"]
-		API --> RESPONSE["reponse"]
-		RESPONSE --> UI
+    USER["User<br/>Browser"] --> UI["Streamlit<br/>app.py"]
+    UI -->|OIDC sign-in| KC["Keycloak"]
+    KC -->|Access token| UI
+    UI -->|Bearer token, image or query| API["IrisLab API"]
+    API --> DB["MongoDB / GridFS"]
+    API -->|Analysis result and history| UI
 ```
 
 ## Basic Components
 
-Streamlit applications are ordinary Python scripts. They execute from top to bottom and rerun after widget interaction. The frontend uses the following important building blocks:
+Streamlit reruns `app.py` after user interactions. The application uses:
 
-* `st.user` exposes the current OIDC authentication state.
-* `st.login()` and `st.logout()` start and end the Keycloak session.
-* `st.button()` starts an operation during a script rerun.
-* `st.stop()` prevents unauthenticated users from reaching protected UI code.
-* `st.session_state` preserves the retrieved token and expiration timestamp
-	across reruns.
+- `st.user`, `st.login()` and `st.logout()` for Keycloak authentication.
+- `st.session_state` to retain the selected page and latest analysis result
+  across reruns.
+- `IrisAPIClient` to make authenticated HTTP requests to the IrisLab API.
 
-### app.py
+### `app.py`
 
-Besides rendering, the `app.py` handles Streamlit's OIDC flow. The configuration is stored in `.streamlit/secrets.toml`. The `[auth]` section defines the callback URL and session-cookie settings. The `[auth.keycloak]` section identifies the Keycloak client and its discovery endpoint.
+The sidebar provides Dashboard, New Analysis, and Reference Colors views. The
+Dashboard displays up to five recent analyses, including an image preview,
+filename, timestamp, and available result details. New Analysis accepts PNG or
+JPEG images up to 10 MiB; the API also validates image dimensions (up to 20
+megapixels). Results are displayed as JSON. The Account menu shows the signed-in
+user and provides sign-out.
 
-```toml
-[auth]
-redirect_uri = "http://localhost:8501/oauth2callback"
-cookie_secret = "31e5353a9a803bf266cac370ad263235e73d1654331dca5fb1687aefcbcd14d0"
-# Expose the access token so the frontend can forward it to the backend API.
-expose_tokens = ["id", "access"]
+The OIDC provider is named `keycloak` in Streamlit's secrets configuration.
+The configured client is `iris-analysis-frontend` in the `iris-analysis` realm.
+The redirect URI registered with Keycloak must match the frontend URL, for
+example `http://localhost:8501/oauth2callback` for local development.
 
-[auth.keycloak]
-client_id = "streamlit-frontend"
-client_secret = "streamlit-dev-secret"
-server_metadata_url = "http://keycloak.localhost:8081/realms/license-service/.well-known/openid-configuration"
-```
+### `api/client.py`
 
-With this configuration in place, `app.py` uses Streamlit's built-in OIDC authentication API:
+`IrisAPIClient` keeps HTTP communication out of the Streamlit UI. It attaches
+the access token as a bearer token, reads its base URL from `IRIS_API_URL`, and
+raises `IrisAPIError` for HTTP, connection, or invalid-JSON errors.
 
-```python
-import streamlit as st
-...
-if not st.user.is_logged_in:
-    st.write("You are not logged in.")
-    if st.button("Log in with Keycloak"):
-        st.login("keycloak")
-    st.stop()
-...
-```
+| Method | API endpoint | Purpose |
+| --- | --- | --- |
+| `get_reference_colors()` | `GET /api/v1/reference-colors` | Load reference colors |
+| `get_analysis_history()` | `GET /api/v1/analyses` | Load the signed-in user's history |
+| `analyze_image()` | `POST /api/v1/analyses` | Upload an image and return its analysis |
 
-When the user clicks **Log in with Keycloak**, `st.login("keycloak")` starts the authorization-code flow using the provider configured in
-`[auth.keycloak]`. The browser is redirected to Keycloak, where the user authenticates. Keycloak then redirects the browser to the exact
-`redirect_uri` configured for the client.
-
-Streamlit handles the callback, exchanges the authorization code for tokens, and stores the authenticated session in its user context. On subsequent reruns, `st.user.is_logged_in` is true and the application can read the user claims and the exposed access token. The access token is then sent to the backend as a bearer token when the frontend calls protected API endpoints.
-
-### `api.py`
-
-`api.py` keeps HTTP communication out of the Streamlit interface. It reads the backend URL from `BACKEND_URL` and provides two small functions:
-
-* `get_license()` calls `GET /licenses` with the OIDC bearer token.
-* `check_license()` calls `GET /licenses/{cloudsmith_token}` without
-	authentication.
+The API URL defaults to `http://localhost:8000`. The request timeout defaults
+to 60 seconds and can be changed with `IRIS_API_TIMEOUT`.
 
 ## Project Structure
 
 | Path | Purpose |
 | --- | --- |
-| `app.py` | Streamlit interface, OIDC state, and button handlers |
-| `api.py` | HTTP client for the backend license API |
-| `entrypoint.sh` | Generates runtime secrets and starts Streamlit |
+| `app.py` | Streamlit UI, OIDC session, navigation, and page handlers |
+| `api/client.py` | Authenticated HTTP client for the IrisLab API |
 | `pyproject.toml` | Runtime and development dependencies |
 | `uv.lock` | Locked dependency versions |
-| `.streamlit/secrets.toml.example` | Local OIDC configuration template |
-| `Dockerfile` | Container image definition |
+| `.streamlit/secrets.toml.example` | Local Keycloak OIDC configuration template |
+| `Dockerfile` | Frontend container image definition |
+| `entrypoint.sh` | Creates a runtime cookie secret and starts Streamlit |
 
 ## Development Setup
+
 ### Requirements
 
-* Python 3.12+
-* [uv](https://docs.astral.sh/uv/)
-* A running backend service
-* A running Keycloak instance configured with the `license-service` realm
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- A reachable IrisLab API and Keycloak instance
 
-## Run the Application
+### Configure Authentication
 
-Start Streamlit on all interfaces so it can also be reached from a container or another machine:
+Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml`, then set
+the Keycloak client secret for the `iris-analysis-frontend` client. Do not
+commit real credentials. The example uses the `iris-analysis` realm and local
+Keycloak URL; update the metadata URL if your Keycloak host differs.
+
+### Run Locally
+
+From this directory, install the locked dependencies and start Streamlit:
 
 ```bash
-uv run streamlit run app.py \
-	--server.address=0.0.0.0 \
-	--server.port=8501
+uv sync
+export IRIS_API_URL=http://localhost:8000
+uv run streamlit run app.py --server.address=0.0.0.0 --server.port=8501
 ```
 
-The application is available at [http://localhost:8501](http://localhost:8501). For login and license retrieval, the backend and Keycloak services must also be running.
+Open [http://localhost:8501](http://localhost:8501). Keycloak must be reachable
+at the metadata URL, and the IrisLab API must be available at `IRIS_API_URL`.
 
 ## Container Build
 
-Build the frontend image from the `bonus1_license_service_oidc` project root with `docker compose`:
+The frontend image is built by Docker Compose from this directory's Dockerfile.
+From the IrisLab Compose project root, provide the required `.env` and API image
+(`irislab-api:1.0.0`), then start the stack:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
+
+Compose supplies the API URL and mounts the Streamlit secrets template. The
+frontend entrypoint generates a fresh cookie secret when the container starts.

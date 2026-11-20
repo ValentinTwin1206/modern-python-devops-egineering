@@ -1,12 +1,20 @@
 {
-  "realm": "license-service",
+  "realm": "iris-analysis",
   "enabled": true,
-  "displayName": "License Service",
+  "displayName": "Iris Analysis",
+  "roles": {
+    "realm": [
+      {
+        "name": "load-test-required",
+        "description": "Allows protected Iris API operations in the local test stack"
+      }
+    ]
+  },
   "clients": [
     {
-      "clientId": "streamlit-frontend",
-      "name": "Streamlit Frontend",
-      "description": "OIDC client for the license-service Streamlit application",
+      "clientId": "iris-analysis-frontend",
+      "name": "Iris Analysis Frontend",
+      "description": "OIDC client for the Iris Analysis Streamlit application",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -22,6 +30,38 @@
       "webOrigins": [
         "http://localhost:8501"
       ]
+    },
+    {
+      "clientId": "iris-analysis-cli",
+      "name": "Iris Analysis CLI",
+      "description": "Public OIDC client for the interactive IrisLab CLI (authorization code with PKCE)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:8765/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "iris-analysis-load-test",
+      "name": "Iris Analysis Load Test",
+      "description": "Test-only public client for obtaining short-lived roleless tokens",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false
     }
   ],
   "users": [
@@ -32,6 +72,7 @@
       "emailVerified": true,
       "firstName": "Example",
       "lastName": "User",
+      "realmRoles": ["load-test-required"],
       "credentials": [
         {
           "type": "password",
