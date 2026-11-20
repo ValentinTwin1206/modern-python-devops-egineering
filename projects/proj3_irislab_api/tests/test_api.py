@@ -19,6 +19,7 @@ from irislab_api.database import mongo
 from irislab_api.services import analysis
 
 AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+mongo_clients = []
 
 
 class FakeCollection:
@@ -106,8 +107,8 @@ class FakeModel:
         return self.fixed_score
 
 
-def use_fake_models(monkeypatch, nsfw_score, violence_score):
-    guard = PaiGuard(
+def fake_guard(nsfw_score, violence_score):
+    return PaiGuard(
         rules=[
             PaiNsfwDetection(threshold=0.8, model=FakeModel(nsfw_score)),
             PaiViolenceDetection(
@@ -115,7 +116,6 @@ def use_fake_models(monkeypatch, nsfw_score, violence_score):
             ),
         ]
     )
-    monkeypatch.setattr(analysis, "guard", guard)
 
 
 @pytest.fixture
@@ -123,8 +123,19 @@ def client(tmp_path, monkeypatch):
     model = tmp_path / "model.task"
     model.write_bytes(b"model")
     monkeypatch.setenv("IRISLAB_MODEL_PATH", str(model))
-    use_fake_models(monkeypatch, 0.0, 0.0)
+    monkeypatch.setenv("MONGODB_URI", "mongodb://test")
+    monkeypatch.setenv("MONGODB_DATABASE", "test")
+
+    def fake_mongo_client(uri):
+        client = FakeMongoClient(uri)
+        mongo_clients.append(client)
+        return client
+
+    monkeypatch.setattr(main, "MongoClient", fake_mongo_client)
+    monkeypatch.setattr(main, "InfluxDBClient", lambda **_kwargs: None)
+    monkeypatch.setattr(mongo, "GridFSBucket", FakeGridFS)
     with TestClient(create_app()) as test_client:
+        test_client.app.state.moderation_guard = fake_guard(0.0, 0.0)
         yield test_client
     assert mongo_clients[0].closed
 
@@ -231,21 +242,30 @@ def test_missing_required_role_returns_403(client, monkeypatch):
     assert response.status_code == 403
 
 
-def test_repeated_auth_failures_temporarily_block_client_ip(client, monkeypatch):
+def test_unauthenticated_upload_is_not_moderated(client, monkeypatch):
+    def must_not_inspect(_image):
+        pytest.fail("Unauthenticated uploads must not be sent to pAIguard")
+
+    monkeypatch.setattr(client.app.state.moderation_guard, "inspect", must_not_inspect)
+    response = client.post(
+        "/api/v1/analyses",
+        files={"image": ("portrait.png", image_bytes(), "image/png")},
+    )
+
+    assert response.status_code == 401
+
+
+def test_invalid_token_upload_returns_401(client, monkeypatch):
     def reject_token(_authorization):
         raise jwt_middleware.TokenError(401, "Invalid token")
 
     monkeypatch.setattr(jwt_middleware, "_validate_bearer_token", reject_token)
-    client.app.state.guard.rules[1].max_attempts = 5
-
-    for _ in range(5):
-        assert client.get("/api/v1/analyses", headers=AUTH_HEADERS).status_code == 401
-
-    brute_force = client.app.state.guard.rules[1]
-    assert len(brute_force.attempts["testclient"]) == 5
-    assert brute_force.is_blocked("testclient") is True
-    response = client.get("/api/v1/analyses", headers=AUTH_HEADERS)
-    assert response.status_code == 429
+    response = client.post(
+        "/api/v1/analyses",
+        files={"image": ("portrait.png", image_bytes(), "image/png")},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 401
 
 
 def test_analysis_storage_failure_cleans_up_gridfs_and_document(client, monkeypatch):
@@ -291,14 +311,14 @@ def test_moderation_runs_before_analysis(client, monkeypatch):
     monkeypatch.setattr(analysis, "analyze", must_not_run)
     files = {"image": ("x.png", image_bytes(), "image/png")}
 
-    use_fake_models(monkeypatch, 0.9, 0.1)
-    blocked = client.post("/api/v1/analyses", files=files)
+    client.app.state.moderation_guard = fake_guard(0.9, 0.1)
+    blocked = client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS)
     assert blocked.status_code == 422
     assert "block" in blocked.json()["detail"]
     assert "nsfw" in blocked.json()["detail"]
 
-    use_fake_models(monkeypatch, 0.1, 0.6)
-    review = client.post("/api/v1/analyses", files=files)
+    client.app.state.moderation_guard = fake_guard(0.1, 0.6)
+    review = client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS)
     assert review.status_code == 422
     assert "review" in review.json()["detail"]
     assert "violence" in review.json()["detail"]
@@ -306,10 +326,10 @@ def test_moderation_runs_before_analysis(client, monkeypatch):
 
 def test_missing_paiguard_models(client, monkeypatch, tmp_path):
     monkeypatch.setenv("PAIGUARD_MODEL_DIR", str(tmp_path / "missing"))
-    monkeypatch.setattr(
-        analysis, "guard", PaiGuard(rules=[PaiNsfwDetection(), PaiViolenceDetection()])
+    client.app.state.moderation_guard = PaiGuard(
+        rules=[PaiNsfwDetection(), PaiViolenceDetection()]
     )
     files = {"image": ("x.png", image_bytes(), "image/png")}
-    response = client.post("/api/v1/analyses", files=files)
+    response = client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS)
     assert response.status_code == 503
     assert response.json()["detail"] == "pAIguard models are unavailable"

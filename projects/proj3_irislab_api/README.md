@@ -61,4 +61,4 @@ curl -f \
 
 Interactive API documentation is available at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs).
 
-Images that pAIguard classifies as NSFW or violent are rejected with HTTP `422`. The thresholds can be changed with the environment variables `IRISLAB_API_NSFW_THRESHOLD` (default `0.80`) and `IRISLAB_API_VIOLENCE_THRESHOLD` (default `0.85`). The container reads the pAIguard models from `PAIGUARD_MODEL_DIR` (`/opt/irislab/paiguard`) and returns HTTP `503` when they are missing.
+The upload middleware rejects images that pAIguard classifies as NSFW or violent with HTTP `422`, before the analysis service runs. The thresholds can be changed with the environment variables `IRISLAB_API_NSFW_THRESHOLD` (default `0.80`) and `IRISLAB_API_VIOLENCE_THRESHOLD` (default `0.85`). The container reads the pAIguard models from `PAIGUARD_MODEL_DIR` (`/opt/irislab/paiguard`) and returns HTTP `503` when they are missing.
