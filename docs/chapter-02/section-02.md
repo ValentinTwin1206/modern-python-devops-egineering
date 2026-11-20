@@ -1,10 +1,10 @@
 # Debian Packages
 
-Debian packages distribute applications as `.deb` archives that APT can discover, verify, install, upgrade, and remove. This section packages a compiled Server CLI executable so users can install and run the command without managing Python themselves.
+Debian packages distribute applications as `.deb` archives that APT can discover, verify, install, upgrade, and remove. This section packages a compiled IrisLab CLI executable so users can install and run the command without managing Python themselves.
 
 ## Applied Project
 
-The applied project is a small Click-based administration tool called `Server CLI`, exposed as the `server-cli` command. The project uses [Nuitka](https://nuitka.net/) to compile its Python modules and dependencies into a platform-specific executable. Its Debian package installs that executable under `/usr/lib/server-cli` and creates the public `/usr/bin/server-cli` link.
+The applied project is `IrisLab CLI`, a Click-based interactive client for the IrisLab API, exposed as the `irislab-cli` command. The project uses [Nuitka](https://nuitka.net/) to compile its Python modules and dependencies into a platform-specific executable. Its Debian package installs that executable under `/usr/lib/irislab-cli` and creates the public `/usr/bin/irislab-cli` link.
 
 This design separates two concerns: Nuitka creates the runnable application artifact, while Debian packaging supplies installation metadata, filesystem placement, dependency tracking, upgrades, and removal through APT.
 
@@ -12,7 +12,7 @@ This design separates two concerns: Nuitka creates the runnable application arti
 
 Debian packages are AR-based `.deb` artifacts used by Debian, Ubuntu, and related Linux distributions. A package combines an installable filesystem payload with metadata that describes its identity, architecture, dependencies, and lifecycle. They are commonly used for system utilities and command-line applications that should be installed and maintained by the operating system.
 
-| Building Block | Role | Server CLI Example |
+| Building Block | Role | IrisLab CLI Example |
 |----------------|------|--------------------|
 | Package Format | Stores the generated metadata and installable filesystem payload. | `.deb` |
 | Maintainer Files | Define package identity, dependencies, build rules, installed paths, and release history. | `debian/control`, `debian/rules`, `debian/changelog` |
@@ -24,7 +24,7 @@ Debian packages are AR-based `.deb` artifacts used by Debian, Ubuntu, and relate
 The project keeps executable-build scripts and Debian maintainer files next to the Python source:
 
 ```text
-proj4_servercli/
+proj4_irislab_cli/
 ├── .devcontainer/
 │   ├── devcontainer.json
 │   └── Dockerfile
@@ -34,42 +34,44 @@ proj4_servercli/
 │   ├── changelog
 │   ├── control
 │   ├── rules
-│   └── server-cli.links
+│   └── irislab-cli.links
 ├── scripts/
 │   ├── build-deb.sh
 │   └── build-executable.sh
-├── src/server_cli/
+├── src/irislab_cli/
 ├── pyproject.toml
 └── uv.lock
 ```
 
 - `.devcontainer/`: Provides Python, `uv`, Nuitka, the native compiler, binary-inspection tools, and Debian packaging tools.
-- `scripts/build-executable.sh`: Compiles the Linux `server-cli` executable with Nuitka.
+- `scripts/build-executable.sh`: Compiles the Linux `irislab-cli` executable with Nuitka.
 - `scripts/build-deb.sh`: Copies the project and compiled executable to an isolated directory before invoking `dpkg-buildpackage`.
 - `debian/control`: Defines source and binary package metadata and runtime dependencies.
 - `debian/rules`: Installs the compiled executable into the package staging tree.
-- `debian/server-cli.links`: Creates `/usr/bin/server-cli` as a link to the packaged executable.
+- `debian/irislab-cli.links`: Creates `/usr/bin/irislab-cli` as a link to the packaged executable.
 
 ### Package Manifest
 
 The `debian/control` file defines the package identity, build requirements, runtime dependencies, and description:
 
 ```text
-Source: server-cli
-Section: admin
+Source: irislab-cli
+Section: utils
 Priority: optional
 Maintainer: Modern Python Engineering <maintainers@example.invalid>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
+Homepage: https://github.com/ValentinTwin1206/modern-python-devops-egineering
 
-Package: server-cli
+Package: irislab-cli
 Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends}
-Description: command-line client for a server API
- server-cli is a Click-based command-line client for server administration.
+Description: interactive command-line client for the IrisLab API
+ irislab-cli is a Click-based interactive client for the IrisLab API. It logs
+ in through Keycloak in the browser and uploads eye images for analysis.
  The Debian package contains a standalone Nuitka executable and does not need
  a Python interpreter or network access to install.
 ```
@@ -81,7 +83,7 @@ Description: command-line client for a server API
 A `.deb` file is an AR archive containing a format marker, generated control information, and a filesystem payload:
 
 ```text
-server-cli_1.0.0-1_amd64.deb
+irislab-cli_1.0.0-1_amd64.deb
 ├── debian-binary
 ├── control.tar.*
 │   ├── control
@@ -89,10 +91,10 @@ server-cli_1.0.0-1_amd64.deb
 └── data.tar.*
     └── usr/
         ├── bin/
-        │   └── server-cli -> /usr/lib/server-cli/server-cli
+        │   └── irislab-cli -> /usr/lib/irislab-cli/irislab-cli
         └── lib/
-            └── server-cli/
-                └── server-cli
+            └── irislab-cli/
+                └── irislab-cli
 ```
 
 The executable is built for the target operating system and architecture. It must therefore be compiled in an environment compatible with the Debian systems where the package will run.
@@ -105,19 +107,19 @@ Python binary tools turn an application and its dependencies into a platform-spe
 
     PyInstaller bundles the Python interpreter, application bytecode, imported packages, and resources. It focuses on reliably collecting an application into a folder or one executable; it does not translate the complete program into native C code.
 
-    An equivalent one-file build of Server CLI would use:
+    An equivalent one-file build of IrisLab CLI would use:
 
     ```bash
     uv run pyinstaller \
         --onefile \
-        --name server-cli \
+        --name irislab-cli \
         --paths src \
-        src/server_cli/cli.py
+        src/irislab_cli/cli.py
     ```
 
 === "Nuitka"
 
-    Nuitka translates Python modules to C and compiles them with a native compiler. Like PyInstaller, it follows imports and includes the runtime components needed by the application, but its compilation stage produces native machine code. Server CLI uses Nuitka through its build script:
+    Nuitka translates Python modules to C and compiles them with a native compiler. Like PyInstaller, it follows imports and includes the runtime components needed by the application, but its compilation stage produces native machine code. IrisLab CLI uses Nuitka through its build script:
 
     ```bash
     ./scripts/build-executable.sh
@@ -129,9 +131,9 @@ Python binary tools turn an application and its dependencies into a platform-spe
     nuitka \
         --onefile \
         --output-dir=.build \
-        --output-filename=server-cli \
-        --include-package=server_cli \
-        src/server_cli/cli.py
+        --output-filename=irislab-cli \
+        --include-package=irislab_cli \
+        src/irislab_cli/cli.py
     ```
 
 ## Tradeoffs
@@ -167,38 +169,32 @@ sudo npm install -g @devcontainers/cli
 From the `projects/` directory, start the project Dev Container:
 
 ```bash
-devcontainer up --workspace-folder proj4_servercli
+devcontainer up --workspace-folder proj4_irislab_cli
 ```
 
 Open a shell and pass the Cloudsmith configuration into the container:
 
 ```bash
-devcontainer exec --workspace-folder proj4_servercli \
+devcontainer exec --workspace-folder proj4_irislab_cli \
     --remote-env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
     --remote-env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
     bash
 ```
 
-Inside the container, install the Debian packaging tools with APT:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y debhelper dpkg-dev devscripts
-```
+The Dev Container image already provides the build tools, so no manual installation is needed:
 
 - `debhelper`: Provides tools for building Debian packages.
 - `dpkg-dev`: Provides low-level Debian package development tools.
 - `devscripts`: Provides scripts for Debian package maintenance and release tasks.
+- `nuitka`: Compiles the Python application into a standalone executable.
 
-Then, synchronize the project environment and install the Python packaging tools with `uv`:
+Inside the container, synchronize the project environment and install the Cloudsmith CLI with `uv`:
 
 ```bash
 uv sync --group dev
-uv tool install nuitka
 uv tool install cloudsmith-cli
 ```
 
-- `nuitka`: Compiles the Python application into a standalone executable.
 - `cloudsmith-cli`: Uploads and manages packages in Cloudsmith repositories.
 
 ### Create the Package
@@ -212,7 +208,7 @@ Inside the Dev Container, compile the executable:
 Confirm that the compiled command starts:
 
 ```bash
-./.build/server-cli --help
+./.build/irislab-cli --help
 ```
 
 Build the Debian package from that executable:
@@ -221,26 +217,26 @@ Build the Debian package from that executable:
 ./scripts/build-deb.sh
 ```
 
-The resulting package is written to `.build/server-cli_1.0.0-1_amd64.deb` for an AMD64 build.
+The resulting package is written to `.build/irislab-cli_1.0.0-1_amd64.deb` for an AMD64 build.
 
 ### Inspect the Package
 
 List the three top-level members of the Debian archive:
 
 ```bash
-ar t .build/server-cli_1.0.0-1_amd64.deb
+ar t .build/irislab-cli_1.0.0-1_amd64.deb
 ```
 
 Inspect package metadata and generated dependencies:
 
 ```bash
-dpkg -I .build/server-cli_1.0.0-1_amd64.deb
+dpkg -I .build/irislab-cli_1.0.0-1_amd64.deb
 ```
 
 List the filesystem payload:
 
 ```bash
-dpkg -c .build/server-cli_1.0.0-1_amd64.deb
+dpkg -c .build/irislab-cli_1.0.0-1_amd64.deb
 ```
 
 ### Publish the Package
@@ -249,13 +245,13 @@ Cloudsmith stores the uploaded `.deb`, extracts its control metadata, and genera
 
 ```bash
 cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/noble" \
-    .build/server-cli_1.0.0-1_amd64.deb
+    .build/irislab-cli_1.0.0-1_amd64.deb
 ```
 
 Verify that it was indexed:
 
 ```bash
-cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "server-cli"
+cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "irislab-cli"
 ```
 
 ## Consumer Workflow
@@ -277,24 +273,26 @@ printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/
 sudo apt update
 ```
 
-Install Server CLI:
+Install IrisLab CLI:
 
 ```bash
-sudo apt install server-cli
+sudo apt install irislab-cli
 ```
 
 ### Use the Package
 
-Run Server CLI:
+Run IrisLab CLI:
 
 ```bash
-server-cli --help
+irislab-cli --help
 ```
+
+Running `irislab-cli` without arguments opens the Keycloak login in the browser and then starts the interactive `iris>` session. The required environment variables are listed in the project README.
 
 To inspect which files belong to the installed package, use `dpkg`:
 
 ```bash
-dpkg -L server-cli
+dpkg -L irislab-cli
 ```
 
 ## Useful Links

@@ -2,6 +2,8 @@
 name = "irislab-cli"
 version = "1.0.0"
 description = "Interactive OIDC-authenticated client for the IrisLab API"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.1.7,<9",
@@ -9,12 +11,15 @@ dependencies = [
 ]
 
 [project.scripts]
-iris-cli = "irislab_cli.cli:main"
+irislab-cli = "irislab_cli.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
 
 [tool.uv]
+# The Debian package and the MSI ship a Nuitka-compiled binary. uv still
+# installs the project into the development environment so the local console
+# script works.
 package = true
 
 [build-system]

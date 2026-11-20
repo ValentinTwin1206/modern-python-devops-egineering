@@ -137,10 +137,16 @@ def run_session() -> None:
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.version_option(version=__version__, prog_name="iris-cli")
+@click.version_option(version=__version__, prog_name="irislab-cli")
 def cli() -> None:
     """Log in to IrisLab and open an interactive API session."""
     run_session()
 
+
+def main() -> None:
+    """Entry point of the console script and the compiled executable."""
+    cli(prog_name="irislab-cli")
+
+
 if __name__ == "__main__":
-    cli()
+    main()
