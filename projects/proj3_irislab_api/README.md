@@ -27,12 +27,12 @@ export OIDC_JWKS_URL="https://.../.well-known/jwks.json"
 Pull and run the published container image:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
 docker run --rm -p 8080:8080 \
   -e MONGODB_URI -e MONGODB_DATABASE \
   -e OIDC_ISSUER_URL -e OIDC_JWKS_URL \
   -e OIDC_AUDIENCE -e OIDC_REQUIRED_ROLE \
-  "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+  "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
 ```
 
 ## Usage

@@ -17,7 +17,7 @@ RUN micromamba config prepend channels conda-forge \
 
 # Install IrisLab and MediaPipe:
 #   - creates a Conda environment for IrisLab and MediaPipe
-#   - TODO: Add irislab-tools=1.0.0 to the below micromamba create command below.
+#   - TODO: Add irislab-tools=0.0.1 to the micromamba create command below.
 #   - includes libglib for MediaPipe's PyPI OpenCV wheel
 #   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
@@ -45,14 +45,11 @@ RUN micromamba install \
 ARG MEDIAPIPE_FACE_LANDMARKER_URL=https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 # TODO: Add a build step to download and verify the model:
 #       - Create `/opt/irislab` with `mkdir -p`.
-#       - Download the URL from `${MEDIAPIPE_FACE_LANDMARKER_URL}` with:
-#           /opt/conda/bin/curl -fsSL "${MEDIAPIPE_FACE_LANDMARKER_URL}" \
-#             -o /opt/irislab/face_landmarker.task
-#       - Verify the downloaded file against its pinned SHA-256 digest:
-#           echo '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff  /opt/irislab/face_landmarker.task' \
-#             | sha256sum -c -
-#       Store the model outside the Python source tree so inference can load it
-#       locally inside the container.
+#       - Download `${MEDIAPIPE_FACE_LANDMARKER_URL}` with `/opt/conda/bin/curl -fsSL`
+#         and save it to `/opt/irislab/face_landmarker.task`.
+#       - Use `sha256sum -c` to verify the pinned SHA-256 digest:
+#         64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff
+#       The runtime stage copies the verified file from that path.
 
 #
 # Download the Falconsai NSFW classifier used by pAIguard.
@@ -125,7 +122,8 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/irislab-api-venv \
 COPY pyproject.toml uv.lock ./
 COPY src ./src
 
-# TODO: Create the API's virtual environment with `uv venv`, passing:
+# TODO: Create the API's virtual environment with `uv venv` before `uv sync`.
+#        Pass the following to the uv venv command:
 #       - `${UV_PROJECT_ENVIRONMENT}` as the target directory (positional
 #         argument).
 #       - `--python /opt/conda/envs/irislab-api/bin/python` to use Conda's
@@ -133,8 +131,6 @@ COPY src ./src
 #       - `--system-site-packages` to let the virtual environment import
 #         packages already installed in the Conda environment, including
 #         `irislab-tools` and MediaPipe.
-#       Create this environment before `uv sync` so the API dependencies are
-#       installed into the same environment.
 
 # Install 'irislab-api':
 #   - installs the production dependencies recorded in uv.lock

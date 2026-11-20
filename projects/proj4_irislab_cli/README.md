@@ -30,7 +30,7 @@ To install the `irislab-cli` package, run following command:
 sudo apt install irislab-cli
 ```
 
-The package contains a standalone executable; Python is not required. On Windows, install `irislab-cli-1.0.0.msi` instead.
+The package contains a standalone executable; Python is not required. On Windows, install `irislab-cli-0.0.1.msi` instead.
 
 ## Configuration
 
@@ -112,7 +112,7 @@ scripts/build-executable.sh
 scripts/build-deb.sh
 ```
 
-The first script compiles `.build/irislab-cli` with Nuitka. The second wraps it into `.build/irislab-cli_1.0.0-1_<arch>.deb`.
+The first script compiles `.build/irislab-cli` with Nuitka. The second wraps it into `.build/irislab-cli_0.0.1-1_<arch>.deb`.
 
 ### Build the Windows Installer
 
@@ -131,7 +131,7 @@ uv sync
 .\msi\scripts\build-msi.ps1
 ```
 
-The result is `.build\irislab-cli-1.0.0.msi`.
+The result is `.build\irislab-cli-0.0.1.msi`.
 
 ## License
 

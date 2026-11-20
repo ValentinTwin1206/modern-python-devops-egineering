@@ -34,7 +34,7 @@ explicit = true
 Add pAIguard to your project dependencies using `uv`.
 
 ```bash
-uv add "paiguard==0.1.0"
+uv add "paiguard==0.0.1"
 ```
 
 Its model weights are downloaded separately. Follow [Install Models](#install-models) to download them.

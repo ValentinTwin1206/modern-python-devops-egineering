@@ -1,4 +1,4 @@
-irislab-cli (1.0.0-1) unstable; urgency=medium
+irislab-cli (0.0.1-1) unstable; urgency=medium
 
   * Initial Debian package for the standalone irislab-cli executable.
 

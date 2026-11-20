@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
             client.close()
 
     # Create FastAPI app and configure middleware
-    app = FastAPI( title="IrisLab API", version="1.0.0", lifespan=lifespan )
+    app = FastAPI( title="IrisLab API", version="0.0.1", lifespan=lifespan )
     configure_middleware(app)
 
     # Add routers

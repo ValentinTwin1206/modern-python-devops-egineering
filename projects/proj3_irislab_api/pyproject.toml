@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "irislab-api"
-version = "1.0.0"
+version = "0.0.1"
 description = "HTTP API for IrisLab iris-color analysis"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -17,8 +17,9 @@ dependencies = [
     "PyJWT[crypto]>=2.10,<3",
     "uvicorn>=0.34,<1",
     "python-multipart>=0.0.20,<1",
-    # TODO: Add "paiguard==0.1.0" here. pAIguard belongs in runtime dependencies
-    #       because each analysis request uses its moderation checks.
+    # TODO: Add "paiguard==0.0.1" as a runtime dependency for image moderation.
+    # Keep pAIguard's PyTorch dependency on the CPU index in this deployment.
+    "torch>=2.2",
 ]
 
 [dependency-groups]
@@ -28,7 +29,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-# TODO: Add pAIguard's source mapping here when adding it as a dependency:
+# TODO: Map pAIguard to the Cloudsmith index:
 #       paiguard = { index = "modern-python-engineering" }
 torch = { index = "pytorch-cpu" }
 
@@ -37,10 +38,9 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
-# TODO: Define pAIguard's private package index here:
+# TODO: Define the public Cloudsmith index used by pAIguard:
 #       [[tool.uv.index]]
 #       name = "modern-python-engineering"
-#       url = "https://dl.cloudsmith.io/basic/<owner>/<repository>/python/simple/"
+#       url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
 #       explicit = true
-#       Replace the placeholder with the actual Cloudsmith repository path,
-#       configure credentials outside this file, and regenerate uv.lock.
+#       Run `uv lock --check` after completing these TODOs.
