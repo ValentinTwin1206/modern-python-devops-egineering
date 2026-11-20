@@ -15,9 +15,10 @@ dependencies = [
     "pydantic>=2.10,<3",
     "pymongo>=4.10,<5",
     "PyJWT[crypto]>=2.10,<3",
-    "paiguard",
     "uvicorn>=0.34,<1",
     "python-multipart>=0.0.20,<1",
+    # TODO: Add "paiguard==0.1.0" here. pAIguard belongs in runtime dependencies
+    #       because each analysis request uses its moderation checks.
 ]
 
 [dependency-groups]
@@ -27,12 +28,19 @@ dev = [
 ]
 
 [tool.uv.sources]
-paiguard = { path = "../proj1_paiguard", editable = true }
+# TODO: Add pAIguard's source mapping here when adding it as a dependency:
+#       paiguard = { index = "modern-python-engineering" }
 torch = { index = "pytorch-cpu" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
-# pAIguard is developed in the adjacent project directory.
 
+# TODO: Define pAIguard's private package index here:
+#       [[tool.uv.index]]
+#       name = "modern-python-engineering"
+#       url = "https://dl.cloudsmith.io/basic/<owner>/<repository>/python/simple/"
+#       explicit = true
+#       Replace the placeholder with the actual Cloudsmith repository path,
+#       configure credentials outside this file, and regenerate uv.lock.
