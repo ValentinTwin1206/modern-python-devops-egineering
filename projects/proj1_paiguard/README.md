@@ -24,10 +24,16 @@ With `uv`, first configure the PyTorch CPU index in your project's `pyproject.to
 ```toml
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+paiguard = { index = "modern-python-engineering" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
 explicit = true
 ```
 

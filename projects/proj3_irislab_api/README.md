@@ -24,15 +24,20 @@ export OIDC_JWKS_URL="https://.../.well-known/jwks.json"
 # Set OIDC_AUDIENCE and OIDC_REQUIRED_ROLE when required by your provider.
 ```
 
-Pull and run the published container image:
+Pull `irislab-api` from the public Cloudsmith broadcast:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
+docker pull "docker.cloudsmith.io/pravi-brothers/modern-python-engineering/irislab-api:0.0.1"
+```
+
+When pulled, start the `irislab-api` on `http://localhost:8080`:
+
+```bash
 docker run --rm -p 8080:8080 \
   -e MONGODB_URI -e MONGODB_DATABASE \
   -e OIDC_ISSUER_URL -e OIDC_JWKS_URL \
   -e OIDC_AUDIENCE -e OIDC_REQUIRED_ROLE \
-  "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
+  "docker.cloudsmith.io/pravi-brothers/modern-python-engineering/irislab-api:0.0.1"
 ```
 
 ## Usage

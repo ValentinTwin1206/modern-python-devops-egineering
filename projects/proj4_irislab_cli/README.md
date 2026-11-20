@@ -6,13 +6,13 @@ IrisLab CLI is a Click-based interactive client for the authenticated IrisLab AP
 
 ### Configure Cloudsmith Repository
 
-Replace `<CLOUDSMITH_REPOSITORY>` with your Cloudsmith repository slug. Add its signing key and APT source:
+Add the signing key and APT source for the `pravi-brothers/modern-python-engineering` Cloudsmith repository:
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/public/<CLOUDSMITH_REPOSITORY>/gpg.key" \
+curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/gpg.key" \
   | sudo gpg --dearmor -o /usr/share/keyrings/cloudsmith-repository.gpg
 
-printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<CLOUDSMITH_REPOSITORY>/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
+printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
   | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
 ```
 
