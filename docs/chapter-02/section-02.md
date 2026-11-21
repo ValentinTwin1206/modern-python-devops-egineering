@@ -86,7 +86,7 @@ Description: interactive command-line client for the IrisLab API
 A `.deb` file is an AR archive containing a format marker, generated control information, and a filesystem payload:
 
 ```text
-irislab-cli_1.0.0-1_amd64.deb
+irislab-cli_0.0.1-1_amd64.deb
 ├── debian-binary
 ├── control.tar.*
 │   ├── control
@@ -157,9 +157,6 @@ Python binary tools turn an application and its dependencies into a platform-spe
 
 ## Packaging Workflow
 
-!!! info
-    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
-
 ### Create the Environment
 
 Install the Dev Container CLI on the Linux host if it is not already available:
@@ -175,13 +172,10 @@ From the `projects/` directory, start the project Dev Container:
 devcontainer up --workspace-folder proj4_irislab_cli
 ```
 
-Open a shell and pass the Cloudsmith configuration into the container:
+Open a shell in the container:
 
 ```bash
-devcontainer exec --workspace-folder proj4_irislab_cli \
-    --remote-env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-    --remote-env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
-    bash
+devcontainer exec --workspace-folder proj4_irislab_cli bash
 ```
 
 The Dev Container image already provides the build tools, so no manual installation is needed:
@@ -191,14 +185,22 @@ The Dev Container image already provides the build tools, so no manual installat
 - `devscripts`: Provides scripts for Debian package maintenance and release tasks.
 - `nuitka`: Compiles the Python application into a standalone executable.
 
-Inside the container, synchronize the project environment and install the Cloudsmith CLI with `uv`:
+Inside the container, synchronize the project environment with `uv`:
 
 ```bash
 uv sync --group dev
-uv tool install cloudsmith-cli
 ```
 
 ### Create the Package
+
+Before building version `0.0.2`, update the version declarations in these files. Debian takes the package version from `debian/changelog`; `debian/control` contains package metadata but does not set the version.
+
+| File | Version change |
+|------|----------------|
+| [`pyproject.toml`](../../projects/proj4_irislab_cli/pyproject.toml) | Set `[project].version` to `0.0.2`. |
+| [`__init__.py`](../../projects/proj4_irislab_cli/src/irislab_cli/__init__.py) | Set `__version__` to `0.0.2`. |
+| [`debian/changelog`](../../projects/proj4_irislab_cli/debian/changelog) | Set the Debian package version to `0.0.2-1`. |
+| [`debian/control`](../../projects/proj4_irislab_cli/debian/control) | No version change; this file contains package metadata. |
 
 Inside the Dev Container, compile the executable:
 
@@ -218,35 +220,53 @@ Build the Debian package from that executable:
 ./scripts/build-deb.sh
 ```
 
-The resulting package is written to `.build/irislab-cli_1.0.0-1_amd64.deb` for an AMD64 build.
+The resulting package is written to `.build/irislab-cli_0.0.2-1_amd64.deb` for an AMD64 build.
 
 ### Inspect the Package
 
 List the three top-level members of the Debian archive:
 
 ```bash
-ar t .build/irislab-cli_1.0.0-1_amd64.deb
+ar t .build/irislab-cli_0.0.2-1_amd64.deb
 ```
 
 Inspect package metadata and generated dependencies:
 
 ```bash
-dpkg -I .build/irislab-cli_1.0.0-1_amd64.deb
+dpkg -I .build/irislab-cli_0.0.2-1_amd64.deb
 ```
 
 List the filesystem payload:
 
 ```bash
-dpkg -c .build/irislab-cli_1.0.0-1_amd64.deb
+dpkg -c .build/irislab-cli_0.0.2-1_amd64.deb
 ```
 
-### Publish the Package
+### Publish the Package (Optional)
+
+!!! info "Upload To Cloudsmith"
+    Uploading to Cloudsmith is optional and requires a valid Cloudsmith account. You can build and inspect the artifacts locally without a Cloudsmith account or API key. The project's Dev Container provides the tools needed for packaging and mounts the local project directory, so IDE changes are available inside the container immediately.
+
+Before uploading, set the repository slug and enter your API key in the Dev Container shell. The key is hidden while you type:
+
+```bash
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+read -rsp "Cloudsmith API key: " CLOUDSMITH_API_KEY
+printf '\n'
+export CLOUDSMITH_API_KEY
+```
+
+Install the Cloudsmith CLI inside the container before uploading:
+
+```bash
+uv tool install cloudsmith-cli
+```
 
 Cloudsmith stores the uploaded `.deb`, extracts its control metadata, and generates signed repository indexes for APT. Upload the package for Ubuntu 24.04:
 
 ```bash
 cloudsmith push deb "${CLOUDSMITH_REPOSITORY}/ubuntu/noble" \
-    .build/irislab-cli_1.0.0-1_amd64.deb
+    .build/irislab-cli_0.0.2-1_amd64.deb
 ```
 
 Verify that it was indexed:

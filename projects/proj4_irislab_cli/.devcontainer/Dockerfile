@@ -11,8 +11,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Put user-level tools installed by uv on PATH.
-ENV PATH="/home/bob/.local/bin:${PATH}" \
-    CLOUDSMITH_REPOSITORY=""
+ENV PATH="/home/bob/.local/bin:${PATH}"
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 

@@ -62,7 +62,7 @@ RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
         python=3.12 \
-        irislab-tools=1.0.0 \
+        irislab-tools=0.0.1 \
         libglib \
         pip \
     && /opt/conda/envs/irislab-api/bin/python -m pip install \
@@ -108,7 +108,7 @@ RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
         python=3.12 \
-        irislab-tools=1.0.0 \
+        irislab-tools=0.0.1 \
         libglib \
         pip \
     && /opt/conda/envs/irislab-api/bin/python -m pip install \
@@ -232,14 +232,13 @@ On a host machine, an OCI image is not stored as one ordinary project file. It i
 
 ## Packaging Workflow
 
-!!! info
-    This workflow assumes that you have a valid Cloudsmith repository and access to its Docker registry. Set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`, before you publish.
-
 ### Create the Environment
 
-The IrisLab API uses a runtime `Dockerfile`. Publish both Conda artifacts for
-Linux and Python 3.12 using the current recipe in [Section 03](section-03.md)
-before building. Older packages may not support the configured model path.
+The IrisLab API uses a separate runtime `Dockerfile` for the distributable image.
+Building it requires read access to the Python index hosting pAIguard `0.0.1`
+and the Conda channel hosting both IrisLab `0.0.1` packages for Linux and Python
+3.12. To publish your own copies of those dependencies, see
+[Section 01](section-01.md) and [Section 03](section-03.md).
 
 First, confirm that Docker is installed and running on the host machine:
 
@@ -253,29 +252,29 @@ Move into the API directory, which provides the build context:
 cd projects/proj3_irislab_api
 ```
 
-Set the Cloudsmith repository that will receive the published image:
-
-```bash
-export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
-```
-
-Set the public Conda channel containing the IrisLab packages separately. Do not
+Set the public Conda channel containing the IrisLab packages. Do not
 put credentials in a build argument:
 
 ```bash
 export IRISLAB_CHANNEL="https://conda.cloudsmith.io/<owner>/<repository>/"
 ```
 
+> Replace `owner` and `<repository>` with the values from your Cloudsmith repository
+
 ### Create the Package
+
+Before building the `0.0.2` API image, update the project version in [`pyproject.toml`](../../projects/proj3_irislab_api/pyproject.toml) and the FastAPI version in [`main.py`](../../projects/proj3_irislab_api/src/irislab_api/main.py) to `0.0.2`. Use `0.0.2` for the image tag and archive name in the commands below. The `0.0.1` pAIguard and IrisLab versions mentioned earlier are dependency versions and remain unchanged.
 
 The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
 
 === "Classical container image"
 
-    This command builds the image from the API `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `irislab-api:1.0.0`.
+    This command builds the image from the API `Dockerfile`, stores the resulting image layers and metadata in Docker's local image store, and assigns the tag `irislab-api:0.0.2`.
 
     ```bash
-    docker build --build-arg "IRISLAB_CHANNEL=$IRISLAB_CHANNEL" -t irislab-api:1.0.0 .
+    docker build \
+        --build-arg "IRISLAB_CHANNEL=$IRISLAB_CHANNEL" \
+        -t irislab-api:0.0.2 .
     ```
 
 
@@ -292,7 +291,7 @@ The same `Dockerfile` can produce different output formats depending on the buil
     ```bash
     docker buildx build \
       --build-arg "IRISLAB_CHANNEL=$IRISLAB_CHANNEL" \
-      --output type=oci,dest=irislab-api-1.0.0.tar \
+      --output type=oci,dest=irislab-api-0.0.2.tar \
       .
     ```
 
@@ -305,7 +304,7 @@ The inspection command depends on the output format created in the previous step
     Inspect the metadata that Docker stores for the local image tag:
 
     ```bash
-    docker inspect irislab-api:1.0.0
+    docker inspect irislab-api:0.0.2
     ```
 
     The output includes the image ID, content digests, environment variables, entry point, exposed ports, platform, and layer metadata that Docker uses to create containers from the image.
@@ -313,7 +312,7 @@ The inspection command depends on the output format created in the previous step
     Show the image layer history and the Dockerfile instruction associated with each layer:
 
     ```bash
-    docker history irislab-api:1.0.0
+    docker history irislab-api:0.0.2
     ```
 
 === "OCI image archive"
@@ -321,13 +320,13 @@ The inspection command depends on the output format created in the previous step
     Inspect the archive created by `docker buildx build --output type=oci` by listing the files inside the TAR archive:
 
     ```bash
-    tar -tf irislab-api-1.0.0.tar
+    tar -tf irislab-api-0.0.2.tar
     ```
 
     The exported OCI archive has a structure similar to this:
 
     ```text
-    irislab-api-1.0.0.tar
+    irislab-api-0.0.2.tar
     ├── blobs/
     │   └── sha256/
     │       ├── <digest> (manifest JSON)
@@ -342,32 +341,42 @@ The inspection command depends on the output format created in the previous step
     - `index.json`: Acts as the archive entry point. It points to the image manifest stored under `blobs/sha256/` and can associate that manifest with a tag.
     - `blobs/sha256/<digest>`: Stores all content-addressed image objects. Some blobs are JSON documents, such as the image manifest and image configuration, while other blobs are compressed filesystem layers.
 
-### Publish the Package
+### Publish the Package (Optional)
 
-Published images are addressed by a repository and tag, such as `python:3.12-slim`, while registries resolve that tag to an immutable digest such as `sha256:<digest>`. Tags are readable and convenient, but they can be reassigned; pulling by digest, for example `docker pull python@sha256:<digest>`, guarantees the same image content across environments.
+!!! info "Upload To Cloudsmith"
+    Uploading to Cloudsmith is optional and requires a valid Cloudsmith account. You can build and inspect the artifacts locally without a Cloudsmith account or API key.
 
-To publish the image, set `CLOUDSMITH_REPOSITORY` to the Cloudsmith owner and repository path, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
+Before publishing, set the repository slug and enter your API key in your shell. The key is hidden while you type:
 
 ```bash
 export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+read -rsp "Cloudsmith API key: " CLOUDSMITH_API_KEY
+printf '\n'
+export CLOUDSMITH_API_KEY
 ```
 
-Then authenticate with Cloudsmith's Docker registry:
+Published images are addressed by a repository and tag, such as `python:3.12-slim`, while registries resolve that tag to an immutable digest such as `sha256:<digest>`. Tags are readable and convenient, but they can be reassigned; pulling by digest, for example `docker pull python@sha256:<digest>`, guarantees the same image content across environments.
+
+Use the Cloudsmith owner and repository path for `CLOUDSMITH_REPOSITORY`, such as `example-org/python-containers`. Do not include the registry host or image name in this value.
+
+Authenticate with Cloudsmith's Docker registry using your Cloudsmith username and the API key entered above:
 
 ```bash
-docker login docker.cloudsmith.io
+printf '%s' "$CLOUDSMITH_API_KEY" | docker login docker.cloudsmith.io \
+    --username "<cloudsmith-username>" \
+    --password-stdin
 ```
 
 Tag the local image with the Cloudsmith registry path:
 
 ```bash
-docker tag irislab-api:1.0.0 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+docker tag irislab-api:0.0.2 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.2"
 ```
 
 Then upload the tagged image:
 
 ```bash
-docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.2"
 ```
 
 ## Consumer Workflow
@@ -377,7 +386,7 @@ docker push "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 Once published, the image can be downloaded from Cloudsmith:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
 ```
 
 ### Use the Package
@@ -385,7 +394,7 @@ docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 Run the packaged service with the `run` command:
 
 ```bash
-docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+docker run -p 8080:8080 "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:0.0.1"
 ```
 
 Confirm that the service responds:

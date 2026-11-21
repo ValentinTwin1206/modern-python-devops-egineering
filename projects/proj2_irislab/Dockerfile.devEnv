@@ -4,8 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CONDA_DIR=/opt/conda \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics \
-    CLOUDSMITH_REPOSITORY=""
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 
 ENV PATH="${CONDA_DIR}/bin:${PATH}"
 

@@ -186,10 +186,10 @@ Package the executable in an MSI:
 ```powershell
 powershell -ExecutionPolicy Bypass `
     -File .\msi\scripts\build-msi.ps1 `
-    -Version 1.0.0
+    -Version 0.0.1
 ```
 
-The output is `.build\irislab-cli-1.0.0.msi`.
+The output is `.build\irislab-cli-0.0.1.msi`.
 
 ### Inspect the Package
 
@@ -216,16 +216,16 @@ WinGet separates installer storage from package discovery. Publish the MSI to a 
 ```powershell
 cloudsmith push raw `
     "$env:CLOUDSMITH_REPOSITORY" `
-    .\.build\irislab-cli-1.0.0.msi `
+    .\.build\irislab-cli-0.0.1.msi `
     --name "irislab-cli" `
-    --version "1.0.0"
+    --version "0.0.1"
 ```
 
 Generate a WinGet manifest from the published installer URL:
 
 ```powershell
 wingetcreate new `
-    "https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/versions/1.0.0/irislab-cli-1.0.0.msi"
+    "https://dl.cloudsmith.io/public/<cloudsmith-repo>/raw/names/irislab-cli/versions/0.0.1/irislab-cli-0.0.1.msi"
 ```
 
 Use these package values when prompted:
@@ -242,7 +242,7 @@ Validate the generated manifest directory:
 
 ```powershell
 winget validate --manifest `
-    .\manifests\m\ModernPythonEngineering\IrisLabCLI\1.0.0
+    .\manifests\m\ModernPythonEngineering\IrisLabCLI\0.0.1
 ```
 
 The manifests can be submitted to `microsoft/winget-pkgs` or served by a private WinGet-compatible source such as Rewinged.

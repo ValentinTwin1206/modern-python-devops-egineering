@@ -34,7 +34,7 @@ The Compose configuration is stored in `projects/bonus1_license_service_oidc/doc
 ```yaml
 services:
   backend:
-    image: irislab-api:1.0.0
+    image: irislab-api:0.0.1
     depends_on:
       mongodb:
         condition: service_healthy
@@ -183,7 +183,7 @@ docker compose up --build
 ```
 
 The `--build` option builds the frontend image before starting the stack. The
-backend uses the prebuilt `irislab-api:1.0.0` image. Keycloak imports the realm
+backend uses the prebuilt `irislab-api:0.0.1` image. Keycloak imports the realm
 export during startup, and the frontend uses the mounted Streamlit OIDC
 configuration.
 
