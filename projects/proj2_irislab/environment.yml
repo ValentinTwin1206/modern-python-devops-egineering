@@ -19,5 +19,6 @@ dependencies:
   - ninja
   - pytest
   - pip
-  - pip:
-      - mediapipe
+  # TODO: Create a nested pip section and include all pip packages that are not 
+  #       available through conda such as "mediapipe"
+  

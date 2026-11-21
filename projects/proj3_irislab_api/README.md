@@ -14,6 +14,12 @@ export CLOUDSMITH_REPOSITORY="<CLOUDSMITH_REPOSITORY>"
 
 ### Install IrisLab API
 
+Pull `irislab-api` from the public Cloudsmith broadcast:
+
+```bash
+docker pull "docker.cloudsmith.io/pravi-brothers/modern-python-engineering/irislab-api:0.0.1"
+```
+
 Configure the external MongoDB database and OIDC issuer before starting the API:
 
 ```bash
@@ -24,15 +30,14 @@ export OIDC_JWKS_URL="https://.../.well-known/jwks.json"
 # Set OIDC_AUDIENCE and OIDC_REQUIRED_ROLE when required by your provider.
 ```
 
-Pull and run the published container image:
+Then, start the `irislab-api` on `http://localhost:8080`:
 
 ```bash
-docker pull "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
 docker run --rm -p 8080:8080 \
   -e MONGODB_URI -e MONGODB_DATABASE \
   -e OIDC_ISSUER_URL -e OIDC_JWKS_URL \
   -e OIDC_AUDIENCE -e OIDC_REQUIRED_ROLE \
-  "docker.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/irislab-api:1.0.0"
+  "docker.cloudsmith.io/pravi-brothers/modern-python-engineering/irislab-api:0.0.1"
 ```
 
 ## Usage

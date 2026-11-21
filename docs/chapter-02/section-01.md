@@ -56,7 +56,7 @@ build-backend = "uv_build"
 
 [project]
 name = "paiguard"
-version = "0.1.0"
+version = "0.0.1"
 description = "Lightweight image content moderation for Python applications."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -147,27 +147,21 @@ The filename tags tell the package manager which Python interpreter, ABI, and pl
 
 ### Create the Environment
 
-!!! info
-    This workflow assumes that you have a valid Cloudsmith repository and API key. Set `CLOUDSMITH_REPOSITORY` to your Cloudsmith `<owner>/<repository>` path, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
-
 The `Dockerfile.devEnv` image uses Ubuntu 24.04 with Python 3.12, `python3-venv`,
-`sudo`, `unzip`, and `uv`, then copies the project into `/app`. Cloudsmith CLI
-is installed in the workflow because it is only needed for publication.
+`sudo`, `unzip`, and `uv`, then copies the project into `/app`.
 Choose the workflow that matches the local `mpe/proj1_paiguard` image:
 
-=== "Image does not exist"
+=== "Build and package locally"
 
-    From the `projects/` directory, use `build.sh` to build and open the
-    interactive pAIguard packaging container:
+    From the `projects/` directory, use `build.sh` to build the pAIguard
+    packaging image and open a shell:
 
     ```bash
     ./build.sh build \
-        --path proj1_paiguard/Dockerfile.devEnv \
-        --cloudsmith-workspace "<owner>/<repository>" \
-        --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+        --path proj1_paiguard/Dockerfile.devEnv
     ```
 
-=== "Image already exists"
+=== "Reuse an existing image"
 
     From the `projects/` directory, create the host directory for package
     artifacts and run the existing image:
@@ -177,21 +171,23 @@ Choose the workflow that matches the local `mpe/proj1_paiguard` image:
     docker run -it \
         -v "$PWD/proj1_paiguard:/app" \
         -v "$PWD/proj1_paiguard/.build:/build" \
-        --env CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-        --env CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
         mpe/proj1_paiguard \
         /bin/bash
     ```
 
-Install the project dependencies and the publication tool inside the running
-container:
+Install the project dependencies inside the running container:
 
 ```bash
 uv sync --all-groups
-uv tool install cloudsmith-cli
 ```
 
 ### Create the Package
+
+Before building the `0.0.2` release, update the version source below. `uv build` reads this value and derives both distribution filenames from it.
+
+| File | Version change |
+|------|----------------|
+| [`pyproject.toml`](../../projects/proj1_paiguard/pyproject.toml) | Set `[project].version` to `0.0.2`. |
 
 Modern Python builds split responsibilities between a **build frontend** and a **build backend**. The frontend is the command-line tool you run, while the backend is the project-specific implementation that produces the wheel (`.whl`) and source distribution (`.tar.gz`). PEP 517 defines the interface between both sides, and PEP 518 defines the `[build-system]` table in `pyproject.toml` where the backend and its requirements are declared.
 
@@ -222,41 +218,55 @@ A wheel (`.whl`) is a **ZIP archive** with Python modules and a `*.dist-info/` m
 List the files inside the wheel archive without extracting it.
 
 ```bash
-zipinfo -1 dist/paiguard-0.1.0-py3-none-any.whl
+zipinfo -1 dist/paiguard-0.0.2-py3-none-any.whl
 ```
 
 Read the wheel metadata that describes the wheel format version, generator, root layout, and compatibility tags.
 
 ```bash
-unzip -p dist/paiguard-0.1.0-py3-none-any.whl paiguard-0.1.0.dist-info/WHEEL
+unzip -p dist/paiguard-0.0.2-py3-none-any.whl paiguard-0.0.2.dist-info/WHEEL
 ```
 
 Read the package metadata that installers and package indexes use for the project name, version, description, and dependency declarations.
 
 ```bash
-unzip -p dist/paiguard-0.1.0-py3-none-any.whl paiguard-0.1.0.dist-info/METADATA
+unzip -p dist/paiguard-0.0.2-py3-none-any.whl paiguard-0.0.2.dist-info/METADATA
 ```
 
 List the files inside the source distribution TAR archive.
 
 ```bash
-tar -tzf dist/paiguard-0.1.0.tar.gz
+tar -tzf dist/paiguard-0.0.2.tar.gz
 ```
 
-### Publish the Package
+### Publish the Package (Optional)
+
+!!! info "Upload To Cloudsmith"
+    Uploading to Cloudsmith is optional and requires a valid Cloudsmith account. You can build and inspect the artifacts locally without a Cloudsmith account or API key. The project's `Dockerfile.devEnv` defines a development image with the tools needed to build and inspect the package locally.
+
+Before publishing, set the repository slug and enter your API key in the development container. The key is hidden while you type:
+
+```bash
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+read -rsp "Cloudsmith API key: " CLOUDSMITH_API_KEY
+printf '\n'
+export CLOUDSMITH_API_KEY
+```
 
 Once you have inspected the wheel package, upload it to the proprietary Python repository hosted on Cloudsmith.
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
 ```bash
-uv publish --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/" --token "$CLOUDSMITH_API_KEY"
+UV_PUBLISH_TOKEN="$CLOUDSMITH_API_KEY" uv publish \
+    --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/" \
+    dist/paiguard-0.0.2-py3-none-any.whl dist/paiguard-0.0.2.tar.gz
 ```
 
 Check that the uploaded release is visible through the Cloudsmith `/simple/` API used by installers.
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/basic/${CLOUDSMITH_REPOSITORY}/python/simple/paiguard/" | grep "paiguard-0.1.0"
+curl -fsSL "https://dl.cloudsmith.io/public/${CLOUDSMITH_REPOSITORY}/python/simple/paiguard/" | grep "paiguard-0.0.2"
 ```
 
 ## Consumer Workflow
@@ -284,7 +294,7 @@ mkdir paiguard-consumer && cd paiguard-consumer
     version = "0.1.0"
     requires-python = ">=3.12"
     dependencies = [
-        "paiguard==0.1.0",
+        "paiguard==0.0.1",
         "fastapi",
         "uvicorn",
         "python-multipart",
@@ -307,36 +317,73 @@ mkdir paiguard-consumer && cd paiguard-consumer
 
 === "`server.py`"
 
-    Create `server.py` with the moderation endpoint, using pAIguard's `PaiGuard.inspect()` to
-    inspect uploaded images:
+    Create `server.py` with FastAPI middleware that uses pAIguard's
+    `PaiGuard.inspect()` to inspect uploaded images before the endpoint handles them:
 
     ```python
-    from fastapi import FastAPI, UploadFile
-    from PIL import Image
+    from io import BytesIO
 
-    from paiguard import PaiGuard
+    from fastapi import FastAPI, Request, UploadFile
+    from fastapi.responses import JSONResponse
+    from PIL import Image
+    from starlette.datastructures import UploadFile as StarletteUploadFile
+
+    from paiguard import ModelNotFoundError, PaiGuard
     from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
 
     app = FastAPI()
-
-    guard = PaiGuard(
+    app.state.moderation_guard = PaiGuard(
         rules=[
             PaiNsfwDetection(threshold=0.80),
-            PaiViolenceDetection(threshold=0.85),
+            PaiViolenceDetection(threshold=0.85, review_threshold=0.50),
         ]
     )
 
 
-    @app.post("/moderations")
-    def moderate(image: UploadFile):
-        picture = Image.open(image.file).convert("RGB")
-        result = guard.inspect(picture)
+    @app.middleware("http")
+    async def moderate_upload(request: Request, call_next):
+        if request.method == "POST" and request.url.path == "/moderations":
+            # Cache the body so FastAPI can parse the upload again in the endpoint.
+            await request.body()
+            form = await request.form()
+            result = None
+            try:
+                upload = form.get("image")
+                if isinstance(upload, StarletteUploadFile):
+                    with Image.open(BytesIO(await upload.read())) as image:
+                        result = request.app.state.moderation_guard.inspect(
+                            image.convert("RGB")
+                        )
+            except OSError:
+                return JSONResponse(
+                    status_code=415,
+                    content={"detail": "Upload must be a readable image"},
+                )
+            except ModelNotFoundError:
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "pAIguard models are unavailable"},
+                )
+            finally:
+                await form.close()
 
-        return {
-            "decision": result.decision,
-            "is_safe": result.is_safe,
-            "violations": result.violations,
-        }
+            if result is not None and not result.is_safe:
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "detail": (
+                            f"Image rejected ({result.decision}): "
+                            f"{', '.join(result.violations)}"
+                        )
+                    },
+                )
+
+        return await call_next(request)
+
+
+    @app.post("/moderations")
+    async def moderate(image: UploadFile):
+        return {"filename": image.filename, "decision": "allow"}
     ```
 
 Install the dependencies from the complete project configuration:

@@ -6,23 +6,24 @@ IrisLab analyzes iris color from portrait images using local MediaPipe inference
 
 ### Configure Cloudsmith Repository
 
-Replace `<CLOUDSMITH_REPOSITORY>` with your Cloudsmith repository slug:
+Add the public Cloudsmith broadcast to your Conda config:
 
 ```bash
-export CLOUDSMITH_CHANNEL="https://conda.cloudsmith.io/<CLOUDSMITH_REPOSITORY>/"
-conda config --add channels "$CLOUDSMITH_CHANNEL"
+conda config --add channels "https://conda.cloudsmith.io/pravi-brothers/modern-python-engineering/"
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 ```
 
 ### Install IrisLab
 
+#### From an `environment.yml` File
+
 Create an `environment.yml` file:
 
 ```yaml
 name: irislab
 channels:
-  - https://conda.cloudsmith.io/<CLOUDSMITH_REPOSITORY>/
+  - https://conda.cloudsmith.io/pravi-brothers/modern-python-engineering/
   - conda-forge
   - nodefaults
 dependencies:
@@ -38,6 +39,17 @@ conda env create --file environment.yml
 conda activate irislab
 python -m pip install mediapipe
 ```
+
+#### From Scratch
+
+Install the Python package and CLI from Cloudsmith:
+
+```bash
+conda install irislab-tools=0.0.1 \
+  -c https://conda.cloudsmith.io/pravi-brothers/modern-python-engineering/
+```
+
+> Conda installs `libirislab` automatically as a dependency.
 
 ## Usage
 

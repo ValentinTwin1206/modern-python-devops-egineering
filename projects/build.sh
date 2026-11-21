@@ -42,10 +42,6 @@ ${BLUE}${BOLD}BUILD OPTIONS${RESET}
         ${YELLOW}--build-only${RESET}          Build the image but do not start a container.
         ${YELLOW}--rebuild${RESET}             Force a fresh build (${YELLOW}--no-cache${RESET}).
         ${YELLOW}--rm-container${RESET}       Remove the container automatically after it exits.
-        ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}<WORKSPACE>${RESET}
-                              Forward ${CYAN}CLOUDSMITH_REPOSITORY${RESET} into the container.
-        ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}<API_KEY>${RESET}
-                              Forward ${CYAN}CLOUDSMITH_API_KEY${RESET} into the container.
 
     Each container run also bind-mounts the project's ${CYAN}.build/${RESET} directory at
     ${CYAN}/build${RESET} inside the container so wheels, compiled binaries, and other build
@@ -59,7 +55,6 @@ ${BLUE}${BOLD}REMOVE OPTIONS${RESET}
 ${BLUE}${BOLD}EXAMPLES${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj4_redsticks/Dockerfile.devEnv${RESET} ${YELLOW}--port${RESET} ${CYAN}9090:8080${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj6_historic_calculator/2022/Dockerfile${RESET}
-    ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}build${RESET} ${YELLOW}--path${RESET} ${CYAN}proj1_paiguard/Dockerfile.devEnv${RESET} ${YELLOW}--cloudsmith-workspace${RESET} ${CYAN}_YOUR_CLOUDSMITH_REPO_${RESET} ${YELLOW}--cloudsmith-api-key${RESET} ${CYAN}_YOUR_API_KEY_${RESET}
     ${DIM}${SCRIPT_DISPLAY_NAME}${RESET} ${GREEN}remove${RESET} ${YELLOW}--regex${RESET} ${CYAN}"projects-.*"${RESET}
 EOF
 }
@@ -121,8 +116,6 @@ parse_build_args() {
     BUILD_ONLY=0
     NO_CACHE=0
     RM_CONTAINER=0
-    CLOUDSMITH_WORKSPACE=""
-    CLOUDSMITH_API_KEY=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -167,24 +160,6 @@ parse_build_args() {
                 ;;
             --rm-container)
                 RM_CONTAINER=1
-                shift
-                ;;
-            --cloudsmith-workspace)
-                [[ $# -ge 2 ]] || die "--cloudsmith-workspace requires a value"
-                CLOUDSMITH_WORKSPACE="$2"
-                shift 2
-                ;;
-            --cloudsmith-workspace=*)
-                CLOUDSMITH_WORKSPACE="${1#*=}"
-                shift
-                ;;
-            --cloudsmith-api-key)
-                [[ $# -ge 2 ]] || die "--cloudsmith-api-key requires a value"
-                CLOUDSMITH_API_KEY="$2"
-                shift 2
-                ;;
-            --cloudsmith-api-key=*)
-                CLOUDSMITH_API_KEY="${1#*=}"
                 shift
                 ;;
             -*)
@@ -289,17 +264,6 @@ build_command() {
 
     if [[ -n "${GPU_REQUEST}" ]]; then
         run_cmd+=(--gpus "${GPU_REQUEST}")
-    fi
-
-    # --cloudsmith-workspace maps to CLOUDSMITH_REPOSITORY, which the container tooling reads.
-    if [[ -n "${CLOUDSMITH_WORKSPACE}" ]]; then
-        log "Cloudsmith:      forwarding CLOUDSMITH_REPOSITORY"
-        run_cmd+=(--env "CLOUDSMITH_REPOSITORY=${CLOUDSMITH_WORKSPACE}")
-    fi
-
-    if [[ -n "${CLOUDSMITH_API_KEY}" ]]; then
-        log "Cloudsmith:      forwarding CLOUDSMITH_API_KEY"
-        run_cmd+=(--env "CLOUDSMITH_API_KEY=${CLOUDSMITH_API_KEY}")
     fi
 
     run_cmd+=("${image_tag}" "${container_cmd[@]}")

@@ -47,7 +47,7 @@ RUN micromamba create \
     --yes \
     --prefix /opt/conda/envs/irislab-api \
         python=3.12 \
-        irislab-tools=1.0.0 \
+        irislab-tools=0.0.1 \
         libglib \
         pip \
     && micromamba clean --all --yes

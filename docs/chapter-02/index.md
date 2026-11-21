@@ -2,7 +2,9 @@
 
 ## Introduction
 
-Chapter 02 introduces the fundamentals of Python software delivery, covering the complete journey from turning Python sources into a running application. Through Python wheels, operating system (OS) packages, Conda packages, Open Container Initiative (OCI) container images, and standalone binaries, the chapter explores the software delivery flow, including packaging, distribution, and deployment. It also introduces the core building blocks shared across modern software ecosystems, such as the package format, metadata, remote artifact repositories, package managers, and installation runtimes. Along the way, it demonstrates how different distribution formats influence installation workflows, runtime environments, and deployment strategies.
+Chapter 02 introduces the fundamentals of *Python Software Delivery*, covering the complete journey from turning Python sources into a running application. Through Python wheels, Debian packages, Conda packages, Open Container Initiative (OCI) container images, and standalone binaries, the chapter explores the software delivery flow, including packaging, distribution, and deployment. It also introduces the core building blocks shared across modern software ecosystems, such as the package format, metadata, remote artifact repositories, package managers, and installation runtimes. Along the way, it demonstrates how different distribution formats influence installation workflows, runtime environments, and deployment strategies.
+
+Packages in the `pravi-brothers/modern-python-engineering` Cloudsmith broadcast can be downloaded without signing in or creating a Cloudsmith account, so you can follow the installation examples without Cloudsmith credentials. This account-free access applies to downloads from the project's broadcast; publishing packages to your own Cloudsmith repository is optional and requires a valid Cloudsmith account and an API key.
 
 ## Overview
 

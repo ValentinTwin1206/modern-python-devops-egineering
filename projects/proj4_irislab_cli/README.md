@@ -6,13 +6,13 @@ IrisLab CLI is a Click-based interactive client for the authenticated IrisLab AP
 
 ### Configure Cloudsmith Repository
 
-Replace `<CLOUDSMITH_REPOSITORY>` with your Cloudsmith repository slug. Add its signing key and APT source:
+Add the signing key and APT source for the `pravi-brothers/modern-python-engineering` Cloudsmith repository:
 
 ```bash
-curl -fsSL "https://dl.cloudsmith.io/public/<CLOUDSMITH_REPOSITORY>/gpg.key" \
+curl -fsSL "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/gpg.key" \
   | sudo gpg --dearmor -o /usr/share/keyrings/cloudsmith-repository.gpg
 
-printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<CLOUDSMITH_REPOSITORY>/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
+printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
   | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
 ```
 
@@ -30,7 +30,7 @@ To install the `irislab-cli` package, run following command:
 sudo apt install irislab-cli
 ```
 
-The package contains a standalone executable; Python is not required. On Windows, install `irislab-cli-1.0.0.msi` instead.
+The package contains a standalone executable; Python is not required. On Windows, install `irislab-cli-0.0.1.msi` instead.
 
 ## Configuration
 
@@ -112,7 +112,7 @@ scripts/build-executable.sh
 scripts/build-deb.sh
 ```
 
-The first script compiles `.build/irislab-cli` with Nuitka. The second wraps it into `.build/irislab-cli_1.0.0-1_<arch>.deb`.
+The first script compiles `.build/irislab-cli` with Nuitka. The second wraps it into `.build/irislab-cli_0.0.1-1_<arch>.deb`.
 
 ### Build the Windows Installer
 
@@ -131,7 +131,7 @@ uv sync
 .\msi\scripts\build-msi.ps1
 ```
 
-The result is `.build\irislab-cli-1.0.0.msi`.
+The result is `.build\irislab-cli-0.0.1.msi`.
 
 ## License
 

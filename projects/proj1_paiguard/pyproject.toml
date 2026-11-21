@@ -1,10 +1,13 @@
-[build-system]
-requires = ["uv_build>=0.11.8,<0.12"]
-build-backend = "uv_build"
+# TODO: Add a `[build-system]` table to declare the build configuration.
+# TODO: Set `requires = ["uv_build>=0.11.8,<0.12"]` to declare the build
+#       dependency.
+# TODO: Set `build-backend = "uv_build"` to select the build backend.
+# TODO: Run `uv build` and inspect the wheel's `METADATA` to confirm its
+#       version and runtime dependencies.
 
 [project]
 name = "paiguard"
-version = "0.1.0"
+version = "0.0.1"
 description = "Lightweight image content moderation for Python applications."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,14 +18,14 @@ authors = [
     { name = "Valentin Pravtchev" }
 ]
 
-dependencies = [
-    "pydantic>=2.0",
-    "pillow>=10.0",
-    "numpy>=1.26",
-    "onnxruntime>=1.17",
-    "torch>=2.2",
-    "transformers>=4.49",
-]
+# TODO: Add required runtime packages in a `dependencies` array under [project],
+#       using package names and version constraints:
+#       pydantic>=2.0,
+#       pillow>=10.0,
+#       numpy>=1.26,
+#       onnxruntime>=1.17,
+#       torch>=2.2,
+#       transformers>=4.49.
 
 [dependency-groups]
 dev = [

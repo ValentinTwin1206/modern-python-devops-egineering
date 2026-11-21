@@ -142,7 +142,7 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 === "`libirislab` — C/C++ payload"
 
     ```text
-    libirislab-1.0.0-<build>.conda
+    libirislab-0.0.1-<build>.conda
     ├── metadata.json
     ├── info-*.tar.zst
     │   └── info/
@@ -159,7 +159,7 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 === "`irislab-tools` — Python payload"
 
     ```text
-    irislab-tools-1.0.0-<build>.conda
+    irislab-tools-0.0.1-<build>.conda
     ├── metadata.json
     ├── info-*.tar.zst
     │   └── info/index.json              # depends: libirislab, pillow, rich
@@ -194,30 +194,22 @@ A `.conda` file is a ZIP container with separate compressed metadata and payload
 
 ## Packaging Workflow
 
-!!! info
-    This workflow assumes that you have a valid Cloudsmith repository and API key. Replace `<cloudsmith-repo>` with your Cloudsmith repository slug, export `CLOUDSMITH_API_KEY` on the host, and pass both values into the container.
-
 ### Create the Environment
 
 For the Conda environment and C++ extension build, see [Python Conda Environments](../chapter-01/section-03.md).
 Its `Dockerfile.devEnv` image installs Miniconda, configures `conda-forge`, and includes the compiler toolchain,
 MediaPipe model, and project files. Choose the workflow that matches the local `mpe/proj2_irislab` image:
 
-=== "Image does not exist"
+=== "Build and package locally"
 
-    From the `projects/` directory, use `build.sh` to build and open the
-    interactive packaging container. The command enables GPU access and
-    forwards the Cloudsmith configuration:
+    From the `projects/` directory, use `build.sh` to build the packaging image and open a shell:
 
     ```bash
     ./build.sh build \
-      --path proj2_irislab/Dockerfile.devEnv \
-      --gpus all \
-      --cloudsmith-workspace "<cloudsmith-repo>" \
-      --cloudsmith-api-key "$CLOUDSMITH_API_KEY"
+      --path proj2_irislab/Dockerfile.devEnv
     ```
 
-=== "Image already exists"
+=== "Reuse an existing image"
 
     From the `projects/` directory, create the host directory for package
     artifacts and run the existing image:
@@ -227,8 +219,6 @@ MediaPipe model, and project files. Choose the workflow that matches the local `
     docker run -it \
       -v "$PWD/proj2_irislab:/app" \
       -v "$PWD/proj2_irislab/.build:/opt/conda/conda-bld" \
-      -e CLOUDSMITH_REPOSITORY="<cloudsmith-repo>" \
-      -e CLOUDSMITH_API_KEY="$CLOUDSMITH_API_KEY" \
       mpe/proj2_irislab \
       /bin/bash
     ```
@@ -248,15 +238,14 @@ conda install \
 - `conda-build`: Builds Conda packages from recipes.
 - `conda-package-handling`: Provides `cph` for listing package archives and inspecting their metadata and contents.
 
-The following command runs `pip` in Conda's `base` environment. It downloads
-the `cloudsmith-cli` package from PyPI and installs it for uploading packages
-to the configured Cloudsmith repository.
-
-```bash
-conda run --name base python -m pip install cloudsmith-cli==1.26.0
-```
-
 ### Create the Package
+
+Before building version `0.0.2`, update both version sources in this table. The recipe applies its version to both Conda outputs, while CMake uses its project version for the native library.
+
+| File | Version change |
+|------|----------------|
+| [`recipe/meta.yaml`](../../projects/proj2_irislab/recipe/meta.yaml) | Set the shared `version` variable to `0.0.2` for both Conda outputs. |
+| [`cpp/CMakeLists.txt`](../../projects/proj2_irislab/cpp/CMakeLists.txt) | Set the CMake project version to `0.0.2`. |
 
 Activate the `base` environment before running the packaging command:
 
@@ -341,7 +330,25 @@ The two archives have different payloads and dependency metadata, so inspect the
     cat /tmp/irislab-tools-info/info/index.json
     ```
 
-### Publish the Package
+### Publish the Package (Optional)
+
+!!! info "Upload To Cloudsmith"
+    Uploading to Cloudsmith is optional and requires a valid Cloudsmith account. You can build and inspect the artifacts locally without a Cloudsmith account or API key. The project's `Dockerfile.devEnv` defines a development image with the tools needed to build and inspect the package locally.
+
+Before uploading, set the repository slug and enter your API key in the development container. The key is hidden while you type:
+
+```bash
+export CLOUDSMITH_REPOSITORY="<owner>/<repository>"
+read -rsp "Cloudsmith API key: " CLOUDSMITH_API_KEY
+printf '\n'
+export CLOUDSMITH_API_KEY
+```
+
+Install the Cloudsmith CLI in the Conda base environment before uploading:
+
+```bash
+conda run --name base python -m pip install cloudsmith-cli==1.26.0
+```
 
 A compiled Conda package is built for a target platform. The channel organizes those artifacts under platform directories and exposes each directory through a generated `repodata.json` index. Because this recipe emits two outputs, each platform receives both a `libirislab-*.conda` and a `irislab-tools-*.conda` artifact.
 
@@ -349,16 +356,16 @@ A compiled Conda package is built for a target platform. The channel organizes t
 repository-root/
 ├── linux-64/
 │   ├── repodata.json
-│   ├── libirislab-1.0.0-<build>.conda
-│   └── irislab-tools-1.0.0-<build>.conda
+│   ├── libirislab-0.0.2-<build>.conda
+│   └── irislab-tools-0.0.2-<build>.conda
 ├── osx-arm64/
 │   ├── repodata.json
-│   ├── libirislab-1.0.0-<build>.conda
-│   └── irislab-tools-1.0.0-<build>.conda
+│   ├── libirislab-0.0.2-<build>.conda
+│   └── irislab-tools-0.0.2-<build>.conda
 └── win-64/
     ├── repodata.json
-    ├── libirislab-1.0.0-<build>.conda
-    └── irislab-tools-1.0.0-<build>.conda
+    ├── libirislab-0.0.2-<build>.conda
+    └── irislab-tools-0.0.2-<build>.conda
 ```
 
 Upload the two archives created in the previous step so the exact native-library pin can be satisfied at install time:

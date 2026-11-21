@@ -1,4 +1,4 @@
-{% set version = "1.0.0" %}
+{% set version = "0.0.1" %}
 
 package:
   name: irislab-split
@@ -27,8 +27,9 @@ outputs:
   - name: libirislab
     version: {{ version }}
 
-    script: build-libirislab.sh   # [unix]
-    script: build-libirislab.bat  # [win]
+    # TODO: Set the platform-specific build script here: use
+    #       `build-libirislab.sh` for Unix (`# [unix]`) and
+    #       `build-libirislab.bat` for Windows (`# [win]`).
 
     build:
       run_exports:
@@ -80,17 +81,10 @@ outputs:
         - pybind11 >=2.12
         - {{ pin_subpackage('libirislab', exact=True) }}
 
-      run:
-        - python >=3.12,<3.13
-        - click
-        - pillow
-        - rich
-        - numpy
-        - glib
-        - libgl
-        - libegl
-        - libgles
-        - {{ pin_subpackage('libirislab', exact=True) }}
+      # TODO: Add the runtime dependencies this package needs under
+      #       `requirements.run`. The previous list was: `python >=3.12,<3.13`,
+      #       `click`, `pillow`, `rich`, `numpy`, `glib`, `libgl`, `libegl`,
+      #       `libgles`, and `{{ pin_subpackage('libirislab', exact=True) }}`.
 
     test:
       requires:
