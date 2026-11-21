@@ -9,7 +9,8 @@ from pymongo import MongoClient
 
 from .api.middleware.metrics_middleware import configure_metrics
 from .api.middleware.middleware import configure_middleware
-from .api.routes import analysis, health
+from .api.routes import analysis, health, users
+from .database.keycloak import bootstrap_keycloak
 from .database.mongo import bootstrap_db
 
 
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
             )
             configure_metrics(app, influxdb_client, os.getenv("INFLUXDB_ORG", None), os.getenv("INFLUXDB_BUCKET", None))
             bootstrap_db(app, client, os.environ["MONGODB_DATABASE"])
+            bootstrap_keycloak(app)
             yield
         finally:
             influxdb_client = getattr(app.state, "influxdb_client", None)
@@ -47,6 +49,7 @@ def create_app() -> FastAPI:
     # Add routers
     app.include_router( health.router, tags=["health"] )
     app.include_router( analysis.router, prefix="/api/v1", tags=["iris analysis"] )
+    app.include_router( users.router, prefix="/api/v1", tags=["user management"] )
 
     return app
 
