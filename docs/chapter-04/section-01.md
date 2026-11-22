@@ -7,7 +7,7 @@ The applied project is an integrated iris lab analyzation for analyzing incoming
 * A [Streamlit](https://streamlit.io/) frontend provides the browser-based user interface. Users sign in through the frontend and upload images for iris analysation. 
 * A [Keycloak](https://www.keycloak.org/) provides the OpenID Connect (OIDC) identity service. It authenticates users, manages the configured realm and client, and issues tokens for authenticated requests.
 * A [FastAPI](https://fastapi.tiangolo.com/) backend analyzes incoming pictures of the iris, authorizes protected operations, stores the data in MongoDB, and returns the response.
-* The [pAIGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) library scans every uploaded image with local AI models before the backend analyzes it. Images with NSFW or violent content are rejected, and no image leaves the container.
+* The [pAIGuard](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/README.md) library scans every uploaded image with local AI models and rejects NSWF or violent content before the backend analyzes it.
 
 ```mermaid
 flowchart LR
@@ -19,16 +19,12 @@ flowchart LR
     K --> P["User DB"]
 ```
 
-Keycloak keeps users, roles, and clients in PostgreSQL. Administrators manage
-users on the frontend's User Management page; the frontend sends these requests
-to the backend, which calls the Keycloak Admin API with its own service account.
-
 !!! info "For more information"
     The individual components are documented in their own README files:
 
-    * [Frontend README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/frontend/README.md)
-    * [Backend README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/backend/README.md)
-    * [Keycloak README](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/bonus1_license_service_oidc/keycloak/README.md)
+    * [Frontend README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/frontend/README.md)
+    * [Backend README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/backend/README.md)
+    * [Keycloak README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/keycloak/README.md)
 
 ### Project Setup
 
