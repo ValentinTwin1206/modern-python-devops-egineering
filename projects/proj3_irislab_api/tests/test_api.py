@@ -16,7 +16,9 @@ from irislab_api.main import create_app
 from irislab_api.api.middleware import jwt_middleware
 from irislab_api import main
 from irislab_api.database import mongo
+from irislab_api.database.keycloak import KeycloakError
 from irislab_api.services import analysis
+from irislab_api.services.users import get_user_service
 
 AUTH_HEADERS = {"Authorization": "Bearer test-token"}
 mongo_clients = []
@@ -333,3 +335,105 @@ def test_missing_paiguard_models(client, monkeypatch, tmp_path):
     response = client.post("/api/v1/analyses", files=files, headers=AUTH_HEADERS)
     assert response.status_code == 503
     assert response.json()["detail"] == "pAIguard models are unavailable"
+
+
+# ---------------------------------------------------------------------------
+# User management
+# ---------------------------------------------------------------------------
+class FakeUserDirectory:
+    def __init__(self):
+        self.users = {"iris-admin": "u-admin", "bob": "u-bob"}
+        self.deleted_by = None
+
+    def list_users(self):
+        return [{"id": uid, "username": name, "enabled": True, "roles": ["app-user"]} for name, uid in self.users.items()]
+
+    def create_user(self, username, password):
+        username = username.strip().lower()
+        if " " in username or len(password) < 12:
+            raise KeycloakError("Invalid username or password", 400)
+        if username in self.users:
+            raise KeycloakError(f"User '{username}' already exists", 409)
+        self.users[username] = f"u-{username}"
+        return {"id": self.users[username], "username": username}
+
+    def delete_user(self, username, acting_user_id=None):
+        if username not in self.users:
+            raise KeycloakError(f"User '{username}' was not found", 404)
+        if self.users[username] == acting_user_id:
+            raise KeycloakError("You cannot delete your own account", 409)
+        self.deleted_by = acting_user_id
+        return {"id": self.users.pop(username), "username": username}
+
+
+def as_user(monkeypatch, *roles, sub="u-admin"):
+    claims = {"sub": sub, "realm_access": {"roles": list(roles)}}
+    monkeypatch.setattr(jwt_middleware, "_validate_bearer_token", lambda _authorization: claims)
+
+
+@pytest.fixture
+def directory(client):
+    fake = FakeUserDirectory()
+    client.app.dependency_overrides[get_user_service] = lambda: fake
+    yield fake
+    client.app.dependency_overrides.clear()
+
+
+def test_admin_can_list_create_and_delete_users(client, directory, monkeypatch):
+    as_user(monkeypatch, "app-admin", "app-user")
+
+    listed = client.get("/api/v1/users", headers=AUTH_HEADERS)
+    assert listed.status_code == 200
+    assert {u["username"] for u in listed.json()} == {"iris-admin", "bob"}
+
+    created = client.post("/api/v1/users", json={"username": "Carol", "password": "x" * 12}, headers=AUTH_HEADERS)
+    assert created.status_code == 201
+    assert created.json() == {"id": "u-carol", "username": "carol"}
+    assert "password" not in created.text
+
+    deleted = client.delete("/api/v1/users/bob", headers=AUTH_HEADERS)
+    assert deleted.status_code == 200
+    assert directory.deleted_by == "u-admin"
+
+
+def test_user_management_error_codes(client, directory, monkeypatch):
+    as_user(monkeypatch, "app-admin")
+    create = lambda body: client.post("/api/v1/users", json=body, headers=AUTH_HEADERS).status_code
+
+    assert create({"username": "a b", "password": "x" * 12}) == 400
+    assert create({"username": "dave", "password": "short"}) == 400
+    assert create({"username": "bob", "password": "x" * 12}) == 409
+    assert client.delete("/api/v1/users/ghost", headers=AUTH_HEADERS).status_code == 404
+    assert client.delete("/api/v1/users/iris-admin", headers=AUTH_HEADERS).status_code == 409
+
+
+def test_standard_user_cannot_manage_users(client, directory, monkeypatch):
+    as_user(monkeypatch, "app-user", sub="u-bob")
+    assert client.get("/api/v1/users", headers=AUTH_HEADERS).status_code == 403
+    assert client.post("/api/v1/users", json={"username": "eve", "password": "x" * 12}, headers=AUTH_HEADERS).status_code == 403
+    assert client.delete("/api/v1/users/iris-admin", headers=AUTH_HEADERS).status_code == 403
+    assert "iris-admin" in directory.users
+
+
+def test_user_management_requires_authentication(client, directory):
+    assert client.get("/api/v1/users").status_code == 401
+    assert client.post("/api/v1/users", json={"username": "eve", "password": "x" * 12}).status_code == 401
+    assert client.delete("/api/v1/users/bob").status_code == 401
+
+
+def test_user_management_unavailable_without_configuration(client, monkeypatch):
+    as_user(monkeypatch, "app-admin")
+    assert client.app.state.keycloak_client is None
+    assert client.get("/api/v1/users", headers=AUTH_HEADERS).status_code == 503
+
+
+def test_keycloak_failure_returns_503(client, directory, monkeypatch):
+    as_user(monkeypatch, "app-admin")
+
+    def broken():
+        raise KeycloakError("Keycloak is unreachable: refused")
+
+    monkeypatch.setattr(directory, "list_users", broken)
+    response = client.get("/api/v1/users", headers=AUTH_HEADERS)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "User management is unavailable"}

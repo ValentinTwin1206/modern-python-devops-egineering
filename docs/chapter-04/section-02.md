@@ -191,7 +191,7 @@ Open [http://localhost:3001](http://localhost:3001) in your browser and sign wit
 To forward the metrics to Grafana, the Influx database has to be actively connected with the Grafana instance. Open *Connections* > *Add new data source*. Select *InfluxDB* and set *Flux* as the query language and use the following settings and confirm the with clicking on *Save & test*:
 
     * URL: `http://influxdb:8086`
-    * Organization: `oidc_license_service`
+    * Organization: `irislab`
     * Bucket: `api_metrics`
     * Token: `INFLUXDB_TOKEN` from `.env`
 
