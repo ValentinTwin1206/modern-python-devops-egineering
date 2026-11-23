@@ -37,9 +37,13 @@ def _jwks_client(url: str) -> PyJWKClient:
 
 
 def _is_jwt_protected(request: FastAPIRequest) -> bool:
-    # Protect analyses and license operations, including dynamic revocation.
-    return (request.method, request.url.path) in PROTECTED_PATHS or (
-        request.method == "DELETE" and request.url.path.startswith("/licenses/")
+    # Protect analyses, user management and license operations, including dynamic revocation.
+    path = request.url.path
+    return (
+        (request.method, path) in PROTECTED_PATHS
+        or path == "/api/v1/users"
+        or path.startswith("/api/v1/users/")
+        or (request.method == "DELETE" and path.startswith("/licenses/"))
     )
 
 

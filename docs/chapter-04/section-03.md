@@ -2,24 +2,27 @@
 
 ## Applied Project
 
-This section builds on the previous [section](./section-03.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. 
+This section builds on the previous [section](./section-02.md) by adding a Dev Container as another project component. Dev Containers were first introduced in [Chapter 01, Section 04](../../chapter-01/section-04.md) as a way to provide a reproducible development environment. Here, the container includes the heavier configuration and tooling needed to test the complete application stack in a more realistic, end-to-end environment. 
 
 ```mermaid
 flowchart LR
-		F --> K["Keycloak OIDC"]
-		K --> F["Frontend"]
-		F --> A["Backend"]
-		A --> INFLUXDB["InfluxDB"]
-		INFLUXDB --> GRAFANA["Grafana"]
+    F["Frontend"] --> K["Keycloak OIDC"]
+    K --> F
+    K --> P["PostgreSQL"]
+    F --> A["Backend"]
+    A --> M["MongoDB"]
+    A --> INFLUXDB["InfluxDB"]
+    INFLUXDB --> GRAFANA["Grafana"]
     A -->|logs| ALLOY["Grafana Alloy"]
     ALLOY --> LOKI["Loki"]
     LOKI --> GRAFANA
-		subgraph DEVCONTAINER["Dev Container"]
-			PW["Playwright"]
-			ART["Artillery"]
-		end
-		PW --> F
-		ART --> A
+    subgraph DEVCONTAINER["Dev Container"]
+        PW["Playwright"]
+        ART["Artillery"]
+    end
+    PW --> F
+    ART --> PW
+    ART --> A
 ```
 
 !!! info "info"
@@ -29,7 +32,7 @@ flowchart LR
 
 **docker-compose.yaml**
 
-The compose setup is extended with the new service `devcontainer` which provides the needed tools for our end-to-end testing chain. 
+The compose setup is extended with the new service `devcontainer` which provides the needed tools for our end-to-end testing chain. It reaches the published Keycloak port through the Compose gateway (`extra_hosts`) and receives the test credentials from `.env`.
 
 ```yaml
 services:
@@ -44,6 +47,14 @@ services:
     volumes:
       - .:/workspace:cached
     working_dir: /workspace
+    extra_hosts:
+      - "keycloak.localhost:172.30.0.1"
+    environment:
+      PLAYWRIGHT_HOST_GATEWAY: 172.30.0.1
+      KEYCLOAK_TEST_USERNAME: ${KEYCLOAK_TEST_USERNAME}
+      KEYCLOAK_TEST_PASSWORD: ${KEYCLOAK_TEST_PASSWORD}
+      IRIS_PERF_CLIENT_SECRET: ${IRIS_PERF_CLIENT_SECRET:-}
+      IRIS_PERF_UPLOADS: ${IRIS_PERF_UPLOADS:-50}
     networks:
       irislab_network:
 
@@ -109,11 +120,15 @@ The `devcontainer.json` file connects the development container to the existing 
   "postCreateCommand": "npm ci",
   "runServices": [
     "backend",
+    "mongodb",
     "frontend",
     "devcontainer",
     "keycloak",
+    "keycloak-db",
     "influxdb",
-    "grafana"
+    "grafana",
+    "alloy",
+    "loki"
   ],
   "customizations": {
     "vscode": {
@@ -168,7 +183,7 @@ The `devcontainer.json` file connects the development container to the existing 
 
 All browser-testing tools are provided inside the Dev Container: its Dockerfile installs Bun and bunx *(L34-L38)*, then Playwright, Artillery, browser binaries, and required system dependencies *(L41-L46)*. 
 
-The project's [browser test](../../projects/bonus1_license_service_oidc/tests/e2e/app.spec.js) verifies the OIDC login flow: it opens Streamlit, follows the redirect to Keycloak, signs in, and checks the authenticated UI.
+The project's [browser test](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/tests/e2e/app.spec.js) verifies the OIDC login flow: it opens Streamlit, follows the redirect to Keycloak, signs in, checks the account menu, and signs out again.
 
 ```javascript
 import { test, expect } from '@playwright/test';
@@ -181,64 +196,82 @@ test('signs in through Keycloak', async ({ page }) => {
     throw new Error('Set KEYCLOAK_TEST_USERNAME and KEYCLOAK_TEST_PASSWORD in .env');
   }
 
+  // Not signed in yet: no account menu.
   await page.goto('/');
   await expect(page.getByText('IrisLab Analysis Platform')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Account/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Continue with Keycloak' }).click();
 
+  // Sign in on the Keycloak login page.
   await expect(page).toHaveURL(
-    '/keycloak\.localhost:8081\/realms\/iris-analysis\/protocol\/openid-connect\/auth/',
+    /keycloak\.localhost:8081\/realms\/iris-analysis\/protocol\/openid-connect\/auth/,
   );
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   await page.locator('#kc-login').click();
 
+  // Back in Streamlit: dashboard and account menu are shown.
   await expect(page.getByText('Discover the details of the iris.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Start a new analysis/ })).toBeVisible();
+  const accountButton = page.getByRole('button', { name: /Account/ });
+  await accountButton.click();
+  await expect(page.getByText(username, { exact: true })).toBeVisible();
+
+  // Sign out returns to the login screen.
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Account/ })).toHaveCount(0);
 });
 ```
 
-The `page` fixture provides an isolated browser page. `page.goto('/')` uses the frontend base URL from the [Playwright configuration](../../projects/bonus1_license_service_oidc/playwright.config.js). Compose supplies the test credentials through environment variables; missing credentials fail the test immediately. After Keycloak redirects back to Streamlit, the assertions verify the username and license controls—not license creation or validation. 
+The `page` fixture provides an isolated browser page. `page.goto('/')` uses the frontend base URL from the [Playwright configuration](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/playwright.config.js). Compose supplies the test credentials through environment variables; missing credentials fail the test immediately. The snippet is shortened; the full test also checks that the account menu sits inside the page header.
 
 !!! info "Playwright"
-	See the [README](../../projects/bonus1_license_service_oidc/tests/README.md) for more details about Playwright and the project configuration.
+	See the [README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/README.md) for more details about Playwright and the project configuration.
 
 ### Artillery
 
 [Artillery](https://www.artillery.io/) is a load-testing tool for measuring how an application behaves when it receives requests from many concurrent users. It helps identify performance bottlenecks, high error rates, and slow response times before they affect users in production.
 
-Artillery tests are commonly configured in YAML. The `config` section sets the target service and load phases, while `scenarios` define the requests each virtual user makes. This test targets the Iris API's protected analysis-history endpoint. It sends a valid token without the required role and checks that PyGuard returns the expected authorization and rate-limit statuses:
+Artillery tests are configured in YAML. The `config` section sets the target and the load phases, while `scenarios` define what each virtual user does. With the Playwright engine, a virtual user runs a real browser journey written in JavaScript:
 
 ```yaml
 config:
   target: "http://backend:8080"
 
+  # Three virtual users start within 10 seconds; each runs the journey once.
   phases:
-    # One virtual user sends 120 roleless-token requests from the same source IP.
-    - duration: 60
-      arrivalCount: 1
-      name: "Iris API authentication brute-force limit"
+    - name: "Concurrent users"
+      duration: 10
+      arrivalCount: 3
 
-  processor: "./helpers/test-helpers.cjs"
+  # Number of images each virtual user uploads.
+  variables:
+    uploads: 20
+
+  engines:
+    playwright:
+      launchOptions:
+        args:
+          - --disable-dev-shm-usage
+          # Artillery does not load playwright.config.js, so mirror its host mapping.
+          - "--host-resolver-rules=MAP localhost 172.30.0.1, MAP keycloak.localhost 172.30.0.1"
+  processor: "./helpers/performance-flow.cjs"
+
+  # Fail the run if any virtual user fails.
+  plugins:
+    ensure:
+      conditions:
+        - expression: "vusers.failed == 0"
 
 scenarios:
-  - name: "PyGuard blocks repeated forbidden requests"
-    flow:
-      # Repeat requests with a valid token missing the required role.
-      - loop:
-          - get:
-              url: "/api/v1/analyses"
-              beforeRequest: "setRolelessTestToken"
-              afterResponse: "checkPyGuard403Response"
-        count: 120
+  - name: "Keycloak login, image analysis, and history"
+    engine: playwright
+    testFunction: runAnalysisJourney
 ```
 
-The helper obtains a short-lived access token from the test-only Keycloak client. Because its token omits the required realm role, each request should return `403` until the configured PyGuard attempt limit is reached; later requests should return `429`. Artillery records response times, throughput, and response statuses for the run.
-
-Artillery can also run browser journeys through its Playwright engine. In the [performance scenario](../../projects/bonus1_license_service_oidc/tests/load/performance.yml), `engines.playwright` enables the engine and `testFunction` selects the [JavaScript journey](../../projects/bonus1_license_service_oidc/tests/load/helpers/performance-flow.cjs).
+Three virtual users each sign in through Keycloak and upload 20 iris images, reading the analysis history after every upload. Artillery reports the duration of the login, upload, and history steps, so slow requests become visible.
 
 !!! info "Artillery"
-	For more details on running and interpreting the tests, see the [README](../../projects/bonus1_license_service_oidc/tests/README.md).
-
+	For more details on running and interpreting the tests, see the [README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/tests/README.md).
 
 ## Development Workflow
 
@@ -250,7 +283,7 @@ The project can be started from VS Code using the `devcontainer.json` configurat
 
 2. **Open the project.** In VS Code, select **File > Open Folder** and open the project folder. The folder contains `.devcontainer/devcontainer.json` and the referenced `docker-compose.yml` file.
 
-3. **Start the container.** Open the Command Palette with **Ctrl+Shift+P** or **Cmd+Shift+P**, then run **Dev Containers: Reopen in Container**. VS Code builds the image and starts the `backend`, `frontend`, and `devcontainer` services. The first build may take several minutes because Playwright browsers are installed.
+3. **Start the container.** Open the Command Palette with **Ctrl+Shift+P** or **Cmd+Shift+P**, then run **Dev Containers: Reopen in Container**. VS Code builds the image and starts all services listed in `runServices`. The first build may take several minutes because Playwright browsers are installed.
 
 4. **Use the application.** Open `http://localhost:8501` for the frontend or `http://localhost:8080` for the backend. To verify the tools, open a VS Code terminal and run:
 
@@ -264,7 +297,7 @@ Use **Dev Containers: Reopen Folder Locally** to leave the container. After chan
 
 ### Run tests in the Dev Container
 
-After opening the project in the Dev Container, run these commands from the project root. The `backend`, `frontend`, and `devcontainer` Compose services should be running.
+After opening the project in the Dev Container, run these commands from the project root. All services from `runServices` should be running.
 
 Run the browser-based tests:
 
@@ -272,12 +305,18 @@ Run the browser-based tests:
 bun run gui-test
 ```
 
-Run the load test:
+Run the performance test:
 
 ```bash
-bun run spike-test
+bun run performance-test
+```
+
+Run the pAIguard moderation test, which uploads violent pictures and expects the backend to reject each with `422`:
+
+```bash
+bun run moderation-test
 ```
 
 !!! info "Further reading"
-	For details about the test scenarios, configuration, generated reports, and result evaluation, see the [tests README](../../projects/bonus1_license_service_oidc/tests/README.md).
+	For details about the test scenarios, configuration, generated reports, and result evaluation, see the [tests README](https://github.com/ValentinTwin1206/irislab-compose-project/blob/main/tests/README.md).
 
