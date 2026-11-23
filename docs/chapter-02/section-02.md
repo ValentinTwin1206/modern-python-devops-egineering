@@ -104,40 +104,27 @@ The executable is built for the target operating system and architecture. It mus
 
 ### Python Binaries
 
-Python binary tools turn an application and its dependencies into a platform-specific executable. They inspect imports, collect the Python runtime and required modules, and produce an artifact that users can launch without first creating a virtual environment or installing the project with `pip`. The output must be built separately for Linux, Windows, and each supported processor architecture.
+Python binary tools turn an application and its dependencies into an executable that users can run without manually installing the Python project or creating a virtual environment.**Nuitka** compiles Python modules into C code and uses a native compiler to produce an executable. It follows application imports and bundles the required Python runtime components and dependencies. IrisLab CLI uses Nuitka's `--onefile` mode to produce a single executable:
 
-=== "PyInstaller"
+```bash
+nuitka \
+    --onefile \
+    --output-dir=.build \
+    --output-filename=irislab-cli \
+    --include-package=irislab_cli \
+    src/irislab_cli/cli.py
+```
 
-    PyInstaller bundles the Python interpreter, application bytecode, imported packages, and resources. It focuses on reliably collecting an application into a folder or one executable; it does not translate the complete program into native C code.
+The project provides a build script that wraps this command:
 
-    An equivalent one-file build of IrisLab CLI would use:
+```bash
+./scripts/build-executable.sh
+```
 
-    ```bash
-    uv run pyinstaller \
-        --onefile \
-        --name irislab-cli \
-        --paths src \
-        src/irislab_cli/cli.py
-    ```
+The resulting executable can run independently of the project's Python environment. It is then used as the payload for the Debian package.
 
-=== "Nuitka"
-
-    Nuitka translates Python modules to C and compiles them with a native compiler. Like PyInstaller, it follows imports and includes the runtime components needed by the application, but its compilation stage produces native machine code. IrisLab CLI uses Nuitka through its build script:
-
-    ```bash
-    ./scripts/build-executable.sh
-    ```
-
-    The script runs the following compilation command:
-
-    ```bash
-    nuitka \
-        --onefile \
-        --output-dir=.build \
-        --output-filename=irislab-cli \
-        --include-package=irislab_cli \
-        src/irislab_cli/cli.py
-    ```
+!!! info "Platform-specific Builds"
+    Nuitka builds are platform- and architecture-specific. Compile the application in an environment compatible with the target systems where it will run.
 
 ## Tradeoffs
 
@@ -277,27 +264,46 @@ cloudsmith list packages "${CLOUDSMITH_REPOSITORY}" -q "irislab-cli"
 
 ## Consumer Workflow
 
-### Install the Package
+### Configure the Package Manager
 
-Import the repository signing key:
+Before installing *IrisLab CLI*, configure APT to use the dedicated Cloudsmith repository. APT requires the repository's signing key to verify the authenticity and integrity of downloaded package metadata and packages. Import the public signing key and store it in the system's keyring directory:
 
 ```bash
 curl -fsSL "https://dl.cloudsmith.io/public/<cloudsmith-repo>/gpg.key" \
     | sudo gpg --dearmor -o /usr/share/keyrings/cloudsmith-repository.gpg
 ```
 
-APT uses repositories to find software packages. Create a configuration file that tells APT where the Cloudsmith packages are, which Ubuntu release and package group to use, and which key to use to verify them:
+Next, register the Cloudsmith repository with APT by creating a `.sources` file under `/etc/apt/sources.list.d/`. Ubuntu uses the DEB822 format for these files, which defines repository settings through individual fields rather than the traditional one-line syntax.:
 
 ```bash
 printf 'Types: deb\nURIs: https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/ubuntu\nSuites: noble\nComponents: main\nSigned-By: /usr/share/keyrings/cloudsmith-repository.gpg\n' \
     | sudo tee /etc/apt/sources.list.d/cloudsmith.sources
 ```
 
-Next, refresh APT's package lists so it can find packages from the new repository:
+APT uses this configuration to discover packages from the dedicated remote repository. When `apt update` runs, it retrieves the signed package indexes for the configured Ubuntu release, component, and system architecture. These indexes contain package metadata, including versions, dependencies, and artifact locations. When a package is requested, APT uses this information to resolve dependencies and download the corresponding `.deb` artifact from the repository's package pool. The complete `/etc/apt/sources.list.d/cloudsmith.sources` file looks like this:
+
+```text
+Types: deb
+URIs: https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/ubuntu
+Suites: noble
+Components: main
+Signed-By: /usr/share/keyrings/cloudsmith-repository.gpg
+```
+
+- `URIs`: Specifies the base URL of the remote repository. In this example, `https://dl.cloudsmith.io/public/<cloudsmith-repo>/deb/ubuntu` points to the Cloudsmith Debian repository endpoint for Ubuntu.
+
+- `Suites`: Defines the target Ubuntu release. `noble` refers to Ubuntu 24.04 LTS. Other examples include `jammy` (22.04 LTS) and `focal` (20.04 LTS).
+
+- `Components`: Selects the repository sections from which APT retrieves packages. `main` contains officially supported, open-source packages maintained by Ubuntu. Other Ubuntu components include `restricted`, `universe`, and `multiverse`. Proprietary repositories commonly use `main` as their package component.
+
+
+Finally, refresh APT's package lists so it can find packages from the new repository:
 
 ```bash
 sudo apt update
 ```
+
+### Install the Package
 
 Install IrisLab CLI:
 
