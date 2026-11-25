@@ -60,12 +60,12 @@ The project's `Dockerfile` provides the complete workflow for combining `irislab
 ```dockerfile
 RUN micromamba create \
     --yes \
-    --prefix /opt/conda/envs/irislab-api \
+    --prefix /opt/conda/envs/irislab \
         python=3.12 \
         irislab-tools=0.0.1 \
         libglib \
         pip \
-    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+    && /opt/conda/envs/irislab/bin/python -m pip install \
         mediapipe==0.10.35 \
     && micromamba clean --all --yes
 ```
@@ -106,12 +106,12 @@ RUN micromamba config prepend channels conda-forge \
 #   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
     --yes \
-    --prefix /opt/conda/envs/irislab-api \
+    --prefix /opt/conda/envs/irislab \
         python=3.12 \
         irislab-tools=0.0.1 \
         libglib \
         pip \
-    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+    && /opt/conda/envs/irislab/bin/python -m pip install \
         mediapipe==0.10.35 \
     && micromamba clean --all --yes
 
@@ -154,7 +154,7 @@ COPY src ./src
 # Create the uv environment with Conda's Python:
 #   - uses Conda's interpreter instead of downloading another Python
 #   - exposes Conda-installed packages, including IrisLab and MediaPipe
-RUN uv venv --python /opt/conda/envs/irislab-api/bin/python \
+RUN uv venv --python /opt/conda/envs/irislab/bin/python \
     --system-site-packages "${UV_PROJECT_ENVIRONMENT}"
 
 # Install 'irislab-api':
@@ -176,8 +176,8 @@ FROM mambaorg/micromamba:2.3.3 AS runtime
 USER root
 
 # Use the prepared Conda environment and configure the application runtime.
-ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab-api/bin:${PATH}" \
-    LD_LIBRARY_PATH=/opt/conda/envs/irislab-api/lib \
+ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab/bin:${PATH}" \
+    LD_LIBRARY_PATH=/opt/conda/envs/irislab/lib \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     IRISLAB_MODEL_PATH=/opt/irislab/face_landmarker.task
@@ -186,7 +186,7 @@ ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab-api/bin:${PATH}" \
 #   - the Conda environment
 #   - the uv environment containing the installed API
 #   - the Face Landmarker model
-COPY --from=build /opt/conda/envs/irislab-api /opt/conda/envs/irislab-api
+COPY --from=build /opt/conda/envs/irislab /opt/conda/envs/irislab
 COPY --from=build /opt/irislab-api-venv /opt/irislab-api-venv
 COPY --from=build /opt/irislab/face_landmarker.task /opt/irislab/face_landmarker.task
 

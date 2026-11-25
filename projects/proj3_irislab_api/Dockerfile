@@ -22,11 +22,11 @@ RUN micromamba config prepend channels conda-forge \
 #   - installs MediaPipe and resolves its Python dependencies with pip
 RUN micromamba create \
     --yes \
-    --prefix /opt/conda/envs/irislab-api \
+    --prefix /opt/conda/envs/irislab \
         python=3.12 \
         libglib \
         pip \
-    && /opt/conda/envs/irislab-api/bin/python -m pip install \
+    && /opt/conda/envs/irislab/bin/python -m pip install \
         mediapipe==0.10.35 \
         && micromamba clean --all --yes
 
@@ -126,7 +126,7 @@ COPY src ./src
 #        Pass the following to the uv venv command:
 #       - `${UV_PROJECT_ENVIRONMENT}` as the target directory (positional
 #         argument).
-#       - `--python /opt/conda/envs/irislab-api/bin/python` to use Conda's
+#       - `--python /opt/conda/envs/irislab/bin/python` to use Conda's
 #         existing Python instead of installing another interpreter.
 #       - `--system-site-packages` to let the virtual environment import
 #         packages already installed in the Conda environment, including
@@ -151,8 +151,8 @@ FROM mambaorg/micromamba:2.3.3 AS runtime
 USER root
 
 # Use the prepared Conda environment and configure the application runtime.
-ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab-api/bin:${PATH}" \
-    LD_LIBRARY_PATH=/opt/conda/envs/irislab-api/lib \
+ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab/bin:${PATH}" \
+    LD_LIBRARY_PATH=/opt/conda/envs/irislab/lib \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     IRISLAB_MODEL_PATH=/opt/irislab/face_landmarker.task \
@@ -163,7 +163,7 @@ ENV PATH="/opt/irislab-api-venv/bin:/opt/conda/envs/irislab-api/bin:${PATH}" \
 #   - the uv environment containing the installed API
 #   - the Face Landmarker model
 #   - the PaiGuard moderation models
-COPY --from=build /opt/conda/envs/irislab-api /opt/conda/envs/irislab-api
+COPY --from=build /opt/conda/envs/irislab /opt/conda/envs/irislab
 COPY --from=build /opt/irislab-api-venv /opt/irislab-api-venv
 COPY --from=build /opt/irislab/face_landmarker.task /opt/irislab/face_landmarker.task
 COPY --from=build /opt/irislab/paiguard /opt/irislab/paiguard

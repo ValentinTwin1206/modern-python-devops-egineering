@@ -23,7 +23,7 @@ ENV CONDA_DIR=/opt/conda \
     MAMBA_ROOT_PREFIX=/opt/conda \
     UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy \
-    LD_LIBRARY_PATH=/opt/conda/envs/irislab-api/lib \
+    LD_LIBRARY_PATH=/opt/conda/envs/irislab/lib \
     IRISLAB_MODEL_PATH=/opt/irislab/face_landmarker.task \
     PAIGUARD_MODEL_DIR=/opt/irislab/paiguard \
     PYTHONUNBUFFERED=1 \
@@ -45,7 +45,7 @@ RUN if [ -z "${IRISLAB_CHANNEL}" ]; then \
 # libirislab build. libglib is required by MediaPipe's PyPI OpenCV wheel.
 RUN micromamba create \
     --yes \
-    --prefix /opt/conda/envs/irislab-api \
+    --prefix /opt/conda/envs/irislab \
         python=3.12 \
         irislab-tools=0.0.1 \
         libglib \
@@ -53,7 +53,7 @@ RUN micromamba create \
     && micromamba clean --all --yes
 
 # The Conda recipe does not include MediaPipe; install it from PyPI.
-RUN /opt/conda/envs/irislab-api/bin/python -m pip install \
+RUN /opt/conda/envs/irislab/bin/python -m pip install \
         mediapipe==0.10.35
 
 # Download and verify the Face Landmarker model used for local inference.
