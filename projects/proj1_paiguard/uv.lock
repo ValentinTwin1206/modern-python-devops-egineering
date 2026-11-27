@@ -621,11 +621,15 @@ name = "paiguard"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "pillow" },
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+models = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnxruntime" },
-    { name = "pillow" },
-    { name = "pydantic" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
     { name = "transformers" },
@@ -640,13 +644,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "onnxruntime", specifier = ">=1.17" },
+    { name = "numpy", marker = "extra == 'models'", specifier = ">=1.26" },
+    { name = "onnxruntime", marker = "extra == 'models'", specifier = ">=1.17" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "torch", specifier = ">=2.2", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "transformers", specifier = ">=4.49" },
+    { name = "torch", marker = "extra == 'models'", specifier = ">=2.2", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "transformers", marker = "extra == 'models'", specifier = ">=4.49" },
 ]
+provides-extras = ["models"]
 
 [package.metadata.requires-dev]
 dev = [

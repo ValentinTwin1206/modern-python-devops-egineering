@@ -5,6 +5,7 @@ import logging
 from PIL import Image
 
 from .results import InspectionResult, RuleResult
+from .rules.base import PaiRule
 
 logger = logging.getLogger("paiguard")
 
