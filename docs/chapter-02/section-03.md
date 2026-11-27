@@ -451,28 +451,36 @@ conda run --name "irislab-demo" python -m pip install mediapipe
 
 ### Use the Package
 
-Activate the consumer environment:
+Use the installed `irislab-tools` package from the consumer environment. It provides both a *Python API* and a Command-line Interface*.
 
-```bash
-conda activate irislab-demo
-```
+=== "Python API"
 
-The CLI accepts a portrait image and analyzes the detected iris color:
+    Activate the consumer environment:
 
-```bash
-irislab --image samples/blue-eyes.png
-```
+    ```bash
+    conda activate irislab-demo
+    ```
 
-The project also exposes a Python API:
+    Then,  use the *Python API* by implementing `irislab.analyze()` with the image path. The result exposes the detected eye color and comparison metrics: 
 
-```python
-from pathlib import Path
-from irislab import analyze
+    ```python
+    from pathlib import Path
 
-result = analyze(Path("samples/blue-eyes.png"))
+    from irislab import analyze
 
-print(result.eye_color)
-print(result.lab)
-print(result.closest_profile)
-print(result.delta_e)
-```
+    result = analyze(Path("samples/blue-eyes.png"))
+
+    print(result.eye_color)
+    print(result.lab)
+    print(result.closest_profile)
+    print(result.delta_e)
+    ```
+
+=== "CLI"
+
+    Activate the environment and pass a portrait image to `irislab`. The command prints its iris-color analysis in the terminal:
+
+    ```bash
+    conda activate irislab-demo
+    irislab --image samples/blue-eyes.png
+    ```

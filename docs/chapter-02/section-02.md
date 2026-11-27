@@ -10,6 +10,8 @@ This design separates two concerns: Nuitka creates the runnable application arti
 
 ## Building Blocks
 
+### Overview
+
 Debian packages are AR-based `.deb` artifacts used by Debian, Ubuntu, and related Linux distributions. A package combines an installable filesystem payload with metadata that describes its identity, architecture, dependencies, and lifecycle. They are commonly used for system utilities and command-line applications that should be installed and maintained by the operating system.
 
 | Building Block | Role | IrisLab CLI Example |
@@ -49,6 +51,21 @@ proj4_irislab_cli/
 - `debian/control`: Defines source and binary package metadata and runtime dependencies.
 - `debian/rules`: Installs the compiled executable into the package staging tree.
 - `debian/irislab-cli.links`: Creates `/usr/bin/irislab-cli` as a link to the packaged executable.
+
+### Command Line Interface (CLI)
+
+A terminal application typically provides a *Command-line Interface (CLI)* that allows users to interact with the application by entering commands and options in a terminal. A Python package can define an installed command in `pyproject.toml` using the `[project.scripts]` table. Each entry maps the command name to a Python function using the `package.module:function` format; installers create a launcher for that function in the environment's scripts directory. For example, this project can expose a command named `irislab-cli` that calls the `main` function in `irislab_cli.cli`:
+
+```toml
+[project.scripts]
+irislab-cli = "irislab_cli.cli:main"
+```
+
+After installing the project into the active environment, users can invoke the command directly in a terminal. Here, `--help` displays the available commands and options:
+
+```bash
+irislab-cli --help
+```
 
 ### Package Manifest
 

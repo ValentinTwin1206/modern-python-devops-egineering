@@ -51,6 +51,32 @@ proj3_irislab_api/
 - `pyproject.toml` and `uv.lock`: The API's Python dependency metadata and lockfile for FastAPI and Uvicorn. IrisLab is installed separately from a Conda channel.
 - `tests/`: API contract tests for the routes and their error responses.
 
+### Web API (HTTP Interface)
+
+A web API exposes an application's functionality over HTTP so other programs can call it across a network. It defines endpoints, HTTP methods, request data, and responses. In this project, FastAPI route decorators map Python functions to endpoints; for example, `@router.get` defines a read operation and `@router.post` defines an image-analysis operation. This network-facing interface complements a Python package API.
+
+```python
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/reference-colors")
+def reference_colors():
+    return [{"name": "blue", "lab": [32.3, 10.1, -45.2]}]
+```
+
+After the API is running, consumers can call its endpoints from a terminal. The health endpoint checks that the service responds, while the analysis endpoint accepts an image as multipart form data and requires an access token:
+
+```bash
+curl -f http://127.0.0.1:8080/health/live
+curl -f http://127.0.0.1:8080/api/v1/reference-colors
+curl -f \
+  -H "Authorization: Bearer <access-token>" \
+  -F 'image=@portrait.png' \
+  http://127.0.0.1:8080/api/v1/analyses
+```
+
 ### Build Recipe
 
 An OCI image is assembled from a build recipe, commonly called a `Dockerfile` or `Containerfile`. The container manager reads its instructions to create filesystem layers and image configuration.
