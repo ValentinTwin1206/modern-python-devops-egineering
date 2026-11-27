@@ -1,7 +1,7 @@
 import pytest
 
+from paiguard import PaiNsfwDetection, PaiRule, PaiViolenceDetection
 from paiguard.models import FalconsaiNsfwModel, SiglipViolenceModel
-from paiguard.rules import PaiNsfwDetection, PaiRule, PaiViolenceDetection
 
 
 def test_nsfw_rule_maps_model_score_to_result(image, fake_model):

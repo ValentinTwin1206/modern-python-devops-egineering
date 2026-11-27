@@ -1,8 +1,7 @@
 import pytest
 from PIL import Image
 
-from paiguard import InspectionResult, PaiGuard
-from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+from paiguard import InspectionResult, PaiGuard, PaiNsfwDetection, PaiViolenceDetection
 
 
 def make_guard(fake_model, nsfw_score, violence_score):

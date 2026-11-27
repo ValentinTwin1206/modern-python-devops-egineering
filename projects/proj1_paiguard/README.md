@@ -2,6 +2,8 @@
 
 **pAIguard** is a lightweight, framework-independent Python library for inspecting images with local moderation models before an application accepts them.
 
+pAIguard adapts the `src`-layout structure typical for "packaged-typed" projects: its importable `paiguard` package lives under `src/`, separate from tests and project configuration.
+
 It currently provides:
 
 -   **NSFW detection** for explicit content
@@ -111,8 +113,12 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from paiguard import ModelNotFoundError, PaiGuard
-from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+from paiguard import (
+    ModelNotFoundError,
+    PaiGuard,
+    PaiNsfwDetection,
+    PaiViolenceDetection,
+)
 
 app = FastAPI()
 app.state.moderation_guard = PaiGuard(
@@ -185,8 +191,7 @@ The decision is `"block"` when any score reaches its `threshold`, `"review"` whe
 Configure the thresholds of each rule:
 
 ``` python
-from paiguard import PaiGuard
-from paiguard.rules import PaiNsfwDetection
+from paiguard import PaiGuard, PaiNsfwDetection
 
 guard = PaiGuard(
     rules=[

@@ -5,32 +5,29 @@ import logging
 from PIL import Image
 
 from .results import InspectionResult, RuleResult
-from .rules import PaiRule
 
 logger = logging.getLogger("paiguard")
 
 
-def decide(results: list[RuleResult]) -> str:
-    """
-    Turn the rule results into one decision.
-
-    :param results (list[RuleResult]): The results of all rules
-    :return (str): "block", "review" or "allow"
-    """
-    for result in results:
-        if result.detected:
-            return "block"
-
-    for result in results:
-        if result.needs_review:
-            return "review"
-
-    return "allow"
-
-
 class PaiGuard:
-    def __init__(self, rules: list[PaiRule] | None = None):
-        self.rules = rules or []
+    #
+    # TODO: Implement a valid constructor "def __init__" for the PaiGuard class 
+    # that is used by other projects as the public interface:
+    #   - Set a "rules" input argument of type "list[PaiRule] | None" with a default of None.
+    #   - Initialize a "self.rules" class property with "rules or []"
+
+    @staticmethod
+    def _decide(results: list[RuleResult]) -> str:
+        """Turn rule results into one decision: block, review, or allow."""
+        for result in results:
+            if result.detected:
+                return "block"
+
+        for result in results:
+            if result.needs_review:
+                return "review"
+
+        return "allow"
 
     def inspect(self, image: Image.Image) -> InspectionResult:
         """
@@ -54,7 +51,7 @@ class PaiGuard:
             result = rule.inspect(image)
             results.append(result)
 
-        decision = decide(results)
+        decision = self._decide(results)
 
         if decision != "allow":
             scores = {result.category: round(result.score, 3) for result in results}

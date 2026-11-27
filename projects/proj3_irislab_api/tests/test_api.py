@@ -8,8 +8,7 @@ from bson import ObjectId
 from fastapi.testclient import TestClient
 from irislab import ColorAnalysisResult, EyeColorDetectionError
 from irislab.eye_color import EyeColor
-from paiguard import PaiGuard
-from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+from paiguard import PaiGuard, PaiNsfwDetection, PaiViolenceDetection
 from PIL import Image
 
 from irislab_api.main import create_app

@@ -1,11 +1,10 @@
-"""Moderation rules that can be passed to pAIguard's ``PaiGuard`` class."""
+"""Base classes shared by pAIguard's moderation rules."""
 
 from abc import ABC, abstractmethod
 
 from PIL import Image
 
-from .models import FalconsaiNsfwModel, SiglipViolenceModel
-from .results import RuleResult
+from ..results import RuleResult
 
 
 class PaiRule(ABC):
@@ -69,27 +68,3 @@ class PaiDetectionRule(PaiRule):
                 "model": type(self.model).__name__,
             },
         )
-
-
-class PaiNsfwDetection(PaiDetectionRule):
-    """Rule to detect NSFW / explicit content."""
-
-    category = "nsfw"
-
-    def __init__(self, threshold: float = 0.80, review_threshold=None, model=None):
-        super().__init__(threshold, review_threshold, model)
-
-    def create_default_model(self):
-        return FalconsaiNsfwModel()
-
-
-class PaiViolenceDetection(PaiDetectionRule):
-    """Rule to detect violent content."""
-
-    category = "violence"
-
-    def __init__(self, threshold: float = 0.85, review_threshold=None, model=None):
-        super().__init__(threshold, review_threshold, model)
-
-    def create_default_model(self):
-        return SiglipViolenceModel()

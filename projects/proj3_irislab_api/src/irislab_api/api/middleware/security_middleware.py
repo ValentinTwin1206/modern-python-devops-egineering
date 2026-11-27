@@ -5,8 +5,12 @@ import logging
 import os
 
 from fastapi import Request as FastAPIRequest, responses
-from paiguard import ModelNotFoundError, PaiGuard
-from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+from paiguard import (
+    ModelNotFoundError,
+    PaiGuard,
+    PaiNsfwDetection,
+    PaiViolenceDetection,
+)
 from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger("iris-lab")

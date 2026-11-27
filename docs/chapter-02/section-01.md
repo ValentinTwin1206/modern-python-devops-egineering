@@ -4,7 +4,7 @@ Python wheels are the standard built package format for Python projects. They le
 
 ## Applied Project
 
-The applied project is a Python library called `pAIguard` *[pie guard]*. It runs local image classifiers to screen uploaded images for NSFW ("*not safe for work*") content and violence; the *IrisLab-API* uses these checks to moderate uploads before iris analysis. As pAIguard's own code is pure Python and does not require separately managed system libraries or a cross-language build toolchain, it is a good fit for `venv`. Its Python dependencies and development tools can be isolated in a project-local environment. PyTorch is installed from its CPU index, and model weights are downloaded separately.
+The applied project is a packaged Python library called `pAIguard` *[pie guard]*. It runs local image classifiers to screen uploaded images for NSFW ("*not safe for work*") content and violence; the *IrisLab-API* uses these checks to moderate uploads before iris analysis. pAIguard adapts the `src`-layout structure typical for "packaged-typed" projects, keeping its importable package separate from tests and project configuration. As pAIguard's own code is pure Python and does not require separately managed system libraries or a cross-language build toolchain, it is a good fit for `venv`. Its Python dependencies and development tools can be isolated in a project-local environment. PyTorch is installed from its CPU index, and model weights are downloaded separately.
 
 ## Building Blocks
 
@@ -41,6 +41,118 @@ A wheel is built from the project files, source code, and packaging metadata alr
 - `pyproject.toml`: The **central configuration file** for modern Python packaging. It stores the package metadata, dependency list, build backend settings, and CLI entry points in one place.
 - `README.md`: Project description displayed on package repositories such as PyPI.
 - `LICENSE`: Defines the legal terms under which the package can be used and distributed.
+
+### Package API (Interface)
+
+A package provides its functionality to other projects through a public interface: the documented classes and functions consumers import and call. For object-oriented Python packages, this interface is commonly implemented with classes. pAIguard's top-level `__init__.py` re-exports these public classes so consumers can import them directly from `paiguard`; its `__all__` makes the supported names explicit. The `PaiGuard` class is the main entry point: consumers configure it with detection rules and call `inspect()` with a decoded Pillow image. The shared `PaiDetectionRule` handles scoring and thresholds, while the NSFW and violence rules provide their own category and default model.
+
+In pAIguard, `__init__.py` is the package facade: it gathers selected names from implementation modules into a convenient top-level API. Its imports and `__all__` should agree, keeping internal helpers out of the documented interface.
+
+```python
+from .guard import PaiGuard
+from .models import ModelNotFoundError
+from .results import InspectionResult, RuleResult
+from .rules import (
+    PaiDetectionRule,
+    PaiNsfwDetection,
+    PaiRule,
+    PaiViolenceDetection,
+)
+
+__all__ = [
+    "InspectionResult",
+    "ModelNotFoundError",
+    "PaiDetectionRule",
+    "PaiGuard",
+    "PaiNsfwDetection",
+    "PaiRule",
+    "PaiViolenceDetection",
+    "RuleResult",
+]
+```
+
+The following tabs show the implementations behind this public API. `guard.py` provides the main inspection class; each rule module provides a detection rule that can be passed to `PaiGuard`.
+
+=== "guard.py"
+
+    ```python
+    import logging
+
+    from PIL import Image
+
+    from .results import InspectionResult, RuleResult
+    from .rules.base import PaiRule
+
+    logger = logging.getLogger("paiguard")
+
+
+    class PaiGuard:
+        def __init__(self, rules: list[PaiRule] | None = None):
+            self.rules = rules or []
+
+        @staticmethod
+        def _decide(results: list[RuleResult]) -> str:
+            for result in results:
+                if result.detected:
+                    return "block"
+            for result in results:
+                if result.needs_review:
+                    return "review"
+            return "allow"
+
+        def inspect(self, image: Image.Image) -> InspectionResult:
+            if not isinstance(image, Image.Image):
+                raise TypeError("PaiGuard.inspect() expects a PIL.Image.Image")
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+
+            results = [rule.inspect(image) for rule in self.rules]
+            decision = self._decide(results)
+            if decision != "allow":
+                scores = {
+                    result.category: round(result.score, 3) for result in results
+                }
+                logger.warning("Image decision is '%s' with scores %s", decision, scores)
+            return InspectionResult(decision=decision, results=results)
+    ```
+
+=== "nsfw_rules.py"
+
+    ```python
+    from .base import PaiDetectionRule
+    from ..models import FalconsaiNsfwModel
+
+
+    class PaiNsfwDetection(PaiDetectionRule):
+        """Detect NSFW / explicit content."""
+
+        category = "nsfw"
+
+        def __init__(self, threshold: float = 0.80, review_threshold=None, model=None):
+            super().__init__(threshold, review_threshold, model)
+
+        def create_default_model(self):
+            return FalconsaiNsfwModel()
+    ```
+
+=== "violence_rules.py"
+
+    ```python
+    from .base import PaiDetectionRule
+    from ..models import SiglipViolenceModel
+
+
+    class PaiViolenceDetection(PaiDetectionRule):
+        """Detect violent content."""
+
+        category = "violence"
+
+        def __init__(self, threshold: float = 0.85, review_threshold=None, model=None):
+            super().__init__(threshold, review_threshold, model)
+
+        def create_default_model(self):
+            return SiglipViolenceModel()
+    ```
 
 ### Package Manifest
 
@@ -328,8 +440,12 @@ mkdir paiguard-consumer && cd paiguard-consumer
     from PIL import Image
     from starlette.datastructures import UploadFile as StarletteUploadFile
 
-    from paiguard import ModelNotFoundError, PaiGuard
-    from paiguard.rules import PaiNsfwDetection, PaiViolenceDetection
+    from paiguard import (
+        ModelNotFoundError,
+        PaiGuard,
+        PaiNsfwDetection,
+        PaiViolenceDetection,
+    )
 
     app = FastAPI()
     app.state.moderation_guard = PaiGuard(
