@@ -1,9 +1,6 @@
-# TODO: Add a `[build-system]` table to declare the build configuration.
-# TODO: Set `requires = ["uv_build>=0.11.8,<0.12"]` to declare the build
-#       dependency.
-# TODO: Set `build-backend = "uv_build"` to select the build backend.
-# TODO: Run `uv build` and inspect the wheel's `METADATA` to confirm its
-#       version and runtime dependencies.
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12"]
+build-backend = "uv_build"
 
 [project]
 name = "paiguard"
@@ -46,3 +43,6 @@ explicit = true
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.uv.build-backend]
+module-root = "src"

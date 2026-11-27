@@ -44,9 +44,8 @@ A wheel is built from the project files, source code, and packaging metadata alr
 
 ### Package API (Interface)
 
-A package provides its functionality to other projects through a public interface: the documented classes and functions consumers import and call. For object-oriented Python packages, this interface is commonly implemented with classes. pAIguard's top-level `__init__.py` re-exports these public classes so consumers can import them directly from `paiguard`; its `__all__` makes the supported names explicit. The `PaiGuard` class is the main entry point: consumers configure it with detection rules and call `inspect()` with a decoded Pillow image. The shared `PaiDetectionRule` handles scoring and thresholds, while the NSFW and violence rules provide their own category and default model.
-
-In pAIguard, `__init__.py` is the package facade: it gathers selected names from implementation modules into a convenient top-level API. Its imports and `__all__` should agree, keeping internal helpers out of the documented interface.
+A Python package exposes its functionality through a **public interface** (Python API), which defines the classes and functions that other projects can import and use. A well-defined public interface provides consumers with a stable entry point while keeping internal implementation details encapsulated. 
+In pAIguard, `__init__.py` acts as the package facade by re-exporting selected classes and exceptions from their respective implementation modules. This allows consumers to import them directly from `paiguard` package rather than having to know the internal module structure. The `__all__` attribute explicitly defines which names belong to the supported public interface.
 
 ```python
 from .guard import PaiGuard
@@ -71,7 +70,9 @@ __all__ = [
 ]
 ```
 
-The following tabs show the implementations behind this public API. `guard.py` provides the main inspection class; each rule module provides a detection rule that can be passed to `PaiGuard`.
+The central component of this interface is the `PaiGuard` class, which provides the main entry point for image moderation. Consumers instantiate it with a collection of detection rules and use its `inspect()` method to evaluate a decoded Pillow image. The shared `PaiDetectionRule` class provides common functionality for scoring and threshold evaluation, while specialized rules such as `PaiNsfwDetection` and `PaiViolenceDetection` implement category-specific detection logic and define their respective default models.
+
+The following tabs explore the implementation behind this public API. The module `guard.py` contains the main inspection logic, while the individual `rules_*.py` modules define the detection rules that can be passed to an instance of `PaiGuard`.
 
 === "guard.py"
 
@@ -207,6 +208,9 @@ explicit = true
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.uv.build-backend]
+module-root = "src"
 ```
 
 - `name`: Defines the distribution name used in package indexes and wheel filenames.
@@ -215,6 +219,7 @@ line-length = 88
 - `dependencies`: Lists packages required when the wheel is installed, including pAIguard's built-in inference runtime.
 - `[build-system]`: Selects the build backend and the packages needed to run it.
 - `[tool.uv.sources]` and `[[tool.uv.index]]`: Install the CPU-only build of `torch` from the PyTorch index. `explicit = true` keeps every other package on the default index. This setting applies to the project itself and is not stored in the wheel.
+- `[tool.uv.build-backend]`: Tells `uv_build` that importable modules live under `src/`.
 
 ### Package Layout
 
@@ -295,11 +300,11 @@ uv sync --all-groups
 
 ### Create the Package
 
-Before building the `0.0.2` release, update the version source below. `uv build` reads this value and derives both distribution filenames from it.
+The project is currently versioned `0.0.1`. Build this version for the requested upload; for a future release, update `[project].version` before building because published version files cannot be overwritten.
 
 | File | Version change |
 |------|----------------|
-| [`pyproject.toml`](../../projects/proj1_paiguard/pyproject.toml) | Set `[project].version` to `0.0.2`. |
+| [`pyproject.toml`](../../projects/proj1_paiguard/pyproject.toml) | Keep `[project].version` at `0.0.2` for this upload. |
 
 Modern Python builds split responsibilities between a **build frontend** and a **build backend**. The frontend is the command-line tool you run, while the backend is the project-specific implementation that produces the wheel (`.whl`) and source distribution (`.tar.gz`). PEP 517 defines the interface between both sides, and PEP 518 defines the `[build-system]` table in `pyproject.toml` where the backend and its requirements are declared.
 
@@ -314,7 +319,7 @@ build-backend = "uv_build"
 In this project, the build frontend is `uv build`. It creates the isolated build environment, installs the backend requirements, and invokes `uv_build` to create the final artifacts. The command accepts a source directory, so the `pyproject.toml` file is discovered from that project path. Popular build frontends include `uv build`, `python -m build`, `pip wheel`, `pip install`, `hatch build`, `poetry build`, etc.
 
 ```bash
-uv build <path-to-project-root>
+uv build --no-sources
 ```
 
 List the generated distribution files in the `dist/` directory.
@@ -365,12 +370,19 @@ printf '\n'
 export CLOUDSMITH_API_KEY
 ```
 
+Cloudsmith's PyPI upload endpoint uses HTTP basic authentication. Configure `uv` with the literal username `token` and the API key as its password:
+
+```bash
+export UV_PUBLISH_USERNAME=token
+export UV_PUBLISH_PASSWORD="$CLOUDSMITH_API_KEY"
+```
+
 Once you have inspected the wheel package, upload it to the proprietary Python repository hosted on Cloudsmith.
 
 Publish the package to the Cloudsmith PyPI repository with `uv`.
 
 ```bash
-UV_PUBLISH_TOKEN="$CLOUDSMITH_API_KEY" uv publish \
+uv publish \
     --publish-url "https://python.cloudsmith.io/${CLOUDSMITH_REPOSITORY}/" \
     dist/paiguard-0.0.2-py3-none-any.whl dist/paiguard-0.0.2.tar.gz
 ```
