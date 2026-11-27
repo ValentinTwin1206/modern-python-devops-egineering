@@ -7,7 +7,6 @@ from io import BytesIO
 from fastapi import Request as FastAPIRequest
 from fastapi import responses
 from paiguard import (
-    ModelNotFoundError,
     PaiGuard,
     PaiNsfwDetection,
     PaiViolenceDetection,
@@ -77,7 +76,7 @@ async def security_middleware(request: FastAPIRequest, call_next):
                     if picture is not None:
                         try:
                             result = request.app.state.moderation_guard.inspect(picture)
-                        except ModelNotFoundError as error:
+                        except FileNotFoundError as error:
                             logger.error("pAIguard models are unavailable: %s", error)
                             return responses.JSONResponse(
                                 status_code=503,

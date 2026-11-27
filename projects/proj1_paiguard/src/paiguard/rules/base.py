@@ -24,7 +24,12 @@ class PaiDetectionRule(PaiRule):
     A score at or above `review_threshold` marks it for review.
     """
 
-    category = ""
+
+    @property
+    @abstractmethod
+    def category(self) -> str:
+        """Return the stable category name used in results and violations."""
+        raise NotImplementedError
 
     def __init__(
         self,

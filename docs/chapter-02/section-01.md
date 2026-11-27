@@ -49,7 +49,7 @@ In pAIguard, `__init__.py` acts as the package facade by re-exporting selected c
 
 ```python
 from .guard import PaiGuard
-from .models import ModelNotFoundError
+from .models import PaiModel
 from .results import InspectionResult, RuleResult
 from .rules import (
     PaiDetectionRule,
@@ -60,17 +60,31 @@ from .rules import (
 
 __all__ = [
     "InspectionResult",
-    "ModelNotFoundError",
     "PaiDetectionRule",
     "PaiGuard",
     "PaiNsfwDetection",
+    "PaiModel",
     "PaiRule",
     "PaiViolenceDetection",
     "RuleResult",
 ]
 ```
 
-The central component of this interface is the `PaiGuard` class, which provides the main entry point for image moderation. Consumers instantiate it with a collection of detection rules and use its `inspect()` method to evaluate a decoded Pillow image. The shared `PaiDetectionRule` class provides common functionality for scoring and threshold evaluation, while specialized rules such as `PaiNsfwDetection` and `PaiViolenceDetection` implement category-specific detection logic and define their respective default models.
+The central component of this interface is the `PaiGuard` class, which provides the main entry point for image moderation. Consumers instantiate it with a collection of detection rules and use its `inspect()` method to evaluate a decoded Pillow image. The shared `PaiDetectionRule` class provides common functionality for scoring and threshold evaluation; each specialized rule implements the abstract `category` property and provides its default model. Model adapters implement the `load()` and `score()` methods declared by the abstract `PaiModel` interface. Models are organized separately from rules:
+
+```text
+src/paiguard/
+├── models/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── nsfw_models.py
+│   └── violence_models.py
+└── rules/
+    ├── __init__.py
+    ├── base.py
+    ├── nsfw_rules.py
+    └── violence_rules.py
+```
 
 The following tabs explore the implementation behind this public API. The module `guard.py` contains the main inspection logic, while the individual `rules_*.py` modules define the detection rules that can be passed to an instance of `PaiGuard`.
 
@@ -127,7 +141,9 @@ The following tabs explore the implementation behind this public API. The module
     class PaiNsfwDetection(PaiDetectionRule):
         """Detect NSFW / explicit content."""
 
-        category = "nsfw"
+        @property
+        def category(self) -> str:
+            return "nsfw"
 
         def __init__(self, threshold: float = 0.80, review_threshold=None, model=None):
             super().__init__(threshold, review_threshold, model)
@@ -146,7 +162,9 @@ The following tabs explore the implementation behind this public API. The module
     class PaiViolenceDetection(PaiDetectionRule):
         """Detect violent content."""
 
-        category = "violence"
+        @property
+        def category(self) -> str:
+            return "violence"
 
         def __init__(self, threshold: float = 0.85, review_threshold=None, model=None):
             super().__init__(threshold, review_threshold, model)
@@ -457,7 +475,6 @@ mkdir paiguard-consumer && cd paiguard-consumer
     from starlette.datastructures import UploadFile as StarletteUploadFile
 
     from paiguard import (
-        ModelNotFoundError,
         PaiGuard,
         PaiNsfwDetection,
         PaiViolenceDetection,
@@ -491,7 +508,7 @@ mkdir paiguard-consumer && cd paiguard-consumer
                     status_code=415,
                     content={"detail": "Upload must be a readable image"},
                 )
-            except ModelNotFoundError:
+            except FileNotFoundError:
                 return JSONResponse(
                     status_code=503,
                     content={"detail": "pAIguard models are unavailable"},

@@ -7,7 +7,9 @@ from .base import PaiDetectionRule
 class PaiViolenceDetection(PaiDetectionRule):
     """Rule to detect violent content."""
 
-    category = "violence"
+    @property
+    def category(self) -> str:
+        return "violence"
 
     def __init__(self, threshold: float = 0.85, review_threshold=None, model=None):
         super().__init__(threshold, review_threshold, model)

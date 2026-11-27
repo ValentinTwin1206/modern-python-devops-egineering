@@ -2,6 +2,7 @@ import pytest
 
 from paiguard import PaiNsfwDetection, PaiRule, PaiViolenceDetection
 from paiguard.models import FalconsaiNsfwModel, SiglipViolenceModel
+from paiguard.rules.base import PaiDetectionRule
 
 
 def test_nsfw_rule_maps_model_score_to_result(image, fake_model):
@@ -84,3 +85,12 @@ def test_invalid_thresholds_are_rejected(fake_model):
 def test_custom_rule_can_subclass_pai_rule():
     with pytest.raises(TypeError):
         PaiRule()
+
+
+def test_detection_rule_requires_category():
+    class MissingCategoryRule(PaiDetectionRule):
+        def create_default_model(self):
+            return object()
+
+    with pytest.raises(TypeError, match="category"):
+        MissingCategoryRule()

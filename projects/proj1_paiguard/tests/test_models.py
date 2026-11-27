@@ -3,8 +3,8 @@ import os
 import pytest
 from PIL import Image
 
-from paiguard import ModelNotFoundError, models
-from paiguard.models import FalconsaiNsfwModel, SiglipViolenceModel
+from paiguard import models
+from paiguard.models import FalconsaiNsfwModel, PaiModel, SiglipViolenceModel
 
 
 def test_model_dir_uses_default(monkeypatch):
@@ -22,7 +22,7 @@ def test_model_dir_reads_environment_variable(monkeypatch, tmp_path):
 def test_missing_nsfw_model_raises_useful_error(monkeypatch, tmp_path, image):
     monkeypatch.setenv("PAIGUARD_MODEL_DIR", str(tmp_path))
 
-    with pytest.raises(ModelNotFoundError) as error:
+    with pytest.raises(FileNotFoundError) as error:
         FalconsaiNsfwModel().score(image)
 
     assert str(tmp_path / "falconsai-nsfw" / "config.json") in str(error.value)
@@ -40,15 +40,20 @@ def test_missing_violence_head_raises_useful_error(tmp_path, image):
         head_directory=tmp_path / "siglip2-heads",
     )
 
-    with pytest.raises(ModelNotFoundError, match="violence_head.onnx"):
+    with pytest.raises(FileNotFoundError, match="violence_head.onnx"):
         model.score(image)
 
 
 def test_empty_model_file_counts_as_missing(tmp_path):
     (tmp_path / "config.json").write_bytes(b"")
 
-    with pytest.raises(ModelNotFoundError):
+    with pytest.raises(FileNotFoundError):
         models.require_files(tmp_path, ["config.json"])
+
+
+def test_model_base_requires_load_and_score_methods():
+    with pytest.raises(TypeError):
+        PaiModel()
 
 
 def test_sigmoid_turns_logits_into_scores():

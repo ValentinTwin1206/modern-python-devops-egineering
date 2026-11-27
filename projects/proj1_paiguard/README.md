@@ -114,7 +114,6 @@ from PIL import Image
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from paiguard import (
-    ModelNotFoundError,
     PaiGuard,
     PaiNsfwDetection,
     PaiViolenceDetection,
@@ -143,15 +142,15 @@ async def moderate_upload(request: Request, call_next):
                     result = request.app.state.moderation_guard.inspect(
                         image.convert("RGB")
                     )
+        except FileNotFoundError:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "pAIguard models are unavailable"},
+            )
         except OSError:
             return JSONResponse(
                 status_code=415,
                 content={"detail": "Upload must be a readable image"},
-            )
-        except ModelNotFoundError:
-            return JSONResponse(
-                status_code=503,
-                content={"detail": "pAIguard models are unavailable"},
             )
         finally:
             await form.close()
@@ -184,7 +183,7 @@ async def moderate(image: UploadFile):
 | `violations` | Categories of the rules that asked for a block or a review.              |
 | `results`    | One `RuleResult` per rule with `rule`, `category`, `score`, `detected`, `needs_review`, and `details`. |
 
-The decision is `"block"` when any score reaches its `threshold`, `"review"` when any score reaches its `review_threshold`, and `"allow"` otherwise. It raises `ModelNotFoundError` when a model file is missing.
+The decision is `"block"` when any score reaches its `threshold`, `"review"` when any score reaches its `review_threshold`, and `"allow"` otherwise. It raises `FileNotFoundError` with the missing model path when a model file is missing or empty.
 
 ### Moderation Rules
 
