@@ -1,10 +1,11 @@
 """Image moderation and request logging middleware backed by pAIguard."""
 
-from io import BytesIO
 import logging
 import os
+from io import BytesIO
 
-from fastapi import Request as FastAPIRequest, responses
+from fastapi import Request as FastAPIRequest
+from fastapi import responses
 from paiguard import (
     ModelNotFoundError,
     PaiGuard,
@@ -51,7 +52,7 @@ async def security_middleware(request: FastAPIRequest, call_next):
 
         try:
             form = await request.form()
-        except Exception:
+        except Exception:  # noqa: BLE001 - defer malformed multipart errors to FastAPI.
             # Let FastAPI return its normal multipart validation error.
             form = None
 

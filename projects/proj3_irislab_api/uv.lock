@@ -342,7 +342,7 @@ dependencies = [
     { name = "dnspython" },
     { name = "fastapi" },
     { name = "influxdb-client" },
-    { name = "paiguard" },
+    { name = "paiguard", extra = ["models"] },
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
@@ -364,7 +364,7 @@ requires-dist = [
     { name = "dnspython", specifier = ">=2.6,<3" },
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "influxdb-client", specifier = ">=1.48,<2" },
-    { name = "paiguard", specifier = "==0.0.1", index = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" },
+    { name = "paiguard", extras = ["models"], specifier = "==0.0.1", index = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" },
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10,<3" },
@@ -517,17 +517,21 @@ name = "paiguard"
 version = "0.0.1"
 source = { registry = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/" }
 dependencies = [
-    { name = "numpy" },
-    { name = "onnxruntime" },
     { name = "pillow" },
     { name = "pydantic" },
+]
+sdist = { url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/paiguard-0.0.1.tar.gz", hash = "sha256:0d5719fccb6640a99ed47d3bea2d21f9b2e37e47213993188f80785e310ece4e" }
+wheels = [
+    { url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/paiguard-0.0.1-py3-none-any.whl", hash = "sha256:6ed18149708f02503494f02f619260d59210af1c907ffd2ecd59f95425678da7" },
+]
+
+[package.optional-dependencies]
+models = [
+    { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
     { name = "transformers" },
-]
-sdist = { url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/paiguard-0.0.1.tar.gz", hash = "sha256:a70dfc783878828e626ffb5f92db39d2cecf57b958237423167bdfe6a56efa94" }
-wheels = [
-    { url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/paiguard-0.0.1-py3-none-any.whl", hash = "sha256:2501b9dbee502142937076a425c4d49f236e836d1112a4e4344d39d0d61bb7fc" },
 ]
 
 [[package]]

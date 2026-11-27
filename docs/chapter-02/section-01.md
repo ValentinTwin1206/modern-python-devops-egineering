@@ -183,6 +183,10 @@ authors = [
 dependencies = [
     "pydantic>=2.0",
     "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+models = [
     "numpy>=1.26",
     "onnxruntime>=1.17",
     "torch>=2.2",
@@ -418,7 +422,7 @@ mkdir paiguard-consumer && cd paiguard-consumer
     version = "0.1.0"
     requires-python = ">=3.12"
     dependencies = [
-        "paiguard==0.0.1",
+        "paiguard[models]==0.0.1",
         "fastapi",
         "uvicorn",
         "python-multipart",

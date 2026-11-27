@@ -11,11 +11,11 @@ from irislab.eye_color import EyeColor
 from paiguard import PaiGuard, PaiNsfwDetection, PaiViolenceDetection
 from PIL import Image
 
-from irislab_api.main import create_app
-from irislab_api.api.middleware import jwt_middleware
 from irislab_api import main
+from irislab_api.api.middleware import jwt_middleware
 from irislab_api.database import mongo
 from irislab_api.database.keycloak import KeycloakError
+from irislab_api.main import create_app
 from irislab_api.services import analysis
 from irislab_api.services.users import get_user_service
 

@@ -84,6 +84,10 @@ authors = [
 dependencies = [
     "pydantic>=2.0",
     "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+models = [
     "numpy>=1.26",
     "onnxruntime>=1.17",
     "torch>=2.2",
@@ -113,6 +117,7 @@ line-length = 88
 
 - `requires-python`: Declares that PaiGuard supports Python 3.11 and newer. Since `venv` does not install or select Python, create the environment with a compatible interpreter.
 - `dependencies`: Lists the packages PaiGuard needs at runtime; `uv sync` installs them into the project environment.
+- `[project.optional-dependencies].models`: Lists the optional dependencies under the `models` group; `uv sync --group models` installs them into the project environment.
 - `[dependency-groups].dev`: Separates development tools, such as `pytest` and `ruff`, from runtime requirements.
 - `[tool.uv.sources]`: Routes `torch` to the `pytorch-cpu` index.
 - `[[tool.uv.index]]`: Defines the PyTorch CPU package index. Setting `explicit = true` ensures this index is used only for packages explicitly mapped to it.

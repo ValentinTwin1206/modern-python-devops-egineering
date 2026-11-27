@@ -17,12 +17,15 @@ authors = [
 
 # TODO: Add required runtime packages in a `dependencies` array under [project],
 #       using package names and version constraints:
-#       pydantic>=2.0,
-#       pillow>=10.0,
-#       numpy>=1.26,
-#       onnxruntime>=1.17,
-#       torch>=2.2,
-#       transformers>=4.49.
+#   - pydantic>=2.0,
+#   - pillow>=10.0
+
+# TODO: Add optional runtime packages for models in a `project.optional-dependencies` 
+#       array under [project.optional-dependencies],
+#   - numpy>=1.26,
+#   - onnxruntime>=1.17,
+#   - torch>=2.2,
+#   - transformers>=4.49.
 
 [dependency-groups]
 dev = [

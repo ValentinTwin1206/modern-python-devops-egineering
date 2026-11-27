@@ -17,7 +17,7 @@ dependencies = [
     "PyJWT[crypto]>=2.10,<3",
     "uvicorn>=0.34,<1",
     "python-multipart>=0.0.20,<1",
-    # TODO: Add "paiguard==0.0.1" as a runtime dependency for image moderation.
+    # TODO: Add "paiguard[models]==0.0.1" as a runtime dependency for image moderation.
     # Keep pAIguard's PyTorch dependency on the CPU index in this deployment.
     "torch>=2.2",
 ]
@@ -29,8 +29,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-# TODO: Map pAIguard to the Cloudsmith index:
-#       paiguard = { index = "modern-python-engineering" }
+paiguard = { index = "modern-python-engineering" }
 torch = { index = "pytorch-cpu" }
 
 [[tool.uv.index]]
@@ -38,9 +37,7 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
-# TODO: Define the public Cloudsmith index used by pAIguard:
-#       [[tool.uv.index]]
-#       name = "modern-python-engineering"
-#       url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
-#       explicit = true
-#       Run `uv lock --check` after completing these TODOs.
+[[tool.uv.index]]
+name = "modern-python-engineering"
+url = "https://dl.cloudsmith.io/public/pravi-brothers/modern-python-engineering/python/simple/"
+explicit = true
