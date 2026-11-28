@@ -201,10 +201,10 @@ Before building version `0.0.2`, update the version declarations in these files.
 
 | File | Version change |
 |------|----------------|
-| [`pyproject.toml`](../../projects/proj4_irislab_cli/pyproject.toml) | Set `[project].version` to `0.0.2`. |
-| [`__init__.py`](../../projects/proj4_irislab_cli/src/irislab_cli/__init__.py) | Set `__version__` to `0.0.2`. |
-| [`debian/changelog`](../../projects/proj4_irislab_cli/debian/changelog) | Set the Debian package version to `0.0.2-1`. |
-| [`debian/control`](../../projects/proj4_irislab_cli/debian/control) | No version change; this file contains package metadata. |
+| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab_cli/pyproject.toml) | Set `[project].version` to `0.0.2`. |
+| [`__init__.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab_cli/src/irislab_cli/__init__.py) | Set `__version__` to `0.0.2`. |
+| [`debian/changelog`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab_cli/debian/changelog) | Set the Debian package version to `0.0.2-1`. |
+| [`debian/control`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj4_irislab_cli/debian/control) | No version change; this file contains package metadata. |
 
 Inside the Dev Container, compile the executable:
 

@@ -50,23 +50,34 @@ jobs:
           build_key=$(python notebooks/nb5_uv_cache_lab/scripts/build_key.py)
           echo "CACHE_DEMO_KEY=$build_key" >> "$GITHUB_ENV"
 
-      - name: Set up uv and optionally restore its package cache
-        id: uv
-        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
-        with:
-          version: "0.11.1"
-          enable-cache: true
-          restore-cache: ${{ env.CACHE_STRATEGY != 'cold' }}
-          save-cache: ${{ env.CACHE_STRATEGY == 'cold' && 'false' || 'auto' }}
-          prune-cache: ${{ env.CACHE_STRATEGY == 'ci-pruned' }}
-          cache-suffix: ${{ env.CACHE_STRATEGY == 'warm' && 'full-cache-demo' || '' }}
-          cache-dependency-glob: |
-            notebooks/nb5_uv_cache_lab/pyproject.toml
-            notebooks/nb5_uv_cache_lab/uv.lock
-            notebooks/nb5_uv_cache_lab/scripts/*.py
-            notebooks/nb5_uv_cache_lab/src/**/*.py
-            notebooks/nb5_uv_cache_lab/src/**/*.json
-            notebooks/nb5_uv_cache_lab/src/**/*.bin
+      # TODO: Add the `astral-sh/setup-uv` step here, before cache measurement
+      # and `uv sync`. The later steps require `uv` on PATH and read the action's
+      # `cache-hit` output, so give the step `id: uv`.
+      #
+      # Pin the action to a reviewed full commit SHA (with a version comment),
+      # and install the same uv version used by this experiment. Enable its
+      # package cache; do not cache the project `.venv`, which is created fresh
+      # by `uv sync` on each hosted runner.
+      #
+      # Select cache behavior from `CACHE_STRATEGY`:
+      #   - cold: skip restore and save, so remote entries stay unchanged.
+      #   - warm: restore and auto-save without pruning; use a distinct suffix
+      #     (`full-cache-demo`) to keep the complete cache separate.
+      #   - ci-pruned: restore and auto-save; enable CI pruning before saving.
+      #
+      # Example input expressions (place under the step's `with:`):
+      #   version: "0.11.1"
+      #   enable-cache: true
+      #   restore-cache: ${{ env.CACHE_STRATEGY != 'cold' }}
+      #   save-cache: ${{ env.CACHE_STRATEGY == 'cold' && 'false' || 'auto' }}
+      #   prune-cache: ${{ env.CACHE_STRATEGY == 'ci-pruned' }}
+      #   cache-suffix: ${{ env.CACHE_STRATEGY == 'warm' && 'full-cache-demo' || '' }}
+      #
+      # Set `cache-dependency-glob` to the project lock/configuration and all
+      # local build inputs. Include pyproject.toml, uv.lock, scripts/*.py,
+      # src/**/*.py, src/**/*.json, and src/**/*.bin under
+      # notebooks/nb5_uv_cache_lab so generated fixture data invalidates the
+      # remote cache key as well as the local wheel fingerprint.
 
       - name: Measure restored package cache size
         run: |

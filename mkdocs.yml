@@ -5,6 +5,8 @@ docs_dir: docs
 theme:
   name: material
   language: en
+  favicon: assets/favicon.svg
+  #logo: assets/favicon.svg
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -88,6 +90,7 @@ nav:
         - Section 02: chapter-04/section-02.md
         - Section 03: chapter-04/section-03.md
         - Section 04: chapter-04/section-04.md
+        - Section 05: chapter-04/section-05.md
   - Bonus:
       - Overview: chapter-bonus/index.md
       - Sections:

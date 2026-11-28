@@ -289,7 +289,7 @@ export IRISLAB_CHANNEL="https://conda.cloudsmith.io/<owner>/<repository>/"
 
 ### Create the Package
 
-Before building the `0.0.2` API image, update the project version in [`pyproject.toml`](../../projects/proj3_irislab_api/pyproject.toml) and the FastAPI version in [`main.py`](../../projects/proj3_irislab_api/src/irislab_api/main.py) to `0.0.2`. Use `0.0.2` for the image tag and archive name in the commands below. The `0.0.1` pAIguard and IrisLab versions mentioned earlier are dependency versions and remain unchanged.
+Before building the `0.0.2` API image, update the project version in [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/pyproject.toml) and the FastAPI version in [`main.py`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj3_irislab_api/src/irislab_api/main.py) to `0.0.2`. Use `0.0.2` for the image tag and archive name in the commands below. The `0.0.1` pAIguard and IrisLab versions mentioned earlier are dependency versions and remain unchanged.
 
 The same `Dockerfile` can produce different output formats depending on the build command. The first workflow creates a normal local image managed by Docker, while the second creates a portable OCI image archive as a file on disk.
 

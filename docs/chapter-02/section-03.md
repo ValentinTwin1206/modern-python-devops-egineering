@@ -244,8 +244,8 @@ Before building version `0.0.2`, update both version sources in this table. The 
 
 | File | Version change |
 |------|----------------|
-| [`recipe/meta.yaml`](../../projects/proj2_irislab/recipe/meta.yaml) | Set the shared `version` variable to `0.0.2` for both Conda outputs. |
-| [`cpp/CMakeLists.txt`](../../projects/proj2_irislab/cpp/CMakeLists.txt) | Set the CMake project version to `0.0.2`. |
+| [`recipe/meta.yaml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/recipe/meta.yaml) | Set the shared `version` variable to `0.0.2` for both Conda outputs. |
+| [`cpp/CMakeLists.txt`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj2_irislab/cpp/CMakeLists.txt) | Set the CMake project version to `0.0.2`. |
 
 Activate the `base` environment before running the packaging command:
 

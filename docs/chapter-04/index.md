@@ -17,3 +17,4 @@ Use the navigation on the left to move through the chapter's sections:
 | [Section 02](./section-02.md) | Monitoring | InfluxDB, Grafana |
 | [Section 03](./section-03.md) | Testing | DevContainer, Playwright, Artillery |
 | [Section 04](./section-04.md) | MCP Gateway | Docker Desktop, MCP Gateway  |
+| [Section 05](./section-05.md) | Continuous Integration | GitHub Flow, GitHub Actions, Dev Containers |

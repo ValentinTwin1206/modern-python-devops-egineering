@@ -326,7 +326,7 @@ The project is currently versioned `0.0.1`. Build this version for the requested
 
 | File | Version change |
 |------|----------------|
-| [`pyproject.toml`](../../projects/proj1_paiguard/pyproject.toml) | Keep `[project].version` at `0.0.2` for this upload. |
+| [`pyproject.toml`](https://github.com/ValentinTwin1206/modern-python-devops-egineering/blob/main/projects/proj1_paiguard/pyproject.toml) | Keep `[project].version` at `0.0.2` for this upload. |
 
 Modern Python builds split responsibilities between a **build frontend** and a **build backend**. The frontend is the command-line tool you run, while the backend is the project-specific implementation that produces the wheel (`.whl`) and source distribution (`.tar.gz`). PEP 517 defines the interface between both sides, and PEP 518 defines the `[build-system]` table in `pyproject.toml` where the backend and its requirements are declared.
 
